@@ -1,0 +1,253 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {}
+    },
+    {
+      "path": "pages/activity/activity",
+      "style": {}
+    },
+    {
+      "path": "pages/qa/qa",
+      "style": {}
+    },
+    {
+      "path": "pages/organization/organization",
+      "style": {
+        "navigationBarTitleText": "组织"
+      }
+    },
+    {
+      "path": "pages/user/user",
+      "style": {}
+    },
+    {
+      "path": "pages/organization-detail/organization-detail",
+      "style": {
+        "navigationBarTitleText": "组织详情"
+      }
+    },
+    {
+      "path": "pages/org-manage/org-manage",
+      "style": {
+        "navigationBarTitleText": "管理组织"
+      }
+    },
+    {
+      "path": "pages/member-manage/member-manage",
+      "style": {
+        "navigationBarTitleText": "人员管理"
+      }
+    },
+    {
+      "path": "pages/my-organizations/my-organizations",
+      "style": {
+        "navigationBarTitleText": "我的组织"
+      }
+    },
+    {
+      "path": "pages/my-activities/my-activities",
+      "style": {
+        "navigationBarTitleText": "我的活动"
+      }
+    },
+    {
+      "path": "pages/growth-record/growth-record",
+      "style": {
+        "navigationBarTitleText": "成长记录"
+      }
+    },
+    {
+      "path": "pages/basic-info/basic-info",
+      "style": {
+        "navigationBarTitleText": "基本信息"
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/user-agreement/user-agreement",
+      "style": {
+        "navigationBarTitleText": "用户协议"
+      }
+    },
+    {
+      "path": "pages/privacy-policy/privacy-policy",
+      "style": {
+        "navigationBarTitleText": "隐私政策"
+      }
+    },
+    {
+      "path": "pages/campus-nav/campus-nav",
+      "style": {
+        "navigationBarTitleText": "校园导航"
+      }
+    },
+    {
+      "path": "pages/competition/competition",
+      "style": {
+        "navigationBarTitleText": "竞赛章程"
+      }
+    },
+    {
+      "path": "pages/competition-detail/competition-detail",
+      "style": {
+        "navigationBarTitleText": "竞赛详情"
+      }
+    },
+    {
+      "path": "pages/showcase/showcase",
+      "style": {
+        "navigationBarTitleText": "风采展示"
+      }
+    },
+    {
+      "path": "pages/showcase-detail/showcase-detail",
+      "style": {
+        "navigationBarTitleText": "风采详情"
+      }
+    },
+    {
+      "path": "pages/sign-in/sign-in",
+      "style": {
+        "navigationBarTitleText": "班级签到"
+      }
+    },
+    {
+      "path": "pages/sign-in-records/sign-in-records",
+      "style": {
+        "navigationBarTitleText": "签到记录"
+      }
+    },
+    {
+      "path": "pages/sign-in-detail/sign-in-detail",
+      "style": {
+        "navigationBarTitleText": "签到详情"
+      }
+    },
+    {
+      "path": "pages/lost-found/lost-found",
+      "style": {
+        "navigationBarTitleText": "失物招领"
+      }
+    },
+    {
+      "path": "pages/lost-found-publish/lost-found-publish",
+      "style": {
+        "navigationBarTitleText": "发布信息"
+      }
+    },
+    {
+      "path": "pages/lost-found-detail/lost-found-detail",
+      "style": {
+        "navigationBarTitleText": "详情"
+      }
+    },
+    {
+      "path": "pages/feedback/feedback",
+      "style": {
+        "navigationBarTitleText": "我要反馈"
+      }
+    },
+    {
+      "path": "pages/feedback-records/feedback-records",
+      "style": {
+        "navigationBarTitleText": "反馈记录"
+      }
+    },
+    {
+      "path": "pages/feedback-detail/feedback-detail",
+      "style": {
+        "navigationBarTitleText": "反馈详情"
+      }
+    },
+    {
+      "path": "pages/activity-detail/activity-detail",
+      "style": {
+        "navigationBarTitleText": "活动详情"
+      }
+    },
+    {
+      "path": "pages/schedule/schedule",
+      "style": {
+        "navigationBarTitleText": "我的课表"
+      }
+    },
+    {
+      "path": "pages/post-detail/post-detail",
+      "style": {
+        "navigationBarTitleText": "帖子详情"
+      }
+    },
+    {
+      "path": "pages/publish-post/publish-post",
+      "style": {
+        "navigationBarTitleText": "发布帖子",
+        "disableScroll": false
+      }
+    },
+    {
+      "path": "pages/message/message",
+      "style": {
+        "navigationBarTitleText": "消息中心"
+      }
+    },
+    {
+      "path": "pages/message-detail/message-detail",
+      "style": {
+        "navigationBarTitleText": "消息详情"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "智慧数据学院",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f5f5f5"
+  },
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^u-(.*)": "uview-plus/components/u-$1/u-$1.vue"
+    }
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#ff6b6b",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "主页",
+        "iconPath": "static/tabbar/shouye.png",
+        "selectedIconPath": "static/tabbarSclect/shouye.png"
+      },
+      {
+        "pagePath": "pages/activity/activity",
+        "text": "活动",
+        "iconPath": "static/tabbar/caidan.png",
+        "selectedIconPath": "static/tabbarSclect/caidan.png"
+      },
+
+      {
+        "pagePath": "pages/organization/organization",
+        "text": "组织",
+        "iconPath": "static/tabbar/huiyuan21.png",
+        "selectedIconPath": "static/tabbarSclect/huiyuan21.png"
+      },
+      {
+        "pagePath": "pages/user/user",
+        "text": "我的",
+        "iconPath": "static/tabbar/huiyuanqia.png",
+        "selectedIconPath": "static/tabbarSclect/huiyuanqia.png"
+      }
+    ]
+  }
+}
