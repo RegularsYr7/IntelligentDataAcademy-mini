@@ -9,16 +9,16 @@
 
             <!-- Logo 区域 -->
             <view class="logo-section">
-                <image class="logo" src="https://picsum.photos/200/200?random=logo" mode="aspectFill"></image>
+                <view class="logo-container">
+                    <image class="logo" :src="Logo" mode="aspectFit"></image>
+                </view>
                 <text class="app-name">智慧数据学院</text>
-                <text class="app-slogan">让成长看得见</text>
             </view>
 
             <!-- 登录区域 -->
             <view class="login-section">
                 <view class="welcome-text">
-                    <text class="welcome-title">欢迎登录</text>
-                    <text class="welcome-subtitle">{{ loginMode === 'wechat' ? '使用手机号快速登录' : '使用账号密码登录' }}</text>
+                    <text class="welcome-title">{{ loginMode === 'wechat' ? '使用手机号快速登录' : '使用账号密码登录' }}</text>
                 </view>
 
                 <!-- 账号密码登录组件 -->
@@ -64,152 +64,14 @@ import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import AccountPasswordLogin from '@/components/AccountPasswordLogin/AccountPasswordLogin.vue'
 import WechatPhoneLogin from '@/components/WechatPhoneLogin/WechatPhoneLogin.vue'
+import Logo from '@/static/artLogo.png'
 
 const loading = ref(false)
 const loginMode = ref('wechat') // 'wechat' | 'account'
 const agreedToPolicy = ref(false) // 是否同意隐私政策，默认不选中
 
 onLoad(() => {
-    console.log('登录页面加载')
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
-
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【登录页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    // 接口1: 账号密码登录
-    console.log('📍 接口1: 账号密码登录')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/auth/login')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        username: '2021001', // 学号/工号
-        password: '123456' // 密码
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '登录成功',
-        data: {
-            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...', // JWT token
-            userInfo: {
-                id: 1,
-                name: '张三',
-                avatar: 'https://example.com/avatar.png',
-                phone: '138****8888',
-                hasBindPhone: false // 是否已绑定微信手机号
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口2: 绑定微信手机号
-    console.log('📍 接口2: 绑定微信手机号')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/auth/bind-wechat-phone')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        code: 'wx_code', // 微信登录凭证
-        encryptedData: 'encrypted_data', // 加密数据
-        iv: 'iv_string', // 加密算法初始向量
-        cloudID: 'cloud_id' // 可选,微信云开发ID
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '绑定成功',
-        data: {
-            phone: '13812345678' // 绑定的手机号
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口3: 微信手机号登录
-    console.log('📍 接口3: 微信手机号一键登录')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/auth/wechat-phone-login')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        code: 'wx_code', // 微信登录凭证
-        encryptedData: 'encrypted_data', // 加密数据
-        iv: 'iv_string', // 加密算法初始向量
-        cloudID: 'cloud_id' // 可选,微信云开发ID
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '登录成功',
-        data: {
-            token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...', // JWT token
-            userInfo: {
-                id: 1,
-                name: '张三',
-                avatar: 'https://example.com/avatar.png',
-                phone: '138****8888'
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口4: Mock登录(开发环境)
-    console.log('📍 接口4: Mock登录(开发环境专用)')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/auth/mock-login')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        phone: '13800138000' // 可选,测试手机号
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '登录成功',
-        data: {
-            token: 'mock_token_for_development',
-            userInfo: {
-                id: 1,
-                name: '测试用户',
-                avatar: 'https://example.com/avatar.png',
-                phone: '138****8000'
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📝 接口说明')
-    console.log('━'.repeat(80))
-    console.log('1. 账号密码登录流程:')
-    console.log('   - 用户输入学号/工号和密码')
-    console.log('   - 登录成功后,如果 hasBindPhone=false,自动弹窗引导绑定微信手机号')
-    console.log('   - 绑定成功后,后续可使用微信手机号一键登录')
-    console.log('2. 微信手机号绑定:')
-    console.log('   - 需要先通过账号密码登录获取 token')
-    console.log('   - 使用 token 调用绑定接口')
-    console.log('   - 绑定后账号与微信手机号关联')
-    console.log('3. 微信手机号登录:')
-    console.log('   - 前端调用 wx.login() 获取 code')
-    console.log('   - 用户点击授权获取手机号,得到 encryptedData 和 iv')
-    console.log('   - 后端通过手机号查找已绑定的账号并登录')
-    console.log('4. Token管理: JWT格式,过期时间建议7天')
-    console.log('5. Mock登录: 仅用于开发环境,生产环境禁用')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 // 切换登录方式
 const switchLoginMode = () => {
@@ -590,12 +452,22 @@ const goBack = () => {
     z-index: 2;
 }
 
-.logo {
-    width: 160rpx;
-    height: 160rpx;
-    border-radius: 32rpx;
+.logo-container {
+    width: 480rpx;
+    height: 180rpx;
+    background: #fff;
+    border-radius: 24rpx;
+    padding: 20rpx;
     margin-bottom: 30rpx;
     box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.logo {
+    width: 100%;
+    height: 100%;
 }
 
 .app-name {
