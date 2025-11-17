@@ -219,34 +219,34 @@
   },
   "tabBar": {
     "color": "#999999",
-    "selectedColor": "#ff6b6b",
+    "selectedColor": "#252245",
     "backgroundColor": "#ffffff",
     "borderStyle": "black",
     "list": [
       {
         "pagePath": "pages/index/index",
         "text": "主页",
-        "iconPath": "static/tabbar/shouye.png",
-        "selectedIconPath": "static/tabbarSclect/shouye.png"
+        "iconPath": "static/tabbar/kaoqin.png",
+        "selectedIconPath": "static/tabbarSclect/kaoqin.png"
       },
       {
         "pagePath": "pages/activity/activity",
         "text": "活动",
-        "iconPath": "static/tabbar/caidan.png",
-        "selectedIconPath": "static/tabbarSclect/caidan.png"
+        "iconPath": "static/tabbar/huodong.png",
+        "selectedIconPath": "static/tabbarSclect/huodong.png"
       },
 
       {
         "pagePath": "pages/organization/organization",
         "text": "组织",
-        "iconPath": "static/tabbar/huiyuan21.png",
-        "selectedIconPath": "static/tabbarSclect/huiyuan21.png"
+        "iconPath": "static/tabbar/banjihuodong.png",
+        "selectedIconPath": "static/tabbarSclect/banjihuodong.png"
       },
       {
         "pagePath": "pages/user/user",
         "text": "我的",
-        "iconPath": "static/tabbar/huiyuanqia.png",
-        "selectedIconPath": "static/tabbarSclect/huiyuanqia.png"
+        "iconPath": "static/tabbar/denglu.png",
+        "selectedIconPath": "static/tabbarSclect/denglu.png"
       }
     ]
   }
