@@ -134,6 +134,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onReady } from '@dcloudio/uni-app'
+import { getLandmarkList } from '@/api/landmark'
 
 const searchKeyword = ref('')
 const isPanelExpanded = ref(true) // 默认展开弹出层
@@ -142,6 +143,7 @@ const selectedLocation = ref(null)
 const mapScale = ref(18) // 提高初始缩放级别到18,更精确显示建筑物
 const userLocation = ref(null) // 用户当前位置
 const isFirstOpen = ref(true) // 是否首次打开弹出层
+
 
 // 成都文理学院中心坐标
 const schoolCenter = {
@@ -160,231 +162,79 @@ const categories = ref([
     { label: '运动场所', value: 'sports', icon: '⚽' }
 ])
 
-// 校园地点数据（基于成都文理学院实际位置,使用更精确的坐标偏移）
-const locations = ref([
-    // 教学楼
-    {
-        id: 1,
-        name: '教学楼A栋',
-        description: '主要教学楼，1-6层',
-        category: 'teaching',
-        icon: '🏫',
-        longitude: 104.464108, // 向西偏移约30米
-        latitude: 30.845527,   // 向北偏移约10米
-        openTime: '周一至周日 7:00-22:00',
-        features: '多媒体教室、实验室、自习室'
-    },
-    {
-        id: 2,
-        name: '教学楼B栋',
-        description: '综合教学楼，1-5层',
-        category: 'teaching',
-        icon: '🏫',
-        longitude: 104.464908, // 向东偏移约30米
-        latitude: 30.845527,   // 向北偏移约10米
-        openTime: '周一至周日 7:00-22:00',
-        features: '阶梯教室、实验室、办公室'
-    },
-    {
-        id: 3,
-        name: '教学楼C栋',
-        description: '专业教学楼，1-4层',
-        category: 'teaching',
-        icon: '🏫',
-        longitude: 104.463908, // 向西偏移约45米
-        latitude: 30.845127,   // 向南偏移约30米
-        openTime: '周一至周日 7:00-22:00',
-        features: '计算机房、语音室、画室'
-    },
-    {
-        id: 4,
-        name: '图书馆',
-        description: '综合图书馆，藏书丰富',
-        category: 'teaching',
-        icon: '📚',
-        longitude: 104.464508, // 学校中心位置
-        latitude: 30.845927,   // 向北偏移约50米
-        openTime: '周一至周日 8:00-22:00',
-        features: '自习室、电子阅览室、藏书区',
-        phone: '028-12345678'
-    },
-    {
-        id: 5,
-        name: '实验中心',
-        description: '科研实验中心',
-        category: 'teaching',
-        icon: '🔬',
-        longitude: 104.465108, // 向东偏移约45米
-        latitude: 30.845427,   // 中心纬度
-        openTime: '周一至周五 8:00-18:00',
-        features: '物理实验室、化学实验室、生物实验室'
-    },
+// 校园地点数据
+const locations = ref([])
 
-    // 宿舍楼
-    {
-        id: 6,
-        name: '学生公寓1号楼',
-        description: '男生宿舍，6人间',
-        category: 'dormitory',
-        icon: '🏠',
-        longitude: 104.463708, // 向西偏移约60米
-        latitude: 30.844927,   // 向南偏移约50米
-        openTime: '全天开放',
-        features: '独立卫浴、空调、热水'
-    },
-    {
-        id: 7,
-        name: '学生公寓2号楼',
-        description: '男生宿舍，4人间',
-        category: 'dormitory',
-        icon: '🏠',
-        longitude: 104.464008, // 向西偏移约38米
-        latitude: 30.844927,   // 向南偏移约50米
-        openTime: '全天开放',
-        features: '独立卫浴、空调、热水、阳台'
-    },
-    {
-        id: 8,
-        name: '学生公寓3号楼',
-        description: '女生宿舍，6人间',
-        category: 'dormitory',
-        icon: '🏠',
-        longitude: 104.464308, // 向西偏移约15米
-        latitude: 30.844927,   // 向南偏移约50米
-        openTime: '全天开放',
-        features: '独立卫浴、空调、热水'
-    },
-    {
-        id: 9,
-        name: '学生公寓4号楼',
-        description: '女生宿舍，4人间',
-        category: 'dormitory',
-        icon: '🏠',
-        longitude: 104.464608, // 向东偏移约8米
-        latitude: 30.844927,   // 向南偏移约50米
-        openTime: '全天开放',
-        features: '独立卫浴、空调、热水、书桌'
-    },
+// 地标类型映射: 后端类型 -> 前端分类
+const landmarkTypeMap = {
+    '1': 'teaching',    // 教学楼
+    '2': 'teaching',    // 实验楼
+    '3': 'dormitory',   // 宿舍楼
+    '4': 'service',     // 食堂
+    '5': 'teaching',    // 图书馆
+    '6': 'sports',      // 体育场馆
+    '7': 'service',     // 行政楼
+    '8': 'service'      // 其他
+}
 
-    // 生活服务
-    {
-        id: 10,
-        name: '第一食堂',
-        description: '学生餐厅，三层',
-        category: 'service',
-        icon: '🍜',
-        longitude: 104.463508, // 向西偏移约75米
-        latitude: 30.845427,   // 中心纬度
-        openTime: '早餐 7:00-9:00，午餐 11:00-13:00，晚餐 17:00-19:00',
-        features: '川菜、面食、小吃、水果',
-        phone: '028-12345679'
-    },
-    {
-        id: 11,
-        name: '第二食堂',
-        description: '教职工餐厅，两层',
-        category: 'service',
-        icon: '🍜',
-        longitude: 104.465008, // 向东偏移约38米
-        latitude: 30.845127,   // 向南偏移约30米
-        openTime: '早餐 7:00-9:00，午餐 11:00-13:00，晚餐 17:00-19:00',
-        features: '特色菜、营养套餐、清真餐'
-    },
-    {
-        id: 12,
-        name: '菜鸟驿站',
-        description: '快递收发点',
-        category: 'service',
-        icon: '📦',
-        longitude: 104.465208, // 向东偏移约53米
-        latitude: 30.844927,   // 向南偏移约50米
-        openTime: '周一至周日 8:00-21:00',
-        features: '快递收发、打印服务',
-        phone: '028-12345680'
-    },
-    {
-        id: 13,
-        name: '校园超市',
-        description: '综合超市',
-        category: 'service',
-        icon: '🏪',
-        longitude: 104.463808, // 向西偏移约53米
-        latitude: 30.845727,   // 向北偏移约30米
-        openTime: '周一至周日 7:00-23:00',
-        features: '日用品、零食饮料、文具'
-    },
-    {
-        id: 14,
-        name: '医务室',
-        description: '校园医疗服务',
-        category: 'service',
-        icon: '🏥',
-        longitude: 104.465308, // 向东偏移约60米
-        latitude: 30.845727,   // 向北偏移约30米
-        openTime: '周一至周日 8:00-20:00',
-        features: '常见病诊疗、应急救护',
-        phone: '028-12345681'
-    },
-    {
-        id: 15,
-        name: '打印店',
-        description: '文印服务中心',
-        category: 'service',
-        icon: '🖨️',
-        longitude: 104.464208, // 向西偏移约23米
-        latitude: 30.845927,   // 向北偏移约50米
-        openTime: '周一至周日 8:00-22:00',
-        features: '打印、复印、扫描、装订'
-    },
-
-    // 运动场所
-    {
-        id: 16,
-        name: '田径场',
-        description: '标准400米跑道',
-        category: 'sports',
-        icon: '⚽',
-        longitude: 104.465608, // 向东偏移约83米
-        latitude: 30.845427,   // 中心纬度
-        openTime: '周一至周日 6:00-22:00',
-        features: '足球场、篮球场、跑道'
-    },
-    {
-        id: 17,
-        name: '体育馆',
-        description: '室内体育场馆',
-        category: 'sports',
-        icon: '🏀',
-        longitude: 104.465408, // 向东偏移约68米
-        latitude: 30.845127,   // 向南偏移约30米
-        openTime: '周一至周日 8:00-21:00',
-        features: '篮球场、羽毛球场、乒乓球室',
-        phone: '028-12345682'
-    },
-    {
-        id: 18,
-        name: '游泳馆',
-        description: '标准游泳池',
-        category: 'sports',
-        icon: '🏊',
-        longitude: 104.465608, // 向东偏移约83米
-        latitude: 30.845727,   // 向北偏移约30米
-        openTime: '夏季 14:00-21:00',
-        features: '标准泳池、更衣室、淋浴',
-        phone: '028-12345683'
-    },
-    {
-        id: 19,
-        name: '网球场',
-        description: '室外网球场',
-        category: 'sports',
-        icon: '🎾',
-        longitude: 104.465808, // 向东偏移约98米
-        latitude: 30.845427,   // 中心纬度
-        openTime: '周一至周日 6:00-22:00',
-        features: '4片标准网球场地'
+// 根据分类获取默认图标
+const getCategoryIcon = (category) => {
+    const iconMap = {
+        'teaching': '🏫',
+        'dormitory': '🏠',
+        'service': '🏪',
+        'sports': '⚽'
     }
-])
+    return iconMap[category] || '📍'
+}
+
+// 加载地标数据
+const loadLandmarks = async () => {
+    try {
+        console.log('=== 开始加载地标数据 ===')
+        console.log('当前分类:', currentCategory.value)
+
+        const params = {}
+        // 如果需要按分类过滤,需要将前端分类转换回后端的landmarkType
+        // 暂时不传category,获取全部数据后在前端过滤
+
+        const res = await getLandmarkList(params)
+        console.log('地标数据API响应:', res)
+
+        let rawData = []
+        if (res && Array.isArray(res.data)) {
+            rawData = res.data
+        } else if (res && Array.isArray(res.rows)) {
+            rawData = res.rows
+        } else if (res && Array.isArray(res)) {
+            rawData = res
+        }
+
+        // 转换后端数据格式为前端需要的格式
+        locations.value = rawData.map(item => ({
+            id: item.landmarkId,
+            name: item.landmarkName,
+            description: item.introduction || '暂无介绍',
+            category: landmarkTypeMap[item.landmarkType] || 'service',
+            icon: item.iconUrl || getCategoryIcon(landmarkTypeMap[item.landmarkType]),
+            longitude: Number(item.longitude),
+            latitude: Number(item.latitude),
+            openTime: item.openingHours || '暂无信息',
+            phone: item.contactPhone || '',
+            features: item.introduction || ''
+        }))
+
+        console.log('转换后的地标数据:', locations.value)
+        console.log('地标数量:', locations.value.length)
+    } catch (error) {
+        console.error('加载地标数据失败:', error)
+        uni.showToast({
+            title: '加载地标失败',
+            icon: 'none'
+        })
+        locations.value = []
+    }
+}
 
 // 地图标记点
 const markers = computed(() => {
@@ -438,13 +288,14 @@ const displayLocations = computed(() => {
     return locations.value.filter(location => location.category === currentCategory.value)
 })
 
-onLoad(() => {
-    console.log('校园导航页面加载')
+onLoad(async () => {
+    console.log('=== 校园导航页面加载 ===')
+
     // 获取用户当前位置
     getUserLocation()
 
-    // 打印接口需求文档
-    printAPIRequirements()
+    // 加载地标数据
+    await loadLandmarks()
 })
 
 onReady(() => {
@@ -649,8 +500,10 @@ const selectLocation = (location) => {
 }
 
 // 切换分类
-const switchCategory = (category) => {
+const switchCategory = async (category) => {
     currentCategory.value = category
+    // 重新加载对应分类的地标数据
+    await loadLandmarks()
 }
 
 // 切换面板展开状态

@@ -65,6 +65,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import AccountPasswordLogin from '@/components/AccountPasswordLogin/AccountPasswordLogin.vue'
 import WechatPhoneLogin from '@/components/WechatPhoneLogin/WechatPhoneLogin.vue'
 import Logo from '@/static/artLogo.png'
+import { login, loginByWechat, bindPhone } from '@/api/student'
 
 const loading = ref(false)
 const loginMode = ref('wechat') // 'wechat' | 'account'
@@ -107,60 +108,81 @@ const accountLogin = async (formData) => {
     loading.value = true
 
     try {
-        // TODO: 实际项目中调用后端接口
-        // const res = await uni.request({
-        //     url: 'https://your-api.com/api/auth/login',
-        //     method: 'POST',
-        //     data: {
-        //         username: formData.username,
-        //         password: formData.password
-        //     }
-        // })
+        // 调用登录接口
+        const data = await login({
+            studentNo: formData.username,
+            password: formData.password
+        })
 
-        // 模拟登录成功
+        console.log('登录响应数据:', data)
+
+        // 保存token（如果后端返回了token，否则使用临时token）
+        const token = data.token || 'temp_token_' + Date.now()
+        uni.setStorageSync('userToken', token)
+
+        // 构建用户信息对象
+        const userInfo = {
+            // ========== 基本信息 ==========
+            studentId: data.studentId,
+            name: data.studentName,
+            avatar: data.avatarUrl || 'https://picsum.photos/200/200?random=user',
+            studentNo: data.studentNo,
+            quantificationScore: data.quantitativeScore || 0,
+            idCard: data.idCard,
+            phone: data.phone || '',
+
+            // ========== 学籍信息 ==========
+            schoolId: data.schoolId,
+            schoolName: data.schoolName,
+            collegeId: data.collegeId,
+            collegeName: data.collegeName,
+            trainingLevel: data.trainingLevel,
+            majorId: data.majorId,
+            majorName: data.majorName,
+            grade: data.grade,
+            educationSystem: data.educationSystem,
+            classId: data.classId, // 班级ID - 课表接口需要
+            className: data.className,
+            enrollmentDate: data.enrollmentDate,
+            graduationDate: data.graduationDate,
+
+            // ========== 个人信息 ==========
+            nationality: data.nationality,
+            politicalStatus: data.politicalStatus,
+            birthdate: data.birthdate,
+            hometown: data.hometown,
+            bloodType: data.bloodType,
+
+            // ========== 活动信息 ==========
+            recentActivities: data.recentActivities || [],
+
+            // ========== 组织信息 ==========
+            organizations: data.organizations || [],
+            positions: [], // 职位暂时为空，后续从组织数据中获取
+
+            // ========== 成长记录 ==========
+            currentMonthScore: data.currentMonthScore || 0,
+            growthTrend: data.growthTrend || []
+        }
+
+        uni.setStorageSync('userInfo', userInfo)
+
+        loading.value = false
+
+        uni.showToast({
+            title: '登录成功',
+            icon: 'success',
+            duration: 1500
+        })
+
+        // 直接跳转到首页
         setTimeout(() => {
-            const mockUserInfo = {
-                id: 1,
-                name: '张三',
-                avatar: 'https://picsum.photos/200/200?random=user',
-                phone: '',
-                hasBindPhone: false, // 模拟未绑定手机号
-                positions: ['团支书'],
-                quantificationScore: 95.5
-            }
-
-            const mockToken = 'account_token_' + Date.now()
-
-            // 保存登录信息
-            uni.setStorageSync('userToken', mockToken)
-            uni.setStorageSync('userInfo', mockUserInfo)
-
-            loading.value = false
-
-            uni.showToast({
-                title: '登录成功',
-                icon: 'success',
-                duration: 1500
-            })
-
-            // 如果未绑定手机号,弹窗引导绑定
-            if (!mockUserInfo.hasBindPhone) {
-                setTimeout(() => {
-                    showBindPhoneModal()
-                }, 1500)
-            } else {
-                // 已绑定,直接跳转
-                setTimeout(() => {
-                    navigateToHome()
-                }, 1500)
-            }
+            navigateToHome()
         }, 1500)
     } catch (error) {
         loading.value = false
-        uni.showToast({
-            title: '登录失败',
-            icon: 'none'
-        })
+        // 错误信息已在request.js中自动处理
+        console.error('登录失败:', error)
     }
 }
 
@@ -201,7 +223,7 @@ const bindWechatPhone = () => {
 // 处理微信手机号授权(用于绑定)
 const handlePhoneNumberForBind = async (e) => {
     if (e.detail.errMsg === 'getPhoneNumber:ok') {
-        const { encryptedData, iv } = e.detail
+        const { encryptedData, iv, code: phoneCode } = e.detail
         const token = uni.getStorageSync('userToken')
 
         if (!token) {
@@ -213,28 +235,28 @@ const handlePhoneNumberForBind = async (e) => {
         }
 
         try {
-            // TODO: 调用绑定接口
-            // 需要先调用 wx.login() 获取 code
+            // 调用 wx.login() 获取 code
             uni.login({
                 success: async (loginRes) => {
                     const code = loginRes.code
 
-                    // TODO: 调用后端绑定接口
-                    // const res = await uni.request({
-                    //     url: 'https://your-api.com/api/auth/bind-wechat-phone',
-                    //     method: 'POST',
-                    //     header: {
-                    //         Authorization: `Bearer ${token}`
-                    //     },
-                    //     data: { code, encryptedData, iv }
-                    // })
+                    try {
+                        console.log('调用绑定手机号接口，参数:', { code, encryptedData, iv, phoneCode })
 
-                    // 模拟绑定成功
-                    setTimeout(() => {
+                        // 调用绑定接口
+                        const data = await bindPhone({
+                            code: code || phoneCode,
+                            encryptedData,
+                            iv
+                        })
+
+                        // 更新本地用户信息
                         const userInfo = uni.getStorageSync('userInfo')
-                        userInfo.hasBindPhone = true
-                        userInfo.phone = '138****8888'
-                        uni.setStorageSync('userInfo', userInfo)
+                        if (data.phone) {
+                            userInfo.phone = data.phone
+                            userInfo.hasBindPhone = true
+                            uni.setStorageSync('userInfo', userInfo)
+                        }
 
                         uni.showToast({
                             title: '绑定成功',
@@ -244,10 +266,21 @@ const handlePhoneNumberForBind = async (e) => {
                         setTimeout(() => {
                             navigateToHome()
                         }, 1500)
-                    }, 1000)
+                    } catch (error) {
+                        console.error('绑定失败:', error)
+                        // 错误信息已在request.js中自动处理
+                    }
+                },
+                fail: (err) => {
+                    console.error('wx.login失败:', err)
+                    uni.showToast({
+                        title: '获取登录凭证失败',
+                        icon: 'none'
+                    })
                 }
             })
         } catch (error) {
+            console.error('绑定过程出错:', error)
             uni.showToast({
                 title: '绑定失败',
                 icon: 'none'
@@ -264,7 +297,7 @@ const handlePhoneNumberForBind = async (e) => {
 }
 
 // 获取微信手机号(一键登录使用)
-const getPhoneNumber = (e) => {
+const getPhoneNumber = async (e) => {
     console.log('获取手机号:', e)
 
     // 验证是否同意隐私政策
@@ -273,34 +306,94 @@ const getPhoneNumber = (e) => {
     }
 
     if (e.detail.errMsg === 'getPhoneNumber:ok') {
-        // 获取到加密数据
-        const { encryptedData, iv } = e.detail
+        // 直接从 detail 中获取 code
+        const { code } = e.detail
+
+        if (!code) {
+            uni.showToast({
+                title: '获取手机号授权码失败',
+                icon: 'none'
+            })
+            return
+        }
 
         loading.value = true
 
-        // 需要先调用 wx.login() 获取 code
-        uni.login({
-            success: async (loginRes) => {
-                const code = loginRes.code
+        try {
+            console.log('调用微信登录接口，code:', code)
 
-                // TODO: 实际项目中调用后端接口
-                // const res = await uni.request({
-                //     url: 'https://your-api.com/api/auth/wechat-phone-login',
-                //     method: 'POST',
-                //     data: { code, encryptedData, iv }
-                // })
+            const data = await loginByWechat(code)
 
-                // 模拟登录成功
-                performLogin()
-            },
-            fail: () => {
-                loading.value = false
-                uni.showToast({
-                    title: '登录失败',
-                    icon: 'none'
-                })
+            console.log('微信登录响应数据:', data)
+
+            // 保存token
+            const token = data.token || 'temp_token_' + Date.now()
+            uni.setStorageSync('userToken', token)
+
+            // 构建用户信息对象（与账号密码登录保持一致）
+            const userInfo = {
+                // ========== 基本信息 ==========
+                studentId: data.studentId,
+                name: data.studentName,
+                avatar: data.avatarUrl || 'https://picsum.photos/200/200?random=user',
+                studentNo: data.studentNo,
+                quantificationScore: data.quantitativeScore || 0,
+                idCard: data.idCard,
+                phone: data.phone || '',
+
+                // ========== 学籍信息 ==========
+                schoolId: data.schoolId,
+                schoolName: data.schoolName,
+                collegeId: data.collegeId,
+                collegeName: data.collegeName,
+                trainingLevel: data.trainingLevel,
+                majorId: data.majorId,
+                majorName: data.majorName,
+                grade: data.grade,
+                educationSystem: data.educationSystem,
+                classId: data.classId, // 班级ID - 课表接口需要
+                className: data.className,
+                enrollmentDate: data.enrollmentDate,
+                graduationDate: data.graduationDate,
+
+                // ========== 个人信息 ==========
+                nationality: data.nationality,
+                politicalStatus: data.politicalStatus,
+                birthdate: data.birthdate,
+                hometown: data.hometown,
+                bloodType: data.bloodType,
+
+                // ========== 活动信息 ==========
+                recentActivities: data.recentActivities || [],
+
+                // ========== 组织信息 ==========
+                organizations: data.organizations || [],
+                positions: [], // 职位暂时为空，后续从组织数据中获取
+
+                // ========== 成长记录 ==========
+                currentMonthScore: data.currentMonthScore || 0,
+                growthTrend: data.growthTrend || []
             }
-        })
+
+            uni.setStorageSync('userInfo', userInfo)
+
+            loading.value = false
+
+            uni.showToast({
+                title: '登录成功',
+                icon: 'success',
+                duration: 1500
+            })
+
+            // 返回上一页或跳转到首页
+            setTimeout(() => {
+                navigateToHome()
+            }, 1500)
+        } catch (error) {
+            loading.value = false
+            // 错误信息已在request.js中自动处理
+            console.error('微信登录失败:', error)
+        }
     } else if (e.detail.errMsg === 'getPhoneNumber:fail user deny') {
         uni.showToast({
             title: '您已取消授权',

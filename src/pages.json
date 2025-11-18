@@ -235,7 +235,12 @@
         "iconPath": "static/tabbar/huodong.png",
         "selectedIconPath": "static/tabbarSclect/huodong.png"
       },
-
+      {
+        "pagePath": "pages/qa/qa",
+        "text": "社区",
+        "iconPath": "static/tabbar/shequ.png",
+        "selectedIconPath": "static/tabbarSclect/shequ.png"
+      },
       {
         "pagePath": "pages/organization/organization",
         "text": "组织",

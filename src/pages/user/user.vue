@@ -23,244 +23,143 @@ const isLoggedIn = ref(false)
 
 // 用户信息
 const userInfo = ref({
-    name: '张三',
-    avatar: 'https://picsum.photos/200/200?random=user',
-    positions: ['团支书', '学生会主席'],
-    quantificationScore: 95.5
+    name: '',
+    avatar: '',
+    positions: [],
+    quantificationScore: 0
 })
 
 // 我的活动
-const myActivities = ref([
-    {
-        id: 1,
-        name: '校园运动会志愿者',
-        time: '2025-11-05 09:00',
-        status: 'ongoing',
-        statusText: '进行中'
-    },
-    {
-        id: 2,
-        name: '学术讲座组织',
-        time: '2025-11-08 14:30',
-        status: 'upcoming',
-        statusText: '即将开始'
-    },
-    {
-        id: 3,
-        name: '社团招新活动',
-        time: '2025-10-20 15:00',
-        status: 'completed',
-        statusText: '已完成'
-    }
-])
+const myActivities = ref([])
 
 // 我的组织
-const myOrganizations = ref([
-    {
-        id: 4,
-        name: '计算机科学学院学生会',
-        role: '主席',
-        logo: 'https://picsum.photos/100/100?random=org1'
-    },
-    {
-        id: 10,
-        name: '数据科学社团',
-        role: '社长',
-        logo: 'https://picsum.photos/100/100?random=org2'
-    }
-])
+const myOrganizations = ref([])
 
 // 成长记录（最近6个月）
-const growthRecords = ref([
-    { month: '5月', score: 78 },
-    { month: '6月', score: 82 },
-    { month: '7月', score: 85 },
-    { month: '8月', score: 88 },
-    { month: '9月', score: 92 },
-    { month: '10月', score: 95 }
-])
+const growthRecords = ref([])
 
 // 本月获得分数
-const monthlyGain = ref(12)
+const monthlyGain = ref(0)
 
 // 基本信息
 const basicInfo = ref({
-    studentId: '2021001001',
-    class: '数据科学21-1班',
-    major: '数据科学与大数据技术',
-    college: '计算机科学学院',
-    phone: '138****8888'
+    studentId: '',
+    class: '',
+    major: '',
+    college: '',
+    phone: ''
 })
 
 onLoad(() => {
     console.log('我的页面加载')
     checkLoginStatus()
 
-    // 打印接口需求文档
-    printAPIRequirements()
+    if (isLoggedIn.value) {
+        loadUserData()
+    }
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【用户中心页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    // 接口1: 获取用户信息
-    console.log('📍 接口1: 获取用户信息')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/user/profile')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数: 无')
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            name: '张三',
-            avatar: 'https://example.com/avatar.png',
-            positions: ['团支书', '学生会主席'], // 用户职位列表
-            quantificationScore: 95.5, // 量化分数
-            studentId: '202001010101',
-            className: '计科2020级1班',
-            major: '数据科学与大数据技术',
-            college: '计算机科学学院',
-            phone: '138****8888' // 脱敏手机号
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口2: 获取我的活动
-    console.log('📍 接口2: 获取我的活动')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/user/activities')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        limit: 3 // 返回最近3条
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            activities: [
-                {
-                    id: 1,
-                    name: '校园运动会志愿者',
-                    time: '2025-11-05 09:00',
-                    status: 'ongoing', // ongoing-进行中, upcoming-即将开始, finished-已完成
-                    statusText: '进行中'
-                }
-            ]
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口3: 获取我的组织
-    console.log('📍 接口3: 获取我的组织')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/user/organizations')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数: 无')
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            organizations: [
-                {
-                    id: 1,
-                    name: '学生会',
-                    logo: 'https://example.com/logo.png',
-                    role: '主席' // 在组织中的角色
-                }
-            ]
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口4: 获取成长记录
-    console.log('📍 接口4: 获取成长记录(6个月数据)')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/user/growth-records')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        months: 6 // 最近6个月
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            records: [
-                {
-                    month: '5月',
-                    score: 78
-                },
-                {
-                    month: '6月',
-                    score: 82
-                }
-                // ... 共6个月数据
-            ],
-            monthlyGain: 12 // 本月新增分数
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口5: 退出登录
-    console.log('📍 接口5: 退出登录')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/auth/logout')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数: 无')
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '退出成功'
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📝 接口说明')
-    console.log('━'.repeat(80))
-    console.log('1. 所有接口需要登录认证(token)')
-    console.log('2. 未登录状态: 显示骨架屏+登录引导按钮')
-    console.log('3. 量化分数: 根据活动参与、组织职务等综合计算')
-    console.log('4. 成长记录: 用于图表展示,需返回固定6个月数据')
-    console.log('5. 手机号脱敏: 中间4位用*代替')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 onShow(() => {
     checkLoginStatus()
+    if (isLoggedIn.value) {
+        loadUserData()
+    }
 })
 
 // 检查登录状态
 const checkLoginStatus = () => {
     const token = uni.getStorageSync('userToken')
     isLoggedIn.value = !!token
+}
 
-    if (isLoggedIn.value) {
-        // 从缓存加载用户信息
-        const cachedUserInfo = uni.getStorageSync('userInfo')
-        if (cachedUserInfo) {
-            userInfo.value = cachedUserInfo
+// 加载用户数据
+const loadUserData = () => {
+    const cachedUserInfo = uni.getStorageSync('userInfo')
+    if (cachedUserInfo) {
+        console.log('加载用户信息:', cachedUserInfo)
+
+        // 设置用户基本信息
+        userInfo.value = {
+            name: cachedUserInfo.name || cachedUserInfo.studentName || '未设置',
+            avatar: cachedUserInfo.avatar || cachedUserInfo.avatarUrl || 'https://picsum.photos/200/200?random=user',
+            positions: extractPositions(cachedUserInfo.organizations || []),
+            quantificationScore: cachedUserInfo.quantificationScore || cachedUserInfo.quantitativeScore || 0
+        }
+
+        // 设置我的活动
+        myActivities.value = (cachedUserInfo.recentActivities || []).slice(0, 3).map(activity => ({
+            id: activity.activityId,
+            name: activity.activityName || activity.name,
+            time: activity.activityTime || activity.time,
+            status: activity.status || 'completed',
+            statusText: getStatusText(activity.status)
+        }))
+
+        // 设置我的组织
+        myOrganizations.value = (cachedUserInfo.organizations || []).map(org => ({
+            id: org.organizationId,
+            name: org.organizationName || org.name,
+            role: org.role || '成员',
+            logo: org.logo || 'https://picsum.photos/100/100?random=org'
+        }))
+
+        // 设置成长记录
+        if (cachedUserInfo.growthTrend && cachedUserInfo.growthTrend.length > 0) {
+            growthRecords.value = cachedUserInfo.growthTrend
+        } else {
+            // 如果没有成长趋势数据，生成默认数据
+            growthRecords.value = generateDefaultGrowthRecords()
+        }
+
+        // 本月获得分数
+        monthlyGain.value = cachedUserInfo.currentMonthScore || 0
+
+        // 基本信息
+        basicInfo.value = {
+            studentId: cachedUserInfo.studentNo || cachedUserInfo.studentId || '',
+            class: cachedUserInfo.className || '未设置',
+            major: cachedUserInfo.majorName || '未设置',
+            college: cachedUserInfo.collegeName || cachedUserInfo.schoolName || '未设置',
+            phone: formatPhone(cachedUserInfo.phone || '')
         }
     }
+}
+
+// 从组织中提取职位
+const extractPositions = (organizations) => {
+    if (!organizations || organizations.length === 0) return []
+    return organizations.map(org => org.role).filter(role => role)
+}
+
+// 获取状态文本
+const getStatusText = (status) => {
+    const statusMap = {
+        'ongoing': '进行中',
+        'upcoming': '即将开始',
+        'completed': '已完成',
+        'finished': '已完成'
+    }
+    return statusMap[status] || '已完成'
+}
+
+// 格式化手机号
+const formatPhone = (phone) => {
+    if (!phone) return '未绑定'
+    if (phone.includes('*')) return phone
+    if (phone.length === 11) {
+        return phone.substring(0, 3) + '****' + phone.substring(7)
+    }
+    return phone
+}
+
+// 生成默认成长记录（当后端没有返回数据时）
+const generateDefaultGrowthRecords = () => {
+    const months = ['6月', '7月', '8月', '9月', '10月', '11月']
+    return months.map(month => ({
+        month,
+        score: 0
+    }))
 }
 
 // 退出登录

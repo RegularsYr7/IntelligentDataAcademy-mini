@@ -124,222 +124,166 @@
 <script setup>
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getOrganizationDetail, applyOrganization } from '@/api/organization'
 
 // 是否为管理员
 const isAdmin = ref(false)
 
 // 组织详情数据
 const organization = ref({
-    id: 1,
-    name: '科技创新协会',
-    logo: 'https://picsum.photos/300/300?random=20',
-    intro: '科技创新协会成立于2015年，是校级学生科技组织。协会致力于培养学生的科技创新能力，提供科技交流平台，组织各类科技竞赛和技术分享活动。我们秉承"创新引领未来"的理念，为广大科技爱好者提供展示才华的舞台。',
-    level: 'school',
-    college: '数据科学与大数据技术学院',
+    id: null,
+    name: '',
+    logo: '',
+    intro: '',
+    level: '',
+    college: '',
     className: '',
-    memberCount: 85,
-    foundedYear: '2015',
-    location: '学生活动中心301室',
-    contact: 'tech_innovation@example.com',
-    leaders: [
-        {
-            name: '张三',
-            position: '会长',
-            avatar: 'https://picsum.photos/100/100?random=30'
-        },
-        {
-            name: '李四',
-            position: '副会长',
-            avatar: 'https://picsum.photos/100/100?random=31'
-        },
-        {
-            name: '王五',
-            position: '技术部长',
-            avatar: 'https://picsum.photos/100/100?random=32'
-        }
-    ],
-    activities: [
-        '每月举办技术分享会',
-        '组织参加各类科技竞赛',
-        '开展创新创业项目孵化',
-        '定期举办编程马拉松活动',
-        '与企业合作开展技术培训'
-    ],
-    honors: [
-        {
-            year: '2024',
-            title: '全国大学生科技创新大赛一等奖'
-        },
-        {
-            year: '2023',
-            title: '省级优秀学生社团'
-        },
-        {
-            year: '2022',
-            title: '校级十佳社团'
-        }
-    ]
+    memberCount: 0,
+    foundedYear: '',
+    location: '',
+    contact: '',
+    leaders: [],
+    activities: [],
+    honors: []
 })
+
+// 加载组织详情
+const loadOrgDetail = async (id) => {
+    try {
+        console.log('加载组织详情, ID:', id)
+
+        const res = await getOrganizationDetail(id)
+        console.log('组织详情响应:', res)
+
+        if (res && res.organization) {
+            const org = res.organization
+
+            // 解析主要负责人 - 使用API返回的结构化数据
+            const leaders = parseLeadersFromAPI(res.mainLeaders || [])
+
+            // 解析主要活动
+            const activities = parseActivities(org.mainActivities)
+
+            // 解析荣誉成就
+            const honors = parseHonors(org.honors)
+
+            organization.value = {
+                id: org.organizationId,
+                name: org.organizationName,
+                logo: org.organizationLogo || org.recommendImage || 'https://picsum.photos/300/300?random=20',
+                intro: org.introduction || org.displayText || '暂无简介',
+                level: org.organizationLevel,
+                college: org.collegeName || '',
+                className: org.className || '',
+                memberCount: org.memberCount || 0,
+                foundedYear: org.establishYear || '未知',
+                location: org.officeLocation || '',
+                contact: org.contactPhone || org.contactEmail || '',
+                leaders: leaders,
+                activities: activities,
+                honors: honors
+            }
+
+            // 设置是否为成员和角色
+            if (res.isMember) {
+                isAdmin.value = res.memberRole === 'president' || res.memberRole === 'admin'
+            }
+
+            console.log('组织详情加载成功:', organization.value)
+        }
+    } catch (error) {
+        console.error('加载组织详情失败:', error)
+        uni.showToast({
+            title: error.message || '加载失败',
+            icon: 'none'
+        })
+    }
+}
+
+// 解析主要负责人 - 从API返回的数组格式
+const parseLeadersFromAPI = (leadersArray) => {
+    if (!leadersArray || leadersArray.length === 0) return []
+
+    return leadersArray.map((leader, index) => ({
+        name: leader.name,
+        position: leader.tag || '成员',
+        avatar: leader.avatar || `https://picsum.photos/100/100?random=${30 + index}`
+    }))
+}
+
+// 解析主要活动
+const parseActivities = (activitiesStr) => {
+    if (!activitiesStr) return []
+    try {
+        // 每行一条活动
+        return activitiesStr.split('\n').filter(line => line.trim()).map(line => line.trim())
+    } catch (error) {
+        console.error('解析主要活动失败:', error)
+        return []
+    }
+}
+
+// 解析荣誉成就
+const parseHonors = (honorsStr) => {
+    if (!honorsStr) return []
+    try {
+        const honors = []
+        // 每行一条荣誉
+        const lines = honorsStr.split('\n').filter(line => line.trim())
+        lines.forEach(line => {
+            // 尝试匹配年份
+            const yearMatch = line.match(/(\d{4})/)
+            if (yearMatch) {
+                honors.push({
+                    year: yearMatch[1],
+                    title: line.trim()
+                })
+            } else {
+                honors.push({
+                    year: '',
+                    title: line.trim()
+                })
+            }
+        })
+        return honors
+    } catch (error) {
+        console.error('解析荣誉成就失败:', error)
+        return []
+    }
+}
 
 onLoad((options) => {
     const id = options.id
     if (id) {
         loadOrgDetail(id)
+    } else {
+        uni.showToast({
+            title: '组织ID不存在',
+            icon: 'none'
+        })
     }
     console.log('组织详情页加载', id)
 
     // 检查当前用户是否为管理员
     checkAdminStatus(id)
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
-
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【组织详情页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    // 接口1: 获取组织详情
-    console.log('📍 接口1: 获取组织详情')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/organizations/:id')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        id: 1 // 组织ID
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            id: 1,
-            name: '数据科学与人工智能社团',
-            logo: 'https://example.com/logo.png',
-            intro: '组织简介...',
-            level: 'school', // school-校级, college-院级, class-班级
-            college: '计算机科学与技术学院', // 可选
-            className: '计科2021级1班', // 可选,班级组织专用
-            memberCount: 156,
-            foundedYear: '2020',
-            location: '科技楼A301',
-            contact: 'ai-club@example.com',
-            leaders: [ // 组织负责人列表
-                {
-                    name: '张三',
-                    position: '会长',
-                    avatar: 'https://example.com/avatar1.png'
-                }
-            ],
-            activities: [ // 主要活动列表
-                '每月举办技术分享会',
-                '组织参加各类科技竞赛'
-            ],
-            honors: [ // 荣誉列表
-                {
-                    year: '2024',
-                    title: '全国大学生科技创新大赛一等奖'
-                }
-            ]
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口2: 检查当前用户是否为组织管理员
-    console.log('📍 接口2: 检查用户管理员权限')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/organizations/:id/check-admin')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        id: 1 // 组织ID
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            isAdmin: true, // 是否为管理员
-            role: 'president' // president-主席, admin-管理员, member-普通成员
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口3: 申请加入组织
-    console.log('📍 接口3: 申请加入组织')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/organizations/:id/join')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        id: 1, // 组织ID
-        reason: '申请理由' // 可选
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '申请已提交，请等待审核'
-    }, null, 2))
-    console.log('\n')
-
-    // 数据字典
-    console.log('📚 数据字典')
-    console.log('━'.repeat(80))
-    console.log('组织级别 (level):')
-    console.log(JSON.stringify({
-        school: '校级组织',
-        college: '院级组织',
-        class: '班级组织'
-    }, null, 2))
-    console.log('\n用户角色 (role):')
-    console.log(JSON.stringify({
-        president: '主席/会长',
-        admin: '管理员',
-        member: '普通成员'
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📝 接口说明')
-    console.log('━'.repeat(80))
-    console.log('1. 必填字段: id, name, level, memberCount, foundedYear')
-    console.log('2. 可选字段: logo, intro, college, className, location, contact, leaders, activities, honors')
-    console.log('3. 权限控制: 管理员可以编辑组织信息和管理成员')
-    console.log('4. 申请加入: 需要登录,提交后等待管理员审核')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 // 检查管理员状态
 const checkAdminStatus = (orgId) => {
     // TODO: 从服务器验证当前用户是否为该组织管理员
-    // 模拟:ID为1或4的组织,当前用户是管理员
-    if (orgId == 1 || orgId == 4) {
-        isAdmin.value = true
-    }
-}
-
-// 加载组织详情
-const loadOrgDetail = (id) => {
-    // TODO: 从服务器加载数据
-    console.log('加载组织详情', id)
+    // 暂时设置为false，后续可以通过API查询
+    isAdmin.value = false
 }
 
 // 获取级别文本
 const getLevelText = (level) => {
     const levelMap = {
-        school: '校级组织',
-        college: '院级组织',
-        class: '班级组织'
+        '1': '校级组织',
+        '2': '院级组织',
+        '3': '班级组织',
+        'school': '校级组织',
+        'college': '院级组织',
+        'class': '班级组织'
     }
     return levelMap[level] || '未知'
 }
@@ -352,19 +296,35 @@ const manageOrg = () => {
 }
 
 // 申请加入
-const joinOrg = () => {
-    uni.showModal({
-        title: '申请加入',
-        content: `确定要申请加入${organization.value.name}吗？`,
-        success: (res) => {
-            if (res.confirm) {
-                uni.showToast({
-                    title: '申请已提交',
-                    icon: 'success'
-                })
-            }
+const joinOrg = async () => {
+    try {
+        const res = await uni.showModal({
+            title: '申请加入',
+            content: `确定要申请加入${organization.value.name}吗？`,
+            editable: true,
+            placeholderText: '请输入申请理由(可选)'
+        })
+
+        if (res.confirm) {
+            const applyReason = res.content || '我想加入这个组织'
+
+            await applyOrganization({
+                organizationId: organization.value.id,
+                applyReason: applyReason
+            })
+
+            uni.showToast({
+                title: '申请已提交',
+                icon: 'success'
+            })
         }
-    })
+    } catch (error) {
+        console.error('申请加入失败:', error)
+        uni.showToast({
+            title: error.message || '申请失败',
+            icon: 'none'
+        })
+    }
 }
 </script>
 

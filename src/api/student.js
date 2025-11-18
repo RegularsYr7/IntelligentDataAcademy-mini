@@ -1,0 +1,100 @@
+/**
+ * 学生管理相关接口
+ */
+import request from "@/utils/request";
+
+/**
+ * 学生登录(账号密码)
+ * @param {Object} data - 登录信息
+ * @param {string} data.studentNo - 学号
+ * @param {string} data.password - 密码
+ */
+export const login = (data) => {
+  return request.post("/edu/student/login", data);
+};
+
+/**
+ * 微信登录
+ * @param {string} code - 微信授权码
+ */
+export const loginByWechat = (code) => {
+  return request.post(`/edu/student/loginByWechat`, { code });
+};
+
+/**
+ * 绑定手机号
+ * @param {Object} data - 手机号信息
+ * @param {string} data.phone - 手机号
+ * @param {string} data.code - 验证码
+ */
+export const bindPhone = (data) => {
+  return request.post("/edu/student/bindPhone", data);
+};
+
+/**
+ * 更新个人资料
+ * @param {Object} data - 个人资料
+ * @param {string} data.avatar - 头像URL
+ * @param {string} data.nickname - 昵称
+ * @param {string} data.gender - 性别
+ * @param {string} data.signature - 个性签名
+ */
+export const updateProfile = (data) => {
+  return request.post("/edu/student/updateProfile", data);
+};
+
+/**
+ * 修改密码
+ * @param {Object} data - 密码信息
+ * @param {string} data.oldPassword - 旧密码
+ * @param {string} data.newPassword - 新密码
+ */
+export const updatePassword = (data) => {
+  return request.post("/edu/student/updatePassword", data);
+};
+
+/**
+ * 获取我的活动
+ * @param {Object} params - 查询参数
+ * @param {number} params.pageNum - 页码
+ * @param {number} params.pageSize - 每页数量
+ */
+export const getMyActivities = (params) => {
+  return request.get("/edu/student/myActivities", params);
+};
+
+/**
+ * 获取我的组织
+ * @param {Object} params - 查询参数
+ * @param {number} params.pageNum - 页码
+ * @param {number} params.pageSize - 每页数量
+ */
+export const getMyOrganizations = (params) => {
+  return request.get("/edu/student/myOrganizations", params);
+};
+
+/**
+ * 获取我的成长记录
+ * @param {Object} params - 查询参数
+ * @param {number} params.pageNum - 页码
+ * @param {number} params.pageSize - 每页数量
+ */
+export const getMyGrowthRecords = (params) => {
+  return request.get("/edu/student/myGrowthRecords", params);
+};
+
+/**
+ * 获取学生详情
+ * @param {string} studentId - 学生ID
+ */
+export const getStudentDetail = (studentId) => {
+  return request.get(`/edu/student/${studentId}`);
+};
+
+/**
+ * 获取学生列表
+ * @param {Object} params - 查询参数
+ */
+export const getStudentList = (params) => {
+  return request.get("/edu/student/list", params);
+};

@@ -56,13 +56,9 @@
 					<view class="function-icon">✅</view>
 					<text class="function-text">班级签到</text>
 				</view>
-				<!-- <view class="function-item" @tap="goToLostFound">
+				<view class="function-item" @tap="goToLostFound">
 					<view class="function-icon">🔍</view>
 					<text class="function-text">失物招领</text>
-				</view> -->
-				<view class="function-item" @tap="goToHandbook">
-					<view class="function-icon">📖</view>
-					<text class="function-text">学生手册</text>
 				</view>
 				<view class="function-item" @tap="goToFeedback">
 					<view class="function-icon">💬</view>
@@ -198,13 +194,6 @@ const goToLostFound = () => {
 	})
 }
 
-// 学生手册
-const goToHandbook = () => {
-	uni.showToast({
-		title: '学生手册',
-		icon: 'none'
-	})
-}
 
 // 我要反馈
 const goToFeedback = () => {

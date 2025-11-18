@@ -53,7 +53,7 @@
                     </view>
                     <view class="action-item" @tap="toggleCollect">
                         <text class="icon" :class="{ active: post.isCollected }">{{ post.isCollected ? '⭐' : '☆'
-                            }}</text>
+                        }}</text>
                         <text class="text" :class="{ active: post.isCollected }">{{ post.collects }}</text>
                     </view>
                     <view class="action-item" @tap="share">
@@ -103,14 +103,15 @@
 
                             <!-- 回复列表 -->
                             <view class="reply-list" v-if="comment.replies && comment.replies.length > 0">
-                                <view class="reply-item" v-for="(reply, idx) in comment.replies" :key="idx">
+                                <view class="reply-item" v-for="(reply, idx) in comment.replies" :key="idx"
+                                    @tap="replyToReply(reply, comment)">
                                     <text class="reply-user">{{ reply.userName }}</text>
                                     <text class="reply-arrow"> 回复 </text>
                                     <text class="reply-target">{{ reply.targetUser }}</text>
                                     <text class="reply-content">: {{ reply.content }}</text>
                                 </view>
                                 <view class="view-more-replies" v-if="comment.replyCount > comment.replies.length"
-                                    @tap="viewMoreReplies(comment)">
+                                    @tap.stop="viewMoreReplies(comment)">
                                     <text class="more-text">查看更多 {{ comment.replyCount - comment.replies.length }}
                                         条回复</text>
                                     <text class="arrow">→</text>
@@ -129,13 +130,19 @@
         </view>
 
         <!-- 底部评论输入框 -->
-        <view class="comment-input-bar">
-            <input class="comment-input" placeholder="说点什么..." v-model="commentText" @focus="onInputFocus" />
-            <view class="emoji-btn" @tap="showEmoji">
-                <text class="emoji-icon">😊</text>
+        <view class="comment-input-container">
+            <!-- 回复提示条 -->
+            <view class="reply-hint" v-if="replyTarget">
+                <text class="reply-hint-text">回复 @{{ replyTarget.userName }}</text>
+                <text class="cancel-reply" @tap="cancelReply">✕</text>
             </view>
-            <view class="send-btn" @tap="sendComment" :class="{ active: commentText.trim() }">
-                <text class="send-text">发送</text>
+
+            <view class="comment-input-bar">
+                <input class="comment-input" :placeholder="replyTarget ? '说点什么...' : '说点什么...'" v-model="commentText"
+                    @focus="onInputFocus" />
+                <view class="send-btn" @tap="sendComment" :class="{ active: commentText.trim() }">
+                    <text class="send-text">发送</text>
+                </view>
             </view>
         </view>
     </view>
@@ -151,6 +158,8 @@ const commentText = ref('')
 const expandedComments = ref({})
 // 存储每个评论的加载状态,用于防抖
 const loadingComments = ref({})
+// 当前回复的目标
+const replyTarget = ref(null) // { type: 'comment' | 'reply', commentId, userName, parentCommentId }
 
 // 帖子数据
 const post = ref({
@@ -428,11 +437,32 @@ const likeComment = (comment) => {
     comment.likes += comment.isLiked ? 1 : -1
 }
 
-// 回复评论
+// 回复评论（一级评论）
 const replyComment = (comment) => {
+    replyTarget.value = {
+        type: 'comment',
+        commentId: comment.id,
+        userName: comment.userName,
+        parentCommentId: comment.id
+    }
     commentText.value = `回复 @${comment.userName}: `
     uni.showToast({
         title: '回复 ' + comment.userName,
+        icon: 'none'
+    })
+}
+
+// 回复二级评论
+const replyToReply = (reply, parentComment) => {
+    replyTarget.value = {
+        type: 'reply',
+        commentId: reply.id || Date.now(), // 如果reply没有id，生成一个临时id
+        userName: reply.userName,
+        parentCommentId: parentComment.id
+    }
+    commentText.value = `回复 @${reply.userName}: `
+    uni.showToast({
+        title: '回复 ' + reply.userName,
         icon: 'none'
     })
 }
@@ -506,11 +536,14 @@ const onInputFocus = () => {
     console.log('输入框获得焦点')
 }
 
-// 显示表情
-const showEmoji = () => {
+// 取消回复
+const cancelReply = () => {
+    replyTarget.value = null
+    commentText.value = ''
     uni.showToast({
-        title: '表情功能',
-        icon: 'none'
+        title: '已取消回复',
+        icon: 'none',
+        duration: 1000
     })
 }
 
@@ -520,26 +553,62 @@ const sendComment = () => {
         return
     }
 
-    const newComment = {
-        id: commentList.value.length + 1,
-        userAvatar: 'https://picsum.photos/100/100?random=99',
-        userName: '我',
-        content: commentText.value,
-        time: '刚刚',
-        likes: 0,
-        isLiked: false,
-        replies: [],
-        replyCount: 0
+    // 如果是回复某条评论或回复
+    if (replyTarget.value) {
+        // 找到父级评论（一级评论）
+        const parentComment = commentList.value.find(c => c.id === replyTarget.value.parentCommentId)
+
+        if (parentComment) {
+            // 创建新的回复
+            const newReply = {
+                userName: '我',
+                targetUser: replyTarget.value.userName,
+                content: commentText.value.replace(/^回复 @.*?: /, '') // 移除"回复 @xxx: "前缀
+            }
+
+            // 将回复添加到父级评论的replies数组
+            if (!parentComment.replies) {
+                parentComment.replies = []
+            }
+            parentComment.replies.push(newReply)
+            parentComment.replyCount = (parentComment.replyCount || 0) + 1
+
+            // 总评论数+1
+            post.value.comments += 1
+
+            uni.showToast({
+                title: '回复成功',
+                icon: 'success'
+            })
+        }
+
+        // 清空回复目标
+        replyTarget.value = null
+    } else {
+        // 发表新的一级评论
+        const newComment = {
+            id: commentList.value.length + 1,
+            userAvatar: 'https://picsum.photos/100/100?random=99',
+            userName: '我',
+            content: commentText.value,
+            time: '刚刚',
+            likes: 0,
+            isLiked: false,
+            replies: [],
+            replyCount: 0
+        }
+
+        commentList.value.unshift(newComment)
+        post.value.comments += 1
+
+        uni.showToast({
+            title: '评论成功',
+            icon: 'success'
+        })
     }
 
-    commentList.value.unshift(newComment)
-    post.value.comments += 1
+    // 清空输入框
     commentText.value = ''
-
-    uni.showToast({
-        title: '评论成功',
-        icon: 'success'
-    })
 }
 </script>
 
@@ -926,6 +995,14 @@ const sendComment = () => {
     font-size: 26rpx;
     line-height: 1.6;
     margin-bottom: 8rpx;
+    padding: 8rpx;
+    border-radius: 6rpx;
+    transition: background-color 0.2s;
+    cursor: pointer;
+
+    &:active {
+        background-color: #f0f0f0;
+    }
 
     &:last-child {
         margin-bottom: 0;
@@ -1009,19 +1086,53 @@ const sendComment = () => {
     }
 }
 
-/* 底部评论输入框 */
-.comment-input-bar {
+/* 底部评论输入框容器 */
+.comment-input-container {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
+    background-color: #fff;
+    z-index: 100;
+}
+
+/* 回复提示条 */
+.reply-hint {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12rpx 20rpx;
+    background-color: #f8f8f8;
+    border-top: 1rpx solid #e8e8e8;
+
+    .reply-hint-text {
+        font-size: 26rpx;
+        color: #667eea;
+        font-weight: 500;
+    }
+
+    .cancel-reply {
+        font-size: 32rpx;
+        color: #999;
+        padding: 4rpx 8rpx;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:active {
+            color: #666;
+            transform: scale(0.9);
+        }
+    }
+}
+
+/* 底部评论输入框 */
+.comment-input-bar {
     display: flex;
     align-items: center;
     padding: 16rpx 20rpx;
     background-color: #fff;
     border-top: 1rpx solid #e8e8e8;
     gap: 12rpx;
-    z-index: 100;
 }
 
 .comment-input {
@@ -1031,20 +1142,6 @@ const sendComment = () => {
     background-color: #f5f5f5;
     border-radius: 32rpx;
     font-size: 28rpx;
-}
-
-.emoji-btn {
-    width: 64rpx;
-    height: 64rpx;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: #f5f5f5;
-    border-radius: 50%;
-
-    .emoji-icon {
-        font-size: 32rpx;
-    }
 }
 
 .send-btn {

@@ -22,8 +22,8 @@ const config = {
   // 基础URL,根据环境自动切换
   baseURL:
     process.env.NODE_ENV === "production"
-      ? "https://api.yourdomain.com"
-      : "http://localhost:3000",
+      ? "https://intelligentmini.rainyweb.cn"
+      : "http://localhost:8081", // 改为 localhost
 
   // 请求超时时间(ms)
   timeout: 10000,
@@ -89,7 +89,15 @@ const responseInterceptor = (response, options) => {
   if (statusCode === 200) {
     // 业务状态码处理
     if (data.code === 200) {
-      return Promise.resolve(data.data);
+      // 如果 data 有 data 字段，返回 data.data
+      // 否则返回整个 data 对象（兼容分页数据格式 {total, rows, code, msg}）
+      if (data.data !== undefined) {
+        return Promise.resolve(data.data);
+      } else {
+        // 返回除了 code 和 msg 之外的数据
+        const { code, msg, ...rest } = data;
+        return Promise.resolve(rest);
+      }
     } else {
       // 业务错误处理
       return handleBusinessError(data, options);
@@ -106,7 +114,7 @@ const responseInterceptor = (response, options) => {
  * @param {Object} options 请求配置
  */
 const handleBusinessError = (data, options) => {
-  const errorMsg = data.message || "请求失败";
+  const errorMsg = data.msg || "请求失败";
 
   // 特殊错误码处理
   switch (data.code) {
@@ -129,6 +137,7 @@ const handleBusinessError = (data, options) => {
         uni.showToast({
           title: errorMsg,
           icon: "none",
+          duration: 5000,
         });
       }
   }
@@ -343,10 +352,23 @@ const upload = (url, filePath, data = {}, options = {}) => {
         try {
           const data = JSON.parse(response.data);
           if (data.code === 200) {
-            resolve(data.data);
+            // 如果有 data.data，返回 data.data
+            if (data.data !== undefined) {
+              resolve(data.data);
+            } else {
+              // 否则返回除了 code 和 msg 之外的数据
+              const { code, msg, message, ...rest } = data;
+
+              // 如果 url 不是完整地址，拼接 baseURL
+              if (rest.url && !rest.url.startsWith("http")) {
+                rest.url = config.baseURL + rest.url;
+              }
+
+              resolve(rest);
+            }
           } else {
             uni.showToast({
-              title: data.message || "上传失败",
+              title: data.msg || data.message || "上传失败",
               icon: "none",
             });
             reject(data);

@@ -8,7 +8,7 @@
                         <text class="current-date">{{ currentDateText }}</text>
                         <text class="week-info" v-if="displayWeek === currentWeek">第{{ displayWeek }}周 星期{{
                             currentDayText
-                            }}</text>
+                        }}</text>
                         <text class="week-info" v-else>第{{ displayWeek }}周 当前为第{{ currentWeek }}周</text>
                     </view>
                     <view class="calibrate-btn" v-if="displayWeek !== currentWeek" @tap="backToCurrentWeek">
@@ -56,15 +56,16 @@
                                     @tap="viewCourseDetail(getCourse(dayIndex, timeIndex, week))">
                                     <view class="course-content" v-if="getCourse(dayIndex, timeIndex, week)"
                                         :class="{ highlight: isToday(dayIndex, week) }" :style="{
-                                            background: getCourseColor(getCourse(dayIndex, timeIndex, week).id).bg,
-                                            borderLeftColor: getCourseColor(getCourse(dayIndex, timeIndex, week).id).border
+                                            background: getCourseColor(getCourse(dayIndex, timeIndex, week).scheduleId).bg,
+                                            borderLeftColor: getCourseColor(getCourse(dayIndex, timeIndex, week).scheduleId).border
                                         }">
-                                        <text class="course-name">{{ getCourse(dayIndex, timeIndex, week).name }}</text>
-                                        <text class="course-location">📍 {{ getCourse(dayIndex, timeIndex,
-                                            week).location
-                                            }}</text>
-                                        <text class="course-teacher">{{ getCourse(dayIndex, timeIndex, week).teacher
+                                        <text class="course-name">{{ getCourse(dayIndex, timeIndex, week).courseName
                                         }}</text>
+                                        <text class="course-location">📍 {{ getCourse(dayIndex, timeIndex,
+                                            week).classroom
+                                        }}</text>
+                                        <text class="course-teacher">{{ getCourse(dayIndex, timeIndex, week).teacherName
+                                            }}</text>
                                     </view>
                                 </view>
                             </view>
@@ -79,6 +80,16 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getSchedule, getCurrentWeek } from '@/api/schedule'
+import { getCurrentSemester } from '@/api/semester'
+
+// 获取用户信息
+const userInfo = uni.getStorageSync('userInfo') || {}
+const classId = userInfo.classId
+
+// 当前学期信息
+const currentSemester = ref(null)
+const semesterName = ref(null)
 
 // 当前日期
 const now = new Date()
@@ -91,26 +102,22 @@ const currentWeekDay = ref(now.getDay()) // 0-6, 0是周日
 const semesterStartDate = new Date(2025, 8, 8) // 2025年9月8日开学
 
 // 当前周次
-const currentWeek = computed(() => {
-    const diff = now - semesterStartDate
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    return Math.floor(days / 7) + 1
-})
+const currentWeek = ref(1)
 
 // 显示的周次（可切换）
-const displayWeek = ref(currentWeek.value)
+const displayWeek = ref(1)
 
 // 周次范围（支持前后各10周）
 const weekRange = computed(() => {
     const range = []
-    for (let i = 1; i <= 20; i++) {
+    for (let i = 1; i <= currentSemester.value.totalWeeks; i++) {
         range.push(i)
     }
     return range
 })
 
 // swiper索引
-const swiperIndex = ref(currentWeek.value - 1)
+const swiperIndex = ref(0)
 
 // 当前日期文本
 const currentDateText = computed(() => {
@@ -206,379 +213,108 @@ const getCourseColor = (courseId) => {
 }
 
 // 课程数据（模拟数据）
-const courses = ref({
-    1: { // 第1周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-            3: { id: 3, name: '计算机导论', location: '实验楼C201', teacher: '刘老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            2: { id: 5, name: '计算机网络', location: '教学楼A305', teacher: '刘老师' }
-        },
-        2: { // 周三
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            3: { id: 7, name: '数据库原理', location: '实验楼C302', teacher: '杨老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        4: { // 周五
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' },
-            3: { id: 9, name: '人工智能', location: '实验楼C401', teacher: '吴老师' }
-        },
-        5: { // 周六
-            1: { id: 10, name: 'Python编程', location: '实验楼C101', teacher: '徐老师' }
+const courses = ref({})
+
+// 加载当前学期
+const loadCurrentSemester = async () => {
+    try {
+        console.log('=== 开始加载当前学期 ===')
+        const res = await getCurrentSemester()
+
+        if (res && res.semesterName) {
+            currentSemester.value = res
+            semesterName.value = res.semesterName
+            console.log('当前学期名称:', res.semesterName)
         }
-    },
-    2: { // 第2周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 11, name: '线性代数', location: '教学楼A203', teacher: '李老师' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            2: { id: 5, name: '计算机网络', location: '教学楼A305', teacher: '刘老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        2: { // 周三
-            0: { id: 16, name: '概率论', location: '教学楼B203', teacher: '钱老师' },
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-            3: { id: 3, name: '计算机导论', location: '实验楼C201', teacher: '刘老师' }
-        },
-        4: { // 周五
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' },
-            2: { id: 19, name: '移动开发', location: '实验楼C303', teacher: '陈老师' }
-        }
-    },
-    3: { // 第3周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            1: { id: 15, name: '算法设计', location: '实验楼C302', teacher: '孙老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        2: { // 周三
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            2: { id: 13, name: '编译原理', location: '实验楼C401', teacher: '吴老师' },
-            3: { id: 7, name: '数据库原理', location: '实验楼C302', teacher: '杨老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        4: { // 周五
-            0: { id: 18, name: '离散数学', location: '教学楼B301', teacher: '冯老师' },
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' }
-        },
-        5: { // 周六
-            1: { id: 10, name: 'Python编程', location: '实验楼C101', teacher: '徐老师' }
-        }
-    },
-    4: { // 第4周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 11, name: '线性代数', location: '教学楼A203', teacher: '李老师' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            2: { id: 5, name: '计算机网络', location: '教学楼A305', teacher: '刘老师' }
-        },
-        2: { // 周三
-            0: { id: 16, name: '概率论', location: '教学楼B203', teacher: '钱老师' },
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            2: { id: 13, name: '编译原理', location: '实验楼C401', teacher: '吴老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-            4: { id: 14, name: '形势与政策', location: '教学楼D401', teacher: '李老师' }
-        },
-        4: { // 周五
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' },
-            3: { id: 9, name: '人工智能', location: '实验楼C401', teacher: '吴老师' }
-        }
-    },
-    5: { // 第5周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-            3: { id: 3, name: '计算机导论', location: '实验楼C201', teacher: '刘老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            1: { id: 15, name: '算法设计', location: '实验楼C302', teacher: '孙老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        2: { // 周三
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            3: { id: 7, name: '数据库原理', location: '实验楼C302', teacher: '杨老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 17, name: 'Web开发', location: '实验楼C205', teacher: '郑老师' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        4: { // 周五
-            0: { id: 18, name: '离散数学', location: '教学楼B301', teacher: '冯老师' },
-            2: { id: 19, name: '移动开发', location: '实验楼C303', teacher: '陈老师' }
-        },
-        5: { // 周六
-            1: { id: 10, name: 'Python编程', location: '实验楼C101', teacher: '徐老师' },
-            2: { id: 20, name: '数据分析', location: '实验楼C102', teacher: '何老师' }
-        }
-    },
-    6: { // 第6周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 11, name: '线性代数', location: '教学楼A203', teacher: '李老师' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            2: { id: 5, name: '计算机网络', location: '教学楼A305', teacher: '刘老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        2: { // 周三
-            0: { id: 16, name: '概率论', location: '教学楼B203', teacher: '钱老师' },
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            2: { id: 13, name: '编译原理', location: '实验楼C401', teacher: '吴老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        4: { // 周五
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' },
-            3: { id: 9, name: '人工智能', location: '实验楼C401', teacher: '吴老师' }
-        }
-    },
-    7: { // 第7周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 11, name: '线性代数', location: '教学楼A203', teacher: '李老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            2: { id: 5, name: '计算机网络', location: '教学楼A305', teacher: '刘老师' }
-        },
-        2: { // 周三
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            2: { id: 13, name: '编译原理', location: '实验楼C401', teacher: '吴老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-            4: { id: 14, name: '形势与政策', location: '教学楼D401', teacher: '李老师' }
-        },
-        4: { // 周五
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' },
-            3: { id: 9, name: '人工智能', location: '实验楼C401', teacher: '吴老师' }
-        }
-    },
-    8: { // 第8周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            1: { id: 15, name: '算法设计', location: '实验楼C302', teacher: '孙老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        2: { // 周三
-            0: { id: 16, name: '概率论', location: '教学楼B203', teacher: '钱老师' },
-            2: { id: 13, name: '编译原理', location: '实验楼C401', teacher: '吴老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 17, name: 'Web开发', location: '实验楼C205', teacher: '郑老师' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        4: { // 周五
-            0: { id: 18, name: '离散数学', location: '教学楼B301', teacher: '冯老师' },
-            2: { id: 19, name: '移动开发', location: '实验楼C303', teacher: '陈老师' }
-        },
-        5: { // 周六
-            1: { id: 10, name: 'Python编程', location: '实验楼C101', teacher: '徐老师' },
-            2: { id: 20, name: '数据分析', location: '实验楼C102', teacher: '何老师' }
-        }
-    },
-    10: { // 第10周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 11, name: '线性代数', location: '教学楼A203', teacher: '李老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            2: { id: 5, name: '计算机网络', location: '教学楼A305', teacher: '刘老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        2: { // 周三
-            0: { id: 16, name: '概率论', location: '教学楼B203', teacher: '钱老师' },
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            3: { id: 7, name: '数据库原理', location: '实验楼C302', teacher: '杨老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        4: { // 周五
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' },
-            2: { id: 19, name: '移动开发', location: '实验楼C303', teacher: '陈老师' }
-        }
-    },
-    11: { // 第11周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-            3: { id: 3, name: '计算机导论', location: '实验楼C201', teacher: '刘老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            1: { id: 15, name: '算法设计', location: '实验楼C302', teacher: '孙老师' }
-        },
-        2: { // 周三
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            2: { id: 13, name: '编译原理', location: '实验楼C401', teacher: '吴老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-            4: { id: 14, name: '形势与政策', location: '教学楼D401', teacher: '李老师' }
-        },
-        4: { // 周五
-            0: { id: 18, name: '离散数学', location: '教学楼B301', teacher: '冯老师' },
-            3: { id: 9, name: '人工智能', location: '实验楼C401', teacher: '吴老师' }
-        },
-        5: { // 周六
-            1: { id: 10, name: 'Python编程', location: '实验楼C101', teacher: '徐老师' }
-        }
-    },
-    12: { // 第12周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 11, name: '线性代数', location: '教学楼A203', teacher: '李老师' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            2: { id: 5, name: '计算机网络', location: '教学楼A305', teacher: '刘老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        2: { // 周三
-            0: { id: 16, name: '概率论', location: '教学楼B203', teacher: '钱老师' },
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 17, name: 'Web开发', location: '实验楼C205', teacher: '郑老师' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        4: { // 周五
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' },
-            2: { id: 19, name: '移动开发', location: '实验楼C303', teacher: '陈老师' }
-        },
-        5: { // 周六
-            1: { id: 10, name: 'Python编程', location: '实验楼C101', teacher: '徐老师' },
-            2: { id: 20, name: '数据分析', location: '实验楼C102', teacher: '何老师' }
-        }
-    },
-    13: { // 第13周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            1: { id: 15, name: '算法设计', location: '实验楼C302', teacher: '孙老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        2: { // 周三
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            2: { id: 13, name: '编译原理', location: '实验楼C401', teacher: '吴老师' },
-            3: { id: 7, name: '数据库原理', location: '实验楼C302', teacher: '杨老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        4: { // 周五
-            0: { id: 18, name: '离散数学', location: '教学楼B301', teacher: '冯老师' },
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' },
-            3: { id: 9, name: '人工智能', location: '实验楼C401', teacher: '吴老师' }
-        }
-    },
-    14: { // 第14周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 11, name: '线性代数', location: '教学楼A203', teacher: '李老师' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            2: { id: 5, name: '计算机网络', location: '教学楼A305', teacher: '刘老师' }
-        },
-        2: { // 周三
-            0: { id: 16, name: '概率论', location: '教学楼B203', teacher: '钱老师' },
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            2: { id: 13, name: '编译原理', location: '实验楼C401', teacher: '吴老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-            4: { id: 14, name: '形势与政策', location: '教学楼D401', teacher: '李老师' }
-        },
-        4: { // 周五
-            1: { id: 8, name: '软件工程', location: '教学楼A502', teacher: '周老师' },
-            3: { id: 9, name: '人工智能', location: '实验楼C401', teacher: '吴老师' }
-        },
-        5: { // 周六
-            1: { id: 10, name: 'Python编程', location: '实验楼C101', teacher: '徐老师' }
-        }
-    },
-    15: { // 第15周
-        0: { // 周一
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-            3: { id: 3, name: '计算机导论', location: '实验楼C201', teacher: '刘老师' }
-        },
-        1: { // 周二
-            0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-            1: { id: 15, name: '算法设计', location: '实验楼C302', teacher: '孙老师' },
-            3: { id: 12, name: '体育', location: '体育馆', teacher: '周老师' }
-        },
-        2: { // 周三
-            1: { id: 6, name: '操作系统', location: '教学楼A401', teacher: '陈老师' },
-            3: { id: 7, name: '数据库原理', location: '实验楼C302', teacher: '杨老师' }
-        },
-        3: { // 周四
-            0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' },
-            1: { id: 17, name: 'Web开发', location: '实验楼C205', teacher: '郑老师' },
-            2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' }
-        },
-        4: { // 周五
-            0: { id: 18, name: '离散数学', location: '教学楼B301', teacher: '冯老师' },
-            2: { id: 19, name: '移动开发', location: '实验楼C303', teacher: '陈老师' }
-        },
-        5: { // 周六
-            1: { id: 10, name: 'Python编程', location: '实验楼C101', teacher: '徐老师' },
-            2: { id: 20, name: '数据分析', location: '实验楼C102', teacher: '何老师' }
-        }
+    } catch (error) {
+        console.error('加载当前学期失败:', error)
     }
-})
+}
+
+// 加载当前周次
+const loadCurrentWeek = async () => {
+    try {
+        console.log('=== 开始加载当前周次 ===')
+
+        if (!classId) {
+            console.error('未找到班级ID,使用本地计算')
+            const diff = now - semesterStartDate
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+            const week = Math.floor(days / 7) + 1
+            currentWeek.value = week
+            displayWeek.value = week
+            swiperIndex.value = week - 1
+            console.log('使用本地计算的周次:', week)
+            return
+        }
+
+        const res = await getCurrentWeek({ classId })
+        console.log('当前周次API响应:', JSON.stringify(res, null, 2))
+
+        if (res && res.currentWeek) {
+            currentWeek.value = res.currentWeek
+            displayWeek.value = res.currentWeek
+            swiperIndex.value = res.currentWeek - 1
+            console.log('当前周次设置为:', res.currentWeek)
+        }
+    } catch (error) {
+        console.error('加载当前周次失败:', error)
+        // 使用本地计算的周次
+        const diff = now - semesterStartDate
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+        const week = Math.floor(days / 7) + 1
+        currentWeek.value = week
+        displayWeek.value = week
+        swiperIndex.value = week - 1
+        console.log('使用本地计算的周次:', week)
+    }
+}
+
+// 加载课程表
+const loadSchedule = async () => {
+    try {
+        console.log('=== 开始加载课程表 ===')
+        console.log('使用的 classId:', classId)
+        console.log('使用的 semesterName:', semesterName.value)
+
+        if (!classId) {
+            console.error('未找到班级ID,请先登录')
+            uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
+        if (!semesterName.value) {
+            console.error('未找到学期名称,请先加载学期信息')
+            uni.showToast({
+                title: '获取学期信息失败',
+                icon: 'none'
+            })
+            return
+        }
+
+        const res = await getSchedule({
+            classId,
+            semester: semesterName.value
+        })
+
+        // 后端返回的数据结构是 {周次: {星期: {节次: {课程信息}}}}
+        // 直接赋值,不需要转换
+        if (res && typeof res === 'object') {
+            courses.value = res
+        } else {
+            console.log('响应数据格式不正确')
+        }
+    } catch (error) {
+        console.error('加载课程表失败:', error)
+        uni.showToast({
+            title: error.message || '加载失败',
+            icon: 'none'
+        })
+    }
+}
 
 // 判断是否是今天
 const isToday = (dayIndex, week) => {
@@ -616,73 +352,26 @@ const viewCourseDetail = (course) => {
     if (!course) return
 
     uni.showModal({
-        title: course.name,
-        content: `授课教师: ${course.teacher}\n上课地点: ${course.location}`,
+        title: course.courseName,
+        content: `授课教师:${course.teacherName}\n上课地点:${course.classroom}\n课程代码:${course.courseCode}`,
         showCancel: false
     })
 }
 
-onLoad(() => {
-    console.log('课表页面加载')
+onLoad(async () => {
+    console.log('=== 课表页面加载 ===')
 
-    // 打印接口需求文档
-    printAPIRequirements()
+    // 1. 加载当前学期
+    await loadCurrentSemester()
+
+    // 2. 加载当前周次
+    await loadCurrentWeek()
+
+    // 3. 一次性加载所有周次课程表,不需要二次请求
+    await loadSchedule()
+
+    console.log('=== 页面初始化完成 ===')
 })
-
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【课程表页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    // 接口1: 获取课程表
-    console.log('📍 接口1: 获取课程表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/schedule')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        week: 1, // 第几周,不传则返回当前周
-        semester: '2024-2025-1' // 学期,不传则返回当前学期
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            currentWeek: 10,
-            semester: '2024-2025-1',
-            semesterStartDate: '2025-09-08', // 学期开始日期
-            courses: {
-                1: { // 第1周
-                    0: { // 周一(0-6对应周一到周日)
-                        0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' }, // 第1节次(0-4对应5个大节)
-                        2: { id: 2, name: '大学英语', location: '教学楼B101', teacher: '王老师' },
-                        3: { id: 3, name: '计算机导论', location: '实验楼C201', teacher: '刘老师' }
-                    },
-                    1: { // 周二
-                        0: { id: 4, name: '数据结构', location: '实验楼C301', teacher: '赵老师' },
-                        2: { id: 5, name: '计算机网络', location: '教学楼A305', teacher: '刘老师' }
-                    }
-                },
-                2: { // 第2周
-                    0: {
-                        0: { id: 1, name: '高等数学', location: '教学楼A201', teacher: '张教授' }
-                    }
-                }
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 </script>
 
 <style scoped lang="scss">

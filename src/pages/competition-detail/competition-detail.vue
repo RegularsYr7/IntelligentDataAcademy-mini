@@ -78,6 +78,7 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { formatRichText } from '@/utils/richtext'
+import { getCompetitionDetail } from '@/api/competition'
 
 // 竞赛详情数据
 const competition = ref({
@@ -102,85 +103,85 @@ const canvasHeight = ref(1500)
 // 系统信息
 const systemInfo = ref({})
 
-// 模拟数据
-const competitionData = {
-    1: {
-        id: 1,
-        title: '全国大学生数学建模竞赛',
-        publishTime: '2025-08-25 10:30',
-        views: 1234,
-        registrationTime: '2025-09-01 至 2025-09-30',
-        competitionTime: '2025-10-15 09:00',
-        location: '线上答题 + 线下答辩',
-        category: '学科竞赛',
-        content: `
-			<div style="line-height: 1.8; color: #333;">
-				<h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">竞赛简介</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					全国大学生数学建模竞赛是全国高校规模最大的基础性学科竞赛，也是世界上规模最大的数学建模竞赛。
-					竞赛旨在激励学生学习数学的积极性，提高学生建立数学模型和运用计算机技术解决实际问题的综合能力。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">竞赛内容</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					本次竞赛分为A题和B题，参赛队伍需要在规定时间内完成以下任务：
-				</p>
-				<ul style="margin-bottom: 15px; padding-left: 20px;">
-					<li style="margin-bottom: 10px;">阅读并理解竞赛题目</li>
-					<li style="margin-bottom: 10px;">建立数学模型</li>
-					<li style="margin-bottom: 10px;">编程实现算法</li>
-					<li style="margin-bottom: 10px;">撰写竞赛论文</li>
-					<li style="margin-bottom: 10px;">提交最终成果</li>
-				</ul>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">参赛要求</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					1. 参赛队伍由3名在校本科生组成<br/>
-					2. 可以使用各种图书资料、计算机和软件<br/>
-					3. 可以在互联网上搜索资料，但不得与队外任何人讨论赛题<br/>
-					4. 竞赛期间不得以任何方式与其他队伍交流
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">奖项设置</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					竞赛设置国家级一等奖、二等奖和省级一等奖、二等奖、三等奖。获奖比例根据参赛队伍数量确定。
-					优秀获奖队伍还将获得推荐参加国际数学建模竞赛的机会。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">联系方式</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					如有疑问，请联系：<br/>
-					联系人：张老师<br/>
-					电话：138-0000-0000<br/>
-					邮箱：mathmodel@university.edu.cn
-				</p>
-			</div>
-		`
-    },
-    2: {
-        id: 2,
-        title: '互联网+大学生创新创业大赛',
-        publishTime: '2025-08-10 15:20',
-        views: 2345,
-        registrationTime: '2025-08-15 至 2025-09-15',
-        competitionTime: '2025-10-01 14:00',
-        location: '大学生创新创业中心',
-        category: '创新创业',
-        content: `
-			<div style="line-height: 1.8; color: #333;">
-				<h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">大赛简介</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					"互联网+"大学生创新创业大赛是面向全国大学生的创新创业竞赛平台，旨在深化高等教育综合改革，
-					激发大学生的创造力，培养造就"大众创业、万众创新"的生力军。
-				</p>
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">参赛项目要求</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					项目需具有创新性、实践性和可行性，鼓励跨学科、跨专业组队参赛。
-				</p>
-			</div>
-		`
+// 竞赛分类映射
+const competitionCategoryMap = {
+    '1': '学科竞赛',
+    '2': '技能竞赛',
+    '3': '创新创业',
+    '4': '文化艺术',
+    '5': '体育竞技'
+}
+
+// 竞赛级别映射
+const competitionLevelMap = {
+    '1': '国家级',
+    '2': '省级',
+    '3': '市级',
+    '4': '校级',
+    '5': '院级'
+}
+
+// 加载竞赛详情
+const loadCompetitionDetail = async (id) => {
+    try {
+        const res = await getCompetitionDetail(id)
+        console.log('竞赛详情API响应:', res)
+
+        // 兼容多种响应格式
+        let item = null
+        if (res && res.data) {
+            item = res.data
+        } else if (res) {
+            item = res
+        }
+
+        if (item && item.competitionId) {
+            console.log('开始映射数据:', item)
+
+            // 格式化时间范围
+            const formatTimeRange = (startTime, endTime) => {
+                if (!startTime || !endTime) return '暂无'
+                return `${startTime} 至 ${endTime}`
+            }
+
+            // 数据映射
+            competition.value = {
+                id: item.competitionId,
+                title: item.competitionName || '未命名竞赛',
+                publishTime: item.createTime || '',
+                views: item.viewCount || 0,
+                registrationTime: formatTimeRange(item.registrationStartTime, item.registrationEndTime),
+                competitionTime: item.competitionStartTime || '待定',
+                location: item.competitionLocation || item.onlineLocation || '待定',
+                category: competitionCategoryMap[item.competitionCategory] || '其他',
+                level: competitionLevelMap[item.competitionLevel] || '',
+                organizer: item.organizer || '',
+                content: item.competitionContent || '<p>暂无竞赛内容</p>',
+                rules: item.competitionRules || '',
+                awardInfo: item.awardInfo || '',
+                maxParticipants: item.maxParticipants || 0,
+                currentParticipants: item.currentParticipants || 0,
+                registrationFee: item.registrationFee || 0,
+                contactPerson: item.contactPerson || '',
+                contactPhone: item.contactPhone || '',
+                contactEmail: item.contactEmail || ''
+            }
+
+            console.log('映射后的数据:', competition.value)
+        } else {
+            console.error('未获取到有效数据')
+            uni.showToast({
+                title: '数据格式错误',
+                icon: 'none'
+            })
+        }
+    } catch (error) {
+        console.error('加载竞赛详情失败:', error)
+        uni.showToast({
+            title: '加载失败',
+            icon: 'none'
+        })
     }
-    // 其他竞赛数据...
 }
 
 // 格式化富文本内容
@@ -188,76 +189,23 @@ const formattedContent = computed(() => {
     return formatRichText(competition.value.content)
 })
 
-onLoad((options) => {
+onLoad(async (options) => {
+    console.log('=== 竞赛详情页面加载 ===')
+    console.log('接收到的参数:', options)
+
     const id = parseInt(options.id)
-    if (competitionData[id]) {
-        competition.value = competitionData[id]
-        // 增加浏览次数
-        competition.value.views++
-    }
-    console.log('竞赛详情页加载', id)
+    console.log('解析的竞赛ID:', id)
+
+    // 调用API加载详情
+    await loadCompetitionDetail(id)
 
     // 获取系统信息
     systemInfo.value = uni.getSystemInfoSync()
     canvasWidth.value = systemInfo.value.windowWidth
 
-    // 打印接口需求文档
-    printAPIRequirements()
+    console.log('=== 页面初始化完成 ===')
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【竞赛详情页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取竞赛详情')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/competitions/:id')
-    console.log('请求参数:')
-    console.log(JSON.stringify({ id: 1 }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            id: 1,
-            title: '全国大学生数据分析大赛',
-            cover: 'https://example.com/cover.jpg',
-            level: '国家级',
-            category: '数据分析',
-            registrationTime: '2025-09-01 至 2025-09-30',
-            competitionTime: '2025-10-15 09:00',
-            location: '线上答题 + 线下答辩',
-            organizer: '教育部',
-            prize: '一等奖10000元',
-            participants: 1256,
-            views: 5432,
-            introduction: '详细介绍...',
-            requirements: '参赛要求...',
-            process: '赛程安排...',
-            awards: '奖项设置...',
-            contact: '联系方式...',
-            content: '<html内容>',
-            attachments: [
-                {
-                    name: '竞赛章程.pdf',
-                    url: 'https://example.com/file.pdf',
-                    size: '2.5MB'
-                }
-            ]
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 // 保存为图片
 const saveAsImage = async () => {

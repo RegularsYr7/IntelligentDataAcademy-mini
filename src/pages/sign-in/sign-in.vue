@@ -83,6 +83,12 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { submitCheckin } from '@/api/checkin'
+import { takePhotoAndUpload } from '@/utils/upload'
+import { getAddress } from '@/utils/geocode'
+
+// 任务ID
+const taskId = ref('')
 
 // 当前时间和日期
 const currentTime = ref('')
@@ -97,15 +103,16 @@ const location = ref({
 })
 const locationStatus = ref('正在获取位置信息...')
 
-// 照片路径
-const photoPath = ref('')
+// 照片路径和URL
+const photoPath = ref('') // 本地临时路径（用于显示）
+const photoUrl = ref('') // 服务器URL（用于提交）
 
 // 提交状态
 const submitting = ref(false)
 
 // 是否可以提交
 const canSubmit = computed(() => {
-    return location.value.latitude && photoPath.value && !submitting.value
+    return location.value.latitude && photoUrl.value && !submitting.value
 })
 
 // 更新时间
@@ -126,21 +133,28 @@ const updateTime = () => {
 
 // 获取位置信息
 const getLocation = () => {
+    locationStatus.value = '正在获取位置信息...'
+
     uni.getLocation({
         type: 'gcj02',
-        success: (res) => {
+        success: async (res) => {
             location.value = {
                 latitude: res.latitude,
                 longitude: res.longitude,
                 address: ''
             }
-            locationStatus.value = '位置获取成功'
+            locationStatus.value = '位置获取成功，正在解析地址...'
 
-            // 获取详细地址（需要配置地图服务）
-            // 这里使用模拟数据
-            setTimeout(() => {
-                location.value.address = '北京市海淀区中关村大街1号'
-            }, 500)
+            // 获取真实地址
+            try {
+                const address = await getAddress(res.latitude, res.longitude)
+                location.value.address = address
+                locationStatus.value = '地址解析成功'
+            } catch (error) {
+                console.error('地址解析失败', error)
+                location.value.address = '未获取到地址信息'
+                locationStatus.value = '地址解析失败'
+            }
         },
         fail: (err) => {
             console.error('获取位置失败', err)
@@ -155,29 +169,30 @@ const getLocation = () => {
 }
 
 // 拍照
-const takePhoto = () => {
-    uni.chooseImage({
-        count: 1,
-        sourceType: ['camera'], // 只允许拍照
-        success: (res) => {
-            photoPath.value = res.tempFilePaths[0]
-            uni.showToast({
-                title: '照片已添加',
-                icon: 'success'
-            })
-        },
-        fail: (err) => {
-            console.error('拍照失败', err)
-            uni.showToast({
-                title: '拍照失败',
-                icon: 'none'
-            })
-        }
-    })
+const takePhoto = async () => {
+    try {
+        // 拍照并自动上传
+        const result = await takePhotoAndUpload()
+
+        // 保存本地路径（用于显示）和服务器URL（用于提交）
+        photoPath.value = result.url // 用服务器URL显示
+        photoUrl.value = result.url
+
+        uni.showToast({
+            title: '照片已上传',
+            icon: 'success'
+        })
+    } catch (error) {
+        console.error('拍照或上传失败', error)
+        uni.showToast({
+            title: error.message || '拍照失败',
+            icon: 'none'
+        })
+    }
 }
 
 // 提交签到
-const submitSignIn = () => {
+const submitSignIn = async () => {
     if (!canSubmit.value) {
         if (!location.value.latitude) {
             uni.showToast({
@@ -193,25 +208,25 @@ const submitSignIn = () => {
         return
     }
 
+    // 检查任务ID
+    if (!taskId.value) {
+        uni.showToast({
+            title: '签到任务ID缺失',
+            icon: 'none'
+        })
+        return
+    }
+
     submitting.value = true
 
-    // 模拟提交
-    setTimeout(() => {
-        submitting.value = false
-
-        // 保存签到记录到本地（实际应该调用API）
-        const record = {
-            id: Date.now(),
-            time: new Date().toISOString(),
-            photo: photoPath.value,
-            location: location.value,
-            status: 'success'
-        }
-
-        // 获取历史记录
-        const records = uni.getStorageSync('signInRecords') || []
-        records.unshift(record)
-        uni.setStorageSync('signInRecords', records)
+    try {
+        // 调用签到接口
+        await submitCheckin({
+            taskId: taskId.value,
+            latitude: location.value.latitude,
+            longitude: location.value.longitude,
+            photoUrl: photoUrl.value // 使用上传后的服务器URL
+        })
 
         uni.showToast({
             title: '签到成功',
@@ -224,7 +239,15 @@ const submitSignIn = () => {
                 url: '/pages/sign-in-records/sign-in-records'
             })
         }, 1000)
-    }, 1500)
+    } catch (error) {
+        console.error('签到失败', error)
+        uni.showToast({
+            title: error.message || '签到失败',
+            icon: 'none'
+        })
+    } finally {
+        submitting.value = false
+    }
 }
 
 // 查看签到记录
@@ -234,87 +257,16 @@ const viewRecords = () => {
     })
 }
 
-onLoad(() => {
+onLoad((options) => {
     console.log('班级签到页加载')
+    // 获取任务ID
+    if (options.taskId) {
+        taskId.value = options.taskId
+    }
     updateTime()
     getLocation()
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【班级签到页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取签到任务列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/sign-in/tasks')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        status: 'ongoing', // ongoing | finished | all
-        page: 1,
-        pageSize: 10
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    title: '数据库原理课',
-                    location: '教学楼A301',
-                    startTime: '2024-11-05 14:00',
-                    endTime: '2024-11-05 14:30',
-                    status: 'ongoing', // ongoing | finished | upcoming
-                    signedCount: 45,
-                    totalCount: 50,
-                    isSigned: false,
-                    signInTime: null,
-                    createTime: '2024-11-05 13:50'
-                }
-            ],
-            total: 25
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📍 接口2: 签到')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/sign-in/tasks/:id/sign')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        latitude: 30.845427,
-        longitude: 104.464508,
-        address: '教学楼A301'
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '签到成功',
-        data: {
-            signTime: '2024-11-05 14:05',
-            isOnTime: true // 是否准时
-        }
-    }, null, 2))
-    console.log('📝 需要在签到时间段内,且位置在签到范围内(通常100米)')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 onMounted(() => {
     // 每秒更新时间

@@ -46,26 +46,37 @@
 
             <!-- 底部操作栏 -->
             <view class="footer-actions">
-                <button class="action-btn btn-share" @tap="shareShowcase">
-                    <text class="btn-icon">📤</text>
-                    <text class="btn-text">分享</text>
-                </button>
-                <button class="action-btn btn-like" @tap="likeShowcase">
-                    <text class="btn-icon">{{ isLiked ? '❤️' : '🤍' }}</text>
-                    <text class="btn-text">{{ isLiked ? '已点赞' : '点赞' }}</text>
+                <button class="action-btn btn-save-image" @tap="saveAsImage" :loading="generating">
+                    <text class="btn-icon">📷</text>
+                    <text class="btn-text">{{ generating ? '生成中...' : '保存为图片' }}</text>
                 </button>
             </view>
         </view>
+
+        <!-- Canvas 用于生成海报 -->
+        <canvas canvas-id="posterCanvas"
+            :style="{ width: canvasWidth + 'px', height: canvasHeight + 'px', position: 'fixed', left: '-9999px', top: '-9999px' }"></canvas>
     </view>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getShowcaseDetail } from '@/api/showcase'
 import { formatRichText } from '@/utils/richtext'
 
-// 是否已点赞
-const isLiked = ref(false)
+// 加载状态
+const loading = ref(false)
+
+// 是否正在生成图片
+const generating = ref(false)
+
+// Canvas 尺寸
+const canvasWidth = ref(750)
+const canvasHeight = ref(1000)
+
+// 系统信息
+const systemInfo = ref({})
 
 // 风采详情数据
 const showcase = ref({
@@ -79,128 +90,78 @@ const showcase = ref({
     content: ''
 })
 
-// 模拟数据
-const showcaseData = {
-    1: {
-        id: 1,
-        title: '李明同学荣获国家奖学金',
-        type: 'student',
-        coverImage: 'https://picsum.photos/750/500?random=student1',
-        introduction: '李明同学是计算机学院2021级本科生，品学兼优，成绩优异，积极参加各类科技竞赛和社会实践活动。',
-        publishTime: '2025-10-20',
-        views: 1523,
-        content: `
-			<div style="line-height: 1.8; color: #333;">
-				<h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">个人简介</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					李明，男，计算机科学与技术学院2021级本科生，中共预备党员。入学以来，该生始终以优异的成绩和突出的综合表现位列年级前茅。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">学习成绩</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					连续三年综合测评排名第一，平均绩点4.0/4.0，多门专业课程获得满分成绩。曾获国家奖学金、校一等奖学金等多项荣誉。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">科研竞赛</h2>
-				<ul style="margin-bottom: 15px; padding-left: 20px;">
-					<li style="margin-bottom: 10px;">参与国家级大学生创新创业训练计划项目，担任项目负责人</li>
-					<li style="margin-bottom: 10px;">获全国大学生数学建模竞赛国家一等奖</li>
-					<li style="margin-bottom: 10px;">获ACM-ICPC亚洲区域赛银奖</li>
-					<li style="margin-bottom: 10px;">发表SCI论文1篇，软件著作权2项</li>
-				</ul>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">社会工作</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					担任班级学习委员、学院科协副主席，组织策划多次学术讲座和科技竞赛培训活动，帮助同学提升专业能力。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">获奖感言</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					"国家奖学金是对我过去努力的肯定，更是对未来的激励。我将继续秉承'厚德博学、追求卓越'的校训，
-					在学习和科研的道路上不断进取，为母校争光，为祖国建设贡献青春力量！"
-				</p>
-			</div>
-		`
-    },
-    2: {
-        id: 2,
-        title: '张教授获评省级教学名师',
-        type: 'teacher',
-        coverImage: 'https://picsum.photos/750/500?random=teacher1',
-        introduction: '张教授从教三十年，教学经验丰富，教学方法独特，深受学生喜爱和尊敬。',
-        publishTime: '2025-10-18',
-        views: 2341,
-        content: `
-			<div style="line-height: 1.8; color: #333;">
-				<h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">教师简介</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					张伟，教授，博士生导师，数学科学学院院长。从教三十载，始终坚守教学一线，
-					为本科生和研究生讲授《高等数学》《数学分析》等核心课程。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">教学成果</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					主持省级教学改革项目5项，发表教学研究论文20余篇，主编教材3部。
-					所授课程被评为国家级一流本科课程、省级精品课程。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">教学理念</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					张教授坚持"以学生为中心"的教学理念，注重培养学生的数学思维和创新能力。
-					他善于将抽象的数学知识与实际应用相结合，让学生在理解中掌握，在应用中提升。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">学生评价</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					"张老师的课堂生动有趣，让我爱上了数学。他不仅传授知识，更教会我们如何思考问题。"<br/>
-					"张老师对每一位学生都非常关心，经常在课后为我们答疑解惑，是我们的良师益友。"
-				</p>
-			</div>
-		`
-    },
-    3: {
-        id: 3,
-        title: '科技创新社团荣获全国优秀社团',
-        type: 'organization',
-        coverImage: 'https://picsum.photos/750/500?random=org1',
-        introduction: '科技创新社团成立于2010年，致力于培养学生的创新精神和实践能力，是我校最具影响力的学生社团之一。',
-        publishTime: '2025-10-15',
-        views: 1876,
-        content: `
-			<div style="line-height: 1.8; color: #333;">
-				<h2 style="font-size: 18px; font-weight: bold; margin-bottom: 15px;">社团简介</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					科技创新社团成立于2010年，现有会员500余人，涵盖工科、理科等多个专业。
-					社团以"激发创新潜能，培养实践能力"为宗旨，为广大科技爱好者提供学习交流平台。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">主要活动</h2>
-				<ul style="margin-bottom: 15px; padding-left: 20px;">
-					<li style="margin-bottom: 10px;">每周举办技术讲座和经验分享会</li>
-					<li style="margin-bottom: 10px;">组织参加各类科技竞赛（如"挑战杯"、电子设计大赛等）</li>
-					<li style="margin-bottom: 10px;">开展创新项目孵化，为成员提供技术指导和资源支持</li>
-					<li style="margin-bottom: 10px;">举办校园科技文化节、创客马拉松等大型活动</li>
-				</ul>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">获奖情况</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					近年来，社团成员在各类科技竞赛中获得国家级奖项30余项、省级奖项100余项。
-					多个创新项目成功转化，部分成员创业项目获得投资孵化。
-				</p>
-				
-				<h2 style="font-size: 18px; font-weight: bold; margin: 20px 0 15px;">社团寄语</h2>
-				<p style="margin-bottom: 15px; text-indent: 2em;">
-					"创新是民族进步的灵魂，实践是检验真理的标准。我们将继续秉承社团精神，
-					为培养更多具有创新精神和实践能力的优秀人才而努力！"
-				</p>
-			</div>
-		`
+// 加载详情数据
+const loadDetail = async (id) => {
+    if (!id) {
+        uni.showToast({
+            title: '参数错误',
+            icon: 'none'
+        })
+        return
     }
+
+    try {
+        loading.value = true
+
+        console.log('正在加载风采详情, ID:', id)
+        const res = await getShowcaseDetail(id)
+
+        console.log('='.repeat(80))
+        console.log('【风采详情接口返回数据】')
+        console.log('='.repeat(80))
+        console.log(JSON.stringify(res, null, 2))
+        console.log('='.repeat(80))
+
+        // 数据适配 (后端 -> 前端)
+        if (res) {
+            showcase.value = {
+                id: res.showcaseId,
+                title: res.showcaseName || '',
+                type: res.showcaseType || '',
+                coverImage: res.coverImageUrl || 'https://picsum.photos/750/500?random=' + res.showcaseId,
+                introduction: res.introduction || '',
+                publishTime: formatDate(res.displayTime),
+                views: res.viewCount || 0,
+                likes: res.likeCount || 0,
+                content: res.detailContent || res.displayInfo || '',
+                // 额外信息
+                awardTime: res.awardTime ? formatDate(res.awardTime) : '',
+                awardLevel: res.awardLevel || '',
+                awardOrganization: res.awardOrganization || '',
+                imageUrls: res.imageUrls ? res.imageUrls.split(',') : [],
+                videoUrl: res.videoUrl || '',
+                isRecommended: res.isRecommended === 'Y'
+            }
+        }
+
+    } catch (error) {
+        console.error('加载详情失败:', error)
+        uni.showToast({
+            title: '加载失败',
+            icon: 'none'
+        })
+    } finally {
+        loading.value = false
+    }
+}
+
+
+
+// 格式化日期 (yyyy-MM-dd 或 yyyy-MM-dd HH:mm:ss -> yyyy-MM-dd)
+const formatDate = (dateStr) => {
+    if (!dateStr) return ''
+    // 如果已经是 yyyy-MM-dd 格式,直接返回
+    if (dateStr.length === 10) return dateStr
+    // 如果是完整时间格式,截取日期部分
+    return dateStr.split(' ')[0]
 }
 
 // 获取类型名称
 const getTypeName = (type) => {
     const typeMap = {
+        '1': '优秀学生',
+        '2': '优秀教师',
+        '3': '优秀组织',
         'student': '优秀学生',
         'teacher': '优秀教师',
         'organization': '优秀组织'
@@ -210,7 +171,16 @@ const getTypeName = (type) => {
 
 // 获取类型样式类
 const getTypeClass = (type) => {
-    return `type-${type}`
+    // 将数字类型转换为英文类型
+    const typeClassMap = {
+        '1': 'type-student',
+        '2': 'type-teacher',
+        '3': 'type-organization',
+        'student': 'type-student',
+        'teacher': 'type-teacher',
+        'organization': 'type-organization'
+    }
+    return typeClassMap[type] || ''
 }
 
 // 格式化富文本内容
@@ -218,101 +188,476 @@ const formattedContent = computed(() => {
     return formatRichText(showcase.value.content)
 })
 
-onLoad((options) => {
-    const id = parseInt(options.id)
-    if (showcaseData[id]) {
-        showcase.value = showcaseData[id]
-        // 增加浏览次数
-        showcase.value.views++
-    }
-    console.log('风采详情页加载', id)
+// 保存为图片
+const saveAsImage = async () => {
+    if (generating.value) return
 
-    // 打印接口需求文档
-    printAPIRequirements()
+    generating.value = true
+
+    uni.showLoading({
+        title: '生成图片中...',
+        mask: true
+    })
+
+    try {
+        // 获取页面容器信息
+        const query = uni.createSelectorQuery()
+        query.select('.container').boundingClientRect()
+        query.select('.detail-header').boundingClientRect()
+        query.select('.intro-card').boundingClientRect()
+        query.select('.content-section').boundingClientRect()
+
+        query.exec(async (res) => {
+            if (!res || res.length === 0) {
+                uni.hideLoading()
+                uni.showToast({
+                    title: '获取页面信息失败',
+                    icon: 'none'
+                })
+                generating.value = false
+                return
+            }
+
+            const [containerRect, headerRect, introRect, contentRect] = res
+
+            // 计算canvas高度
+            const dpr = systemInfo.value.pixelRatio || 2
+            const canvasW = containerRect.width
+
+            let totalHeight = 0
+            let currentY = 0
+
+            // 封面图片高度
+            const coverHeight = 250
+            totalHeight += coverHeight
+            currentY = coverHeight
+
+            currentY += 10
+            totalHeight += 10
+
+            // 标题区域高度
+            if (headerRect) {
+                totalHeight += 100
+                currentY += 100
+            }
+
+            currentY += 10
+            totalHeight += 10
+
+            // 简介卡片高度
+            if (introRect && showcase.value.introduction) {
+                totalHeight += 150
+                currentY += 150
+            }
+
+            currentY += 10
+            totalHeight += 10
+
+            // 内容区域高度
+            if (contentRect) {
+                const tempCtx = uni.createCanvasContext('posterCanvas')
+                const contentResult = calculateContentHeight(tempCtx, canvasW, currentY)
+                totalHeight += contentResult.height
+            }
+
+            const canvasH = totalHeight + 20
+            canvasWidth.value = canvasW
+            canvasHeight.value = canvasH
+
+            // 创建canvas上下文
+            const ctx = uni.createCanvasContext('posterCanvas')
+
+            // 绘制背景
+            ctx.fillStyle = '#f5f5f5'
+            ctx.fillRect(0, 0, canvasW, canvasH)
+
+            currentY = 0
+
+            // 绘制封面图片
+            try {
+                await drawCoverImage(ctx, canvasW, currentY, coverHeight)
+                currentY += coverHeight
+            } catch (error) {
+                console.error('绘制封面失败:', error)
+                currentY += coverHeight
+            }
+
+            currentY += 10
+
+            // 绘制标题区域
+            if (headerRect) {
+                currentY = drawHeader(ctx, canvasW, currentY)
+            }
+
+            currentY += 10
+
+            // 绘制简介卡片
+            if (introRect && showcase.value.introduction) {
+                currentY = drawIntroCard(ctx, canvasW, currentY)
+            }
+
+            currentY += 10
+
+            // 绘制内容区域
+            if (contentRect) {
+                const contentResult = drawContent(ctx, canvasW, currentY)
+                // 绘制白色背景
+                ctx.fillStyle = '#ffffff'
+                ctx.fillRect(0, currentY, canvasW, contentResult.height)
+                // 重新绘制内容
+                drawContent(ctx, canvasW, currentY)
+            }
+
+            // 绘制并保存
+            ctx.draw(false, () => {
+                setTimeout(() => {
+                    uni.canvasToTempFilePath({
+                        canvasId: 'posterCanvas',
+                        destWidth: canvasW * dpr,
+                        destHeight: canvasH * dpr,
+                        success: (res) => {
+                            uni.hideLoading()
+
+                            // 保存到相册
+                            uni.saveImageToPhotosAlbum({
+                                filePath: res.tempFilePath,
+                                success: () => {
+                                    uni.showToast({
+                                        title: '已保存到相册',
+                                        icon: 'success'
+                                    })
+                                    generating.value = false
+                                },
+                                fail: (err) => {
+                                    console.error('保存到相册失败:', err)
+                                    if (err.errMsg.includes('auth')) {
+                                        uni.showModal({
+                                            title: '提示',
+                                            content: '需要您授权保存图片到相册',
+                                            success: (modalRes) => {
+                                                if (modalRes.confirm) {
+                                                    uni.openSetting()
+                                                }
+                                            }
+                                        })
+                                    } else {
+                                        uni.showToast({
+                                            title: '保存失败',
+                                            icon: 'none'
+                                        })
+                                    }
+                                    generating.value = false
+                                }
+                            })
+                        },
+                        fail: (err) => {
+                            console.error('生成图片失败:', err)
+                            uni.hideLoading()
+                            uni.showToast({
+                                title: '生成失败',
+                                icon: 'none'
+                            })
+                            generating.value = false
+                        }
+                    })
+                }, 500)
+            })
+        })
+    } catch (error) {
+        console.error('保存图片失败:', error)
+        uni.hideLoading()
+        uni.showToast({
+            title: '保存失败',
+            icon: 'none'
+        })
+        generating.value = false
+    }
+}
+
+// 绘制封面图片
+const drawCoverImage = (ctx, canvasW, startY, coverHeight) => {
+    return new Promise((resolve, reject) => {
+        if (!showcase.value.coverImage) {
+            resolve()
+            return
+        }
+
+        // 先绘制一个占位背景
+        ctx.fillStyle = '#e0e0e0'
+        ctx.fillRect(0, startY, canvasW, coverHeight)
+
+        // 获取图片信息并绘制
+        uni.getImageInfo({
+            src: showcase.value.coverImage,
+            success: (imageInfo) => {
+                try {
+                    // 计算图片缩放比例以填充封面区域
+                    const imgWidth = imageInfo.width
+                    const imgHeight = imageInfo.height
+                    const imgRatio = imgWidth / imgHeight
+                    const coverRatio = canvasW / coverHeight
+
+                    let drawWidth, drawHeight, drawX, drawY
+
+                    if (imgRatio > coverRatio) {
+                        // 图片更宽,按高度缩放
+                        drawHeight = coverHeight
+                        drawWidth = imgHeight * imgRatio
+                        drawX = -(drawWidth - canvasW) / 2
+                        drawY = startY
+                    } else {
+                        // 图片更高,按宽度缩放
+                        drawWidth = canvasW
+                        drawHeight = imgWidth / imgRatio
+                        drawX = 0
+                        drawY = startY - (drawHeight - coverHeight) / 2
+                    }
+
+                    // 绘制图片
+                    ctx.drawImage(imageInfo.path, drawX, drawY, drawWidth, drawHeight)
+                    resolve()
+                } catch (error) {
+                    console.error('绘制封面图片错误:', error)
+                    resolve()
+                }
+            },
+            fail: (err) => {
+                console.error('获取封面图片失败:', err)
+                resolve() // 即使失败也继续绘制其他内容
+            }
+        })
+    })
+}
+
+// 绘制标题区域
+const drawHeader = (ctx, canvasW, startY) => {
+    const padding = 15
+    const titleFontSize = 18
+    const metaFontSize = 12
+
+    // 白色背景
+    ctx.fillStyle = '#ffffff'
+    const headerHeight = 100
+    ctx.fillRect(0, startY, canvasW, headerHeight)
+
+    // 类型标签
+    ctx.fillStyle = '#667eea'
+    ctx.font = `bold ${12}px sans-serif`
+    ctx.fillText(getTypeName(showcase.value.type), padding, startY + padding + 12)
+
+    // 标题
+    ctx.fillStyle = '#333333'
+    ctx.font = `bold ${titleFontSize}px sans-serif`
+    ctx.fillText(showcase.value.title, padding, startY + padding + 40)
+
+    // 元信息
+    ctx.fillStyle = '#999999'
+    ctx.font = `${metaFontSize}px sans-serif`
+    const metaY = startY + padding + 70
+    ctx.fillText(`🕒 ${showcase.value.publishTime}`, padding, metaY)
+    ctx.fillText(`👁 ${showcase.value.views} 次浏览`, padding + 150, metaY)
+
+    return startY + headerHeight
+}
+
+// 绘制简介卡片
+const drawIntroCard = (ctx, canvasW, startY) => {
+    const padding = 15
+    const fontSize = 14
+    const lineHeight = 20
+
+    // 渐变背景 (简化为单色)
+    ctx.fillStyle = '#667eea'
+    const cardHeight = 150
+    ctx.fillRect(0, startY, canvasW, cardHeight)
+
+    // 标题
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `bold ${16}px sans-serif`
+    ctx.fillText('💡 简介', padding, startY + padding + 16)
+
+    // 简介文本
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
+    ctx.font = `${fontSize}px sans-serif`
+
+    // 简单文本换行处理
+    const introText = showcase.value.introduction
+    const maxWidth = canvasW - padding * 2
+    let currentY = startY + padding + 50
+
+    const chars = introText.split('')
+    let currentLine = ''
+
+    for (let i = 0; i < chars.length; i++) {
+        const testLine = currentLine + chars[i]
+        const metrics = ctx.measureText(testLine)
+
+        if (metrics.width > maxWidth && currentLine) {
+            ctx.fillText(currentLine, padding, currentY)
+            currentY += lineHeight
+            currentLine = chars[i]
+        } else {
+            currentLine = testLine
+        }
+    }
+
+    if (currentLine) {
+        ctx.fillText(currentLine, padding, currentY)
+    }
+
+    return startY + cardHeight
+}
+
+// 计算内容区域高度
+const calculateContentHeight = (ctx, canvasW, startY) => {
+    const padding = 15
+    const titleFontSize = 16
+    const contentFontSize = 12
+    const lineHeight = 20
+
+    let currentY = startY + padding + titleFontSize + 30
+
+    // 解析HTML内容
+    const contentText = showcase.value.content
+        .replace(/<h2[^>]*>(.*?)<\/h2>/g, '\n【$1】\n')
+        .replace(/<p[^>]*>(.*?)<\/p>/g, '$1\n')
+        .replace(/<li[^>]*>(.*?)<\/li>/g, '• $1\n')
+        .replace(/<br\s*\/?>/g, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .trim()
+
+    ctx.fillStyle = '#666666'
+    ctx.font = `${contentFontSize}px sans-serif`
+
+    const lines = contentText.split('\n')
+    const maxWidth = canvasW - padding * 2
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line) {
+            currentY += lineHeight / 2
+            continue
+        }
+
+        if (line.startsWith('【') && line.endsWith('】')) {
+            currentY += lineHeight + 5
+            continue
+        }
+
+        // 计算自动换行
+        const chars = line.split('')
+        let currentLine = ''
+        for (let j = 0; j < chars.length; j++) {
+            const testLine = currentLine + chars[j]
+            const metrics = ctx.measureText(testLine)
+            if (metrics.width > maxWidth && currentLine) {
+                currentY += lineHeight
+                currentLine = chars[j]
+            } else {
+                currentLine = testLine
+            }
+        }
+        if (currentLine) {
+            currentY += lineHeight
+        }
+    }
+
+    const actualHeight = currentY - startY + padding
+    return { endY: currentY + padding, height: actualHeight }
+}
+
+// 绘制内容区域
+const drawContent = (ctx, canvasW, startY) => {
+    const padding = 15
+    const titleFontSize = 16
+    const contentFontSize = 12
+    const lineHeight = 20
+
+    // 标题
+    ctx.fillStyle = '#333333'
+    ctx.font = `bold ${titleFontSize}px sans-serif`
+    ctx.fillText('📝 详细介绍', padding, startY + padding + titleFontSize)
+
+    let currentY = startY + padding + titleFontSize + 30
+
+    // 解析HTML内容并绘制
+    const contentText = showcase.value.content
+        .replace(/<h2[^>]*>(.*?)<\/h2>/g, '\n【$1】\n')
+        .replace(/<p[^>]*>(.*?)<\/p>/g, '$1\n')
+        .replace(/<li[^>]*>(.*?)<\/li>/g, '• $1\n')
+        .replace(/<br\s*\/?>/g, '\n')
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .trim()
+
+    ctx.fillStyle = '#666666'
+    ctx.font = `${contentFontSize}px sans-serif`
+
+    const lines = contentText.split('\n')
+    const maxWidth = canvasW - padding * 2
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim()
+        if (!line) {
+            currentY += lineHeight / 2
+            continue
+        }
+
+        // 标题样式
+        if (line.startsWith('【') && line.endsWith('】')) {
+            ctx.fillStyle = '#333333'
+            ctx.font = `bold ${14}px sans-serif`
+            ctx.fillText(line, padding, currentY)
+            currentY += lineHeight + 5
+            ctx.fillStyle = '#666666'
+            ctx.font = `${contentFontSize}px sans-serif`
+            continue
+        }
+
+        // 自动换行绘制
+        const chars = line.split('')
+        let currentLine = ''
+
+        for (let j = 0; j < chars.length; j++) {
+            const testLine = currentLine + chars[j]
+            const metrics = ctx.measureText(testLine)
+
+            if (metrics.width > maxWidth && currentLine) {
+                ctx.fillText(currentLine, padding, currentY)
+                currentY += lineHeight
+                currentLine = chars[j]
+            } else {
+                currentLine = testLine
+            }
+        }
+
+        if (currentLine) {
+            ctx.fillText(currentLine, padding, currentY)
+            currentY += lineHeight
+        }
+    }
+
+    const actualHeight = currentY - startY + padding
+    return { endY: currentY + padding, height: actualHeight }
+}
+
+onLoad((options) => {
+    const id = options.id
+    if (id) {
+        loadDetail(id)
+    } else {
+        uni.showToast({
+            title: '缺少必要参数',
+            icon: 'none'
+        })
+    }
+
+    // 获取系统信息
+    systemInfo.value = uni.getSystemInfoSync()
+    canvasWidth.value = systemInfo.value.windowWidth
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【风采详情页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取风采详情')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/showcase/:id')
-    console.log('请求参数:')
-    console.log(JSON.stringify({ id: 1 }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            id: 1,
-            title: '2024年数据分析大赛一等奖',
-            cover: 'https://example.com/cover.jpg',
-            category: 'achievement',
-            description: '详细描述...',
-            content: '详细内容...',
-            images: ['https://example.com/img1.jpg'],
-            date: '2024-10-15',
-            participants: [
-                {
-                    id: 1,
-                    name: '张三',
-                    avatar: 'https://example.com/avatar.jpg',
-                    role: '队长'
-                }
-            ],
-            organization: {
-                id: 1,
-                name: '数据科学社团',
-                logo: 'https://example.com/logo.jpg'
-            },
-            likeCount: 256,
-            viewCount: 1523,
-            isLiked: false,
-            tags: ['数据分析', '大赛', '一等奖']
-        }
-    }, null, 2))
-    console.log('📝 获取详情时自动增加浏览次数')
-    console.log('\n')
-
-    console.log('📍 接口2: 点赞/取消点赞')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/showcase/:id/like 或 /api/showcase/:id/unlike')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
-
-// 分享
-const shareShowcase = () => {
-    uni.showShareMenu({
-        withShareTicket: true,
-        menus: ['shareAppMessage', 'shareTimeline']
-    })
-    uni.showToast({
-        title: '分享功能',
-        icon: 'none'
-    })
-}
-
-// 点赞
-const likeShowcase = () => {
-    isLiked.value = !isLiked.value
-    uni.showToast({
-        title: isLiked.value ? '点赞成功' : '取消点赞',
-        icon: 'none'
-    })
-}
 </script>
 
 <style scoped lang="scss">
@@ -461,7 +806,6 @@ const likeShowcase = () => {
     background: #fff;
     padding: 20rpx;
     display: flex;
-    gap: 20rpx;
     box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.05);
     z-index: 100;
 }
@@ -475,11 +819,9 @@ const likeShowcase = () => {
     justify-content: center;
     font-size: 28rpx;
     border: none;
-    background: #f5f5f5;
-    color: #666;
 
-    &.btn-like {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    &.btn-save-image {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: #fff;
         font-weight: bold;
     }

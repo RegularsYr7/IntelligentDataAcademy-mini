@@ -69,133 +69,24 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getOrganizationList, getCarouselOrganizations } from '@/api/organization'
 
 const searchKeyword = ref('')
 const currentFilter = ref('all')
 
 // 轮播图数据
-const banners = ref([
-    {
-        id: 1,
-        image: 'https://picsum.photos/800/400?random=1',
-        title: '科技创新协会',
-        desc: '探索科技前沿，创新引领未来'
-    },
-    {
-        id: 2,
-        image: 'https://picsum.photos/800/400?random=2',
-        title: '学生会',
-        desc: '服务同学，锻炼自我'
-    },
-    {
-        id: 3,
-        image: 'https://picsum.photos/800/400?random=3',
-        title: '青年志愿者协会',
-        desc: '奉献爱心，传递温暖'
-    }
-])
+const banners = ref([])
 
 // 筛选选项
 const filters = ref([
     { label: '全部', value: 'all', icon: '📍' },
-    { label: '校级', value: 'school', icon: '🏫' },
-    { label: '院级', value: 'college', icon: '🎓' },
-    { label: '班级', value: 'class', icon: '👥' }
+    { label: '校级', value: '1', icon: '🏫' },
+    { label: '院级', value: '2', icon: '🎓' },
+    { label: '班级', value: '3', icon: '👥' }
 ])
 
 // 组织数据
-const organizations = ref([
-    {
-        id: 1,
-        name: '学生会',
-        logo: 'https://picsum.photos/200/200?random=10',
-        intro: '校学生会是在校党委领导、校团委指导下的学生组织，服务全校师生',
-        level: 'school',
-        memberCount: 120,
-        foundedYear: '2010'
-    },
-    {
-        id: 2,
-        name: '科技创新协会',
-        logo: 'https://picsum.photos/200/200?random=11',
-        intro: '致力于培养学生科技创新能力，组织各类科技竞赛和技术交流活动',
-        level: 'school',
-        memberCount: 85,
-        foundedYear: '2015'
-    },
-    {
-        id: 3,
-        name: '青年志愿者协会',
-        logo: 'https://picsum.photos/200/200?random=12',
-        intro: '传递爱心，服务社会，组织各类公益志愿活动',
-        level: 'school',
-        memberCount: 150,
-        foundedYear: '2012'
-    },
-    {
-        id: 4,
-        name: '数据学院学生会',
-        logo: 'https://picsum.photos/200/200?random=13',
-        intro: '数据科学与大数据技术学院学生会，服务学院全体学生',
-        level: 'college',
-        memberCount: 45,
-        foundedYear: '2018'
-    },
-    {
-        id: 5,
-        name: '计算机协会',
-        logo: 'https://picsum.photos/200/200?random=14',
-        intro: '计算机技术交流与学习平台，定期举办技术分享会',
-        level: 'college',
-        memberCount: 68,
-        foundedYear: '2016'
-    },
-    {
-        id: 6,
-        name: '文学社',
-        logo: 'https://picsum.photos/200/200?random=15',
-        intro: '以文会友，品味文学之美，定期出版校园文学刊物',
-        level: 'college',
-        memberCount: 52,
-        foundedYear: '2014'
-    },
-    {
-        id: 7,
-        name: '数据21-1班委会',
-        logo: 'https://picsum.photos/200/200?random=16',
-        intro: '数据科学21-1班班委会，为班级同学服务',
-        level: 'class',
-        memberCount: 8,
-        foundedYear: '2021'
-    },
-    {
-        id: 8,
-        name: '计算机22-2班委会',
-        logo: 'https://picsum.photos/200/200?random=17',
-        intro: '计算机科学22-2班班委会，组织班级活动',
-        level: 'class',
-        memberCount: 7,
-        foundedYear: '2022'
-    },
-    {
-        id: 9,
-        name: '摄影协会',
-        logo: 'https://picsum.photos/200/200?random=18',
-        intro: '用镜头记录美好，定期组织摄影采风活动',
-        level: 'school',
-        memberCount: 42,
-        foundedYear: '2017'
-    },
-    {
-        id: 10,
-        name: '创业实践社',
-        logo: 'https://picsum.photos/200/200?random=19',
-        intro: '培养创业意识，提供创业实践平台',
-        level: 'college',
-        memberCount: 35,
-        foundedYear: '2019'
-    }
-])
+const organizations = ref([])
 
 // 搜索过滤
 const filteredBySearch = computed(() => {
@@ -203,7 +94,8 @@ const filteredBySearch = computed(() => {
     const keyword = searchKeyword.value.toLowerCase()
     return organizations.value.filter(org =>
         org.name.toLowerCase().includes(keyword) ||
-        org.intro.toLowerCase().includes(keyword)
+        (org.intro && org.intro.toLowerCase().includes(keyword)) ||
+        (org.introduction && org.introduction.toLowerCase().includes(keyword))
     )
 })
 
@@ -216,107 +108,126 @@ const displayOrganizations = computed(() => {
     return result
 })
 
+// 加载轮播图数据
+const loadCarouselOrganizations = async () => {
+    try {
+        console.log('加载轮播组织')
+        const res = await getCarouselOrganizations()
+        console.log('轮播组织响应:', res)
+
+        if (res && res.rows) {
+            banners.value = res.rows.map(org => ({
+                id: org.organizationId,
+                image: org.recommendImage || org.organizationLogo || 'https://picsum.photos/800/400?random=' + org.organizationId,
+                title: org.organizationName,
+                desc: org.displayText || org.introduction || '欢迎加入我们'
+            }))
+        }
+    } catch (error) {
+        console.error('加载轮播组织失败:', error)
+        // 失败时使用默认轮播图
+        banners.value = [
+            {
+                id: 1,
+                image: 'https://picsum.photos/800/400?random=1',
+                title: '精彩组织',
+                desc: '探索更多精彩'
+            }
+        ]
+    }
+}
+
+// 加载组织列表
+const loadOrganizationList = async () => {
+    try {
+        console.log('加载组织列表')
+        console.log('搜索关键词:', searchKeyword.value)
+        console.log('筛选级别:', currentFilter.value)
+
+        const params = {
+            pageNum: 1,
+            pageSize: 100
+        }
+
+        // 添加搜索关键词
+        if (searchKeyword.value) {
+            params.organizationName = searchKeyword.value
+        }
+
+        // 添加级别筛选
+        if (currentFilter.value !== 'all') {
+            params.level = currentFilter.value
+        }
+
+        const res = await getOrganizationList(params)
+        console.log('组织列表响应:', res)
+
+        if (res && res.rows) {
+            organizations.value = res.rows.map(org => ({
+                id: org.organizationId,
+                name: org.organizationName,
+                logo: org.organizationLogo || 'https://picsum.photos/200/200?random=' + org.organizationId,
+                intro: org.displayText || org.introduction || '暂无简介',
+                introduction: org.introduction || org.displayText || '暂无简介',
+                level: org.organizationLevel,
+                memberCount: org.memberCount || 0,
+                foundedYear: org.establishYear || '未知'
+            }))
+            console.log('组织列表加载成功, 数量:', organizations.value.length)
+        }
+    } catch (error) {
+        console.error('加载组织列表失败:', error)
+        uni.showToast({
+            title: error.message || '加载失败',
+            icon: 'none'
+        })
+    }
+}
+
 onLoad(() => {
     console.log('组织页面加载')
-
-    // 打印接口需求文档
-    printAPIRequirements()
+    // 加载轮播图
+    loadCarouselOrganizations()
+    // 加载组织列表
+    loadOrganizationList()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【组织页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取组织列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/organizations')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        level: 'all', // all | school | college | class
-        keyword: '', // 搜索关键词
-        page: 1,
-        pageSize: 10
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    name: '数据科学社团',
-                    logo: 'https://example.com/logo.jpg',
-                    level: 'school',
-                    memberCount: 156,
-                    activityCount: 28,
-                    intro: '致力于数据科学...',
-                    tags: ['数据分析', '人工智能'],
-                    isJoined: false // 当前用户是否已加入
-                }
-            ],
-            total: 45,
-            levelCounts: {
-                all: 45,
-                school: 12,
-                college: 18,
-                class: 15
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📍 接口2: 申请加入组织')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/organizations/:id/join')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        reason: '申请理由'
-    }, null, 2))
-    console.log('📝 部分组织需要审核,部分组织可直接加入')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 // 获取级别文本
 const getLevelText = (level) => {
     const levelMap = {
-        school: '校级',
-        college: '院级',
-        class: '班级'
+        '1': '校级',
+        '2': '院级',
+        '3': '班级',
+        'school': '校级',
+        'college': '院级',
+        'class': '班级'
     }
     return levelMap[level] || '未知'
 }
 
 // 搜索输入
 const onSearch = () => {
-    // 实时搜索
+    // 实时搜索 - 重新加载列表
+    loadOrganizationList()
 }
 
 // 搜索确认
 const onSearchConfirm = () => {
-    // 搜索确认
+    // 搜索确认 - 重新加载列表
+    loadOrganizationList()
 }
 
 // 清除搜索
 const clearSearch = () => {
     searchKeyword.value = ''
+    loadOrganizationList()
 }
 
 // 切换筛选
 const switchFilter = (value) => {
     currentFilter.value = value
+    loadOrganizationList()
 }
 
 // 跳转轮播图详情
@@ -516,14 +427,17 @@ const goToDetail = (org) => {
     align-items: center;
     justify-content: center;
 
+    &.level-1,
     &.level-school {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     }
 
+    &.level-2,
     &.level-college {
         background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
     }
 
+    &.level-3,
     &.level-class {
         background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     }
@@ -543,6 +457,7 @@ const goToDetail = (org) => {
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
 }
 

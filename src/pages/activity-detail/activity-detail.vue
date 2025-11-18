@@ -55,9 +55,9 @@
                     <view class="detail-section">
                         <view class="section-title">
                             <text class="title-icon">📝</text>
-                            <text class="title-text">活动简介</text>
+                            <text class="title-text">活动详情</text>
                         </view>
-                        <text class="section-content">{{ activity.description }}</text>
+                        <rich-text class="section-content" :nodes="activity.description"></rich-text>
                     </view>
 
                     <view class="detail-section">
@@ -202,6 +202,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getActivityDetail, enrollActivity } from '@/api/activity'
+import { formatRichText } from '@/utils/richtext'
 
 // 当前标签页
 const currentTab = ref(0)
@@ -211,43 +213,32 @@ const tabs = ['详情', '信息', '人员', '地址']
 
 // 活动详情数据
 const activity = ref({
-    id: 1001,
-    image: 'https://picsum.photos/800/400?random=30',
-    title: '人工智能前沿技术讲座',
+    id: null,
+    image: '',
+    title: '',
     status: 'recruiting',
-    location: '学术报告厅A101',
-    currentCount: 85,
-    maxCount: 200,
-    organizer: '数据学院科技创新协会',
-    description: '本次讲座将邀请国内知名AI专家，为大家深入讲解人工智能领域的最新研究成果和技术应用。内容涵盖机器学习、深度学习、自然语言处理等多个方向，适合对人工智能感兴趣的同学参加。',
-    notice: '1. 请提前10分钟到场签到\n2. 请保持会场安静，手机调至静音\n3. 讲座期间可以提问交流\n4. 请爱护会场设施',
-    signupStart: '2025-10-28 08:00',
-    signupEnd: '2025-11-04 18:00',
-    activityStart: '2025-11-05 14:00',
-    activityEnd: '2025-11-05 16:30',
-    level: '校级',
-    range: '2021-2025级',
+    location: '',
+    currentCount: 0,
+    maxCount: 0,
+    organizer: '',
+    description: '',
+    notice: '',
+    signupStart: '',
+    signupEnd: '',
+    activityStart: '',
+    activityEnd: '',
+    level: '',
+    range: '',
     allowLeave: false,
-    credit: 2,
-    points: 10,
-    tags: ['学术讲座', '人工智能', '科技创新', '技术分享'],
-    leaders: [
-        { id: 1, name: '张教授', avatar: 'https://picsum.photos/100/100?random=1' }
-    ],
-    organizers: [
-        { id: 2, name: '李明', avatar: 'https://picsum.photos/100/100?random=2' },
-        { id: 3, name: '王芳', avatar: 'https://picsum.photos/100/100?random=3' }
-    ],
-    participants: [
-        { id: 4, name: '张三', avatar: 'https://picsum.photos/100/100?random=4' },
-        { id: 5, name: '李四', avatar: 'https://picsum.photos/100/100?random=5' },
-        { id: 6, name: '王五', avatar: 'https://picsum.photos/100/100?random=6' },
-        { id: 7, name: '赵六', avatar: 'https://picsum.photos/100/100?random=7' },
-        { id: 8, name: '孙七', avatar: 'https://picsum.photos/100/100?random=8' }
-    ],
-    address: '北京市海淀区学院路数据学院学术报告厅A101',
-    latitude: 39.9042,
-    longitude: 116.4074,
+    credit: 0,
+    points: 0,
+    tags: [],
+    leaders: [],
+    organizers: [],
+    participants: [],
+    address: '',
+    latitude: 0,
+    longitude: 0,
     isSignedUp: false
 })
 
@@ -302,7 +293,7 @@ const switchTab = (index) => {
 }
 
 // 处理报名
-const handleSignup = () => {
+const handleSignup = async () => {
     if (!canSignup.value) {
         return
     }
@@ -310,97 +301,155 @@ const handleSignup = () => {
     uni.showModal({
         title: '确认报名',
         content: `确定要报名参加"${activity.value.title}"吗？`,
-        success: (res) => {
+        success: async (res) => {
             if (res.confirm) {
-                // 模拟报名成功
-                activity.value.isSignedUp = true
-                activity.value.currentCount += 1
+                try {
+                    // 调用报名接口
+                    await enrollActivity({
+                        activityId: activity.value.id
+                    })
 
-                uni.showToast({
-                    title: '报名成功',
-                    icon: 'success'
-                })
+                    // 报名成功，更新状态
+                    activity.value.isSignedUp = true
+                    activity.value.currentCount += 1
+
+                    uni.showToast({
+                        title: '报名成功',
+                        icon: 'success'
+                    })
+                } catch (error) {
+                    console.error('报名失败:', error)
+                    uni.showToast({
+                        title: error.message || '报名失败',
+                        icon: 'none'
+                    })
+                }
             }
         }
     })
+}
+
+// 加载活动详情
+const loadActivityDetail = async (id) => {
+    try {
+        console.log('加载活动详情, ID:', id)
+
+        // 调用活动详情接口
+        const res = await getActivityDetail(id)
+        console.log('活动详情响应:', res)
+
+        // API返回的数据在 data.activity 中
+        const activityData = res.activity
+
+        // 映射API响应数据到activity对象
+        activity.value = {
+            id: activityData.activityId,
+            image: activityData.coverImage || 'https://picsum.photos/800/400?random=30',
+            title: activityData.activityName || '',
+            status: mapActivityStatus(activityData.activityStatus),
+            location: activityData.activityLocation || '',
+            currentCount: activityData.currentParticipants || 0,
+            maxCount: activityData.maxParticipants || 0,
+            organizer: activityData.organizerNames || '',
+            description: formatRichText(activityData.activityDetail) || '', // 处理富文本
+            notice: activityData.remark || '',
+            signupStart: formatDateTime(activityData.registerStartTime) || '',
+            signupEnd: formatDateTime(activityData.registerEndTime) || '',
+            activityStart: activityData.activityStartTime || '',
+            activityEnd: activityData.activityEndTime || '',
+            level: mapActivityLevel(activityData.activityLevel),
+            range: activityData.participateScope || '',
+            allowLeave: activityData.allowLeave === 'Y',
+            credit: activityData.creditValue || 0,
+            points: activityData.scoreValue || 0,
+            tags: parseActivityTags(activityData.activityTags),
+            leaders: res.leaders || [],
+            organizers: res.organizers || [],
+            participants: res.participants || [],
+            address: activityData.activityLocation || '',
+            latitude: activityData.latitude || 0,
+            longitude: activityData.longitude || 0,
+            isSignedUp: res.isRegistered === true || res.isRegistered === 'Y'
+        }
+
+        console.log('活动详情加载成功:', activity.value)
+    } catch (error) {
+        console.error('加载活动详情失败:', error)
+        uni.showToast({
+            title: error.message || '加载失败',
+            icon: 'none'
+        })
+    }
+}
+
+// 映射活动状态
+const mapActivityStatus = (status) => {
+    const statusMap = {
+        '0': 'recruiting',
+        '1': 'ongoing',
+        '2': 'finished'
+    }
+    return statusMap[status] || 'recruiting'
+}
+
+// 映射活动级别
+const mapActivityLevel = (level) => {
+    const levelMap = {
+        '1': '院级',
+        '2': '系级',
+        '3': '班级',
+        '4': '校级'
+    }
+    return levelMap[level] || level
+}
+
+// 格式化时间
+const formatDateTime = (dateStr) => {
+    if (!dateStr) return ''
+    // 处理 ISO 格式时间: "2025-10-29T00:00:00.000+08:00"
+    try {
+        const date = new Date(dateStr)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        return `${year}-${month}-${day} ${hours}:${minutes}`
+    } catch (error) {
+        console.error('时间格式化失败:', error)
+        return dateStr
+    }
+}
+
+// 解析活动标签
+const parseActivityTags = (labelStr) => {
+    if (!labelStr) return []
+    try {
+        // 如果是JSON格式的数组字符串
+        if (labelStr.startsWith('[')) {
+            return JSON.parse(labelStr)
+        }
+        // 如果是逗号分隔的字符串
+        return labelStr.split(',').filter(tag => tag.trim())
+    } catch (error) {
+        console.error('解析标签失败:', error)
+        return []
+    }
 }
 
 onLoad((options) => {
     const id = options.id
     if (id) {
         console.log('活动详情ID:', id)
-        // 这里可以根据ID加载具体活动数据
+        // 加载活动详情数据
+        loadActivityDetail(id)
+    } else {
+        uni.showToast({
+            title: '活动ID不存在',
+            icon: 'none'
+        })
     }
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
-
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【活动详情页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取活动详情')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/activities/:id')
-    console.log('请求参数:')
-    console.log(JSON.stringify({ id: 1 }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            id: 1,
-            title: '大数据技术分享会',
-            cover: 'https://example.com/cover.jpg',
-            images: ['https://example.com/img1.jpg'], // 轮播图
-            category: 'lecture',
-            status: 'upcoming',
-            startTime: '2024-11-05 14:00',
-            endTime: '2024-11-05 16:00',
-            location: '教学楼A301',
-            organization: { id: 1, name: '数据科学社团', logo: '' },
-            organizer: { name: '张三', avatar: '', position: '社长' },
-            participants: 45,
-            maxParticipants: 100,
-            description: '详细介绍...',
-            requirements: '参与要求...',
-            schedule: '活动流程...',
-            isRegistered: false // 当前用户是否已报名
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📍 接口2: 报名/取消报名')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/activities/:id/register (报名) 或 /api/activities/:id/unregister (取消)')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('\n')
-
-    console.log('📍 接口3: 签到')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/activities/:id/sign-in')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        latitude: 30.845427,
-        longitude: 104.464508,
-        address: '教学楼A301'
-    }, null, 2))
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 </script>
 
 <style scoped lang="scss">

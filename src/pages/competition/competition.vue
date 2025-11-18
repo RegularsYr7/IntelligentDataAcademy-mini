@@ -11,41 +11,44 @@
                 </scroll-view>
             </view>
 
-            <!-- 竞赛列表 -->
-            <view class="competition-list">
-                <view class="competition-item" v-for="item in filteredCompetitions" :key="item.id"
-                    @tap="goToDetail(item.id)">
-                    <view class="item-header">
-                        <text class="item-title">{{ item.title }}</text>
-                        <view class="item-status" :class="getStatusClass(item.status)">
-                            {{ item.status }}
-                        </view>
-                    </view>
-                    <view class="item-info">
-                        <view class="info-row">
-                            <text class="info-label">报名时间：</text>
-                            <text class="info-value">{{ item.registrationTime }}</text>
-                        </view>
-                        <view class="info-row">
-                            <text class="info-label">竞赛时间：</text>
-                            <text class="info-value">{{ item.competitionTime }}</text>
-                        </view>
-                        <view class="info-row">
-                            <text class="info-label">浏览次数：</text>
-                            <text class="info-value">{{ item.views }} 次</text>
-                        </view>
-                    </view>
-                    <view class="item-footer">
-                        <text class="category-tag">{{ getCategoryName(item.categoryId) }}</text>
-                        <text class="view-detail">查看详情 ></text>
-                    </view>
-                </view>
-            </view>
+            <!-- 使用通用列表组件 -->
+            <view class="list-wrapper">
+                <RefreshLoadList ref="listRef" :api="getCompetitionList" :params="requestParams"
+                    :dataMapping="mapCompetitionData" :pageSize="10" emptyIcon="📋" emptyText="暂无竞赛信息">
 
-            <!-- 空状态 -->
-            <view class="empty-state" v-if="filteredCompetitions.length === 0">
-                <text class="empty-icon">📋</text>
-                <text class="empty-text">暂无竞赛信息</text>
+                    <!-- 自定义列表项样式 -->
+                    <template #default="{ items }">
+                        <view class="competition-list">
+                            <view class="competition-item" v-for="item in items" :key="item.id"
+                                @tap="goToDetail(item.id)">
+                                <view class="item-header">
+                                    <text class="item-title">{{ item.title }}</text>
+                                    <view class="item-status" :class="getStatusClass(item.status)">
+                                        {{ item.status }}
+                                    </view>
+                                </view>
+                                <view class="item-info">
+                                    <view class="info-row">
+                                        <text class="info-label">报名时间：</text>
+                                        <text class="info-value">{{ item.registrationTime }}</text>
+                                    </view>
+                                    <view class="info-row">
+                                        <text class="info-label">竞赛时间：</text>
+                                        <text class="info-value">{{ item.competitionTime }}</text>
+                                    </view>
+                                    <view class="info-row">
+                                        <text class="info-label">浏览次数：</text>
+                                        <text class="info-value">{{ item.views }} 次</text>
+                                    </view>
+                                </view>
+                                <view class="item-footer">
+                                    <text class="category-tag">{{ getCategoryName(item.categoryId) }}</text>
+                                    <text class="view-detail">查看详情 ></text>
+                                </view>
+                            </view>
+                        </view>
+                    </template>
+                </RefreshLoadList>
             </view>
         </view>
     </view>
@@ -54,6 +57,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getCompetitionList } from '@/api/competition'
+import RefreshLoadList from '@/components/RefreshLoadList/RefreshLoadList.vue'
+
+// 列表组件引用
+const listRef = ref(null)
 
 // 分类数据
 const categories = ref([
@@ -68,81 +76,76 @@ const categories = ref([
 // 当前选中分类
 const currentCategory = ref('all')
 
-// 竞赛列表数据
-const competitions = ref([
-    {
-        id: 1,
-        title: '全国大学生数学建模竞赛',
-        categoryId: 'academic',
-        status: '报名中',
-        registrationTime: '2025-09-01 至 2025-09-30',
-        competitionTime: '2025-10-15 09:00',
-        views: 1234,
-        publishTime: '2025-08-25 10:30'
-    },
-    {
-        id: 2,
-        title: '互联网+大学生创新创业大赛',
-        categoryId: 'innovation',
-        status: '进行中',
-        registrationTime: '2025-08-15 至 2025-09-15',
-        competitionTime: '2025-10-01 14:00',
-        views: 2345,
-        publishTime: '2025-08-10 15:20'
-    },
-    {
-        id: 3,
-        title: 'ACM程序设计竞赛',
-        categoryId: 'skills',
-        status: '已结束',
-        registrationTime: '2025-07-01 至 2025-07-20',
-        competitionTime: '2025-08-05 09:00',
-        views: 3456,
-        publishTime: '2025-06-20 09:00'
-    },
-    {
-        id: 4,
-        title: '全国大学生电子设计竞赛',
-        categoryId: 'skills',
-        status: '报名中',
-        registrationTime: '2025-09-10 至 2025-10-10',
-        competitionTime: '2025-11-01 08:30',
-        views: 1567,
-        publishTime: '2025-09-01 11:00'
-    },
-    {
-        id: 5,
-        title: '校园歌手大赛',
-        categoryId: 'culture',
-        status: '即将开始',
-        registrationTime: '2025-10-01 至 2025-10-20',
-        competitionTime: '2025-11-10 19:00',
-        views: 892,
-        publishTime: '2025-09-25 16:30'
-    },
-    {
-        id: 6,
-        title: '篮球联赛',
-        categoryId: 'sports',
-        status: '进行中',
-        registrationTime: '2025-08-20 至 2025-09-10',
-        competitionTime: '2025-09-25 15:00',
-        views: 2103,
-        publishTime: '2025-08-15 10:00'
-    }
-])
+// 竞赛分类映射: 后端类型 -> 前端分类
+const competitionCategoryMap = {
+    '1': 'academic',    // 学科竞赛
+    '2': 'skills',      // 技能竞赛
+    '3': 'innovation',  // 创新创业
+    '4': 'culture',     // 文化艺术
+    '5': 'sports'       // 体育竞技
+}
 
-// 过滤后的竞赛列表
-const filteredCompetitions = computed(() => {
-    if (currentCategory.value === 'all') {
-        return competitions.value
+// 竞赛状态映射: 后端状态 -> 前端文本
+const competitionStatusMap = {
+    '0': '报名中',
+    '1': '进行中',
+    '2': '已结束',
+    '3': '已取消'
+}
+
+// 计算请求参数
+const requestParams = computed(() => {
+    const params = {}
+
+    // 如果有选中的分类且不是"全部",需要转换为后端的分类值
+    if (currentCategory.value !== 'all') {
+        // 反向映射: 前端分类 -> 后端类型
+        const categoryReverseMap = {
+            'academic': '1',
+            'skills': '2',
+            'innovation': '3',
+            'culture': '4',
+            'sports': '5'
+        }
+        params.competitionCategory = categoryReverseMap[currentCategory.value]
     }
-    return competitions.value.filter(item => item.categoryId === currentCategory.value)
+
+    return params
 })
+
+// 数据映射函数(后端 -> 前端)
+const mapCompetitionData = (item) => {
+    return {
+        id: item.competitionId,
+        title: item.competitionName,
+        categoryId: competitionCategoryMap[item.competitionCategory] || 'skills',
+        status: competitionStatusMap[item.competitionStatus] || '未知',
+        registrationTime: formatTimeRange(item.registrationStartTime, item.registrationEndTime),
+        competitionTime: formatDateTime(item.competitionStartTime),
+        views: item.viewCount || 0,
+        publishTime: item.createTime || ''
+    }
+}
 
 // 切换分类
 const switchCategory = (categoryId) => {
     currentCategory.value = categoryId
+    // requestParams 变化会自动触发组件重新加载
+}
+
+// 格式化时间范围
+const formatTimeRange = (startTime, endTime) => {
+    if (!startTime || !endTime) return '暂无'
+    // 去掉时间部分,只保留日期
+    const start = startTime.split(' ')[0]
+    const end = endTime.split(' ')[0]
+    return `${start} 至 ${end}`
+}
+
+// 格式化日期时间
+const formatDateTime = (dateTime) => {
+    if (!dateTime) return '暂无'
+    return dateTime
 }
 
 // 获取分类名称
@@ -170,148 +173,36 @@ const goToDetail = (id) => {
 }
 
 onLoad(() => {
-    console.log('竞赛章程页加载')
-
-    // 打印接口需求文档
-    printAPIRequirements()
+    // 页面加载完成
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【竞赛章程页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    // 接口1: 获取竞赛分类
-    console.log('📍 接口1: 获取竞赛分类')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/competitions/categories')
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            categories: [
-                { id: 'all', name: '全部' },
-                { id: 'academic', name: '学科竞赛' },
-                { id: 'skills', name: '技能竞赛' },
-                { id: 'innovation', name: '创新创业' },
-                { id: 'culture', name: '文化艺术' },
-                { id: 'sports', name: '体育竞技' }
-            ]
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口2: 获取竞赛列表
-    console.log('📍 接口2: 获取竞赛列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/competitions')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        categoryId: 'all', // 分类ID,从接口1获取的categories中的id字段,'all'表示全部
-        level: '', // 可选,国家级、省级、校级
-        keyword: '', // 可选,搜索关键词
-        page: 1,
-        pageSize: 10
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    title: '全国大学生数据分析大赛',
-                    cover: 'https://example.com/cover.jpg',
-                    level: '国家级',
-                    categoryId: 'academic', // 对应分类的id
-                    status: '报名中', // 状态文本
-                    registrationTime: '2024-10-01 至 2024-11-30',
-                    competitionTime: '2024-12-01 至 2025-03-31',
-                    registrationDeadline: '2024-11-30',
-                    startDate: '2024-12-01',
-                    endDate: '2025-03-31',
-                    organizer: '教育部',
-                    prize: '一等奖10000元',
-                    participants: 1256,
-                    views: 5432,
-                    isRegistered: false
-                }
-            ],
-            total: 25
-        }
-    }, null, 2))
-    console.log('\n')
-
-    // 数据字典
-    console.log('📚 数据字典')
-    console.log('━'.repeat(80))
-    console.log('分类对象结构:')
-    console.log(JSON.stringify({
-        id: '分类ID(用于筛选参数)',
-        name: '分类显示名称'
-    }, null, 2))
-    console.log('\n竞赛对象必填字段:')
-    console.log(JSON.stringify({
-        id: '竞赛ID',
-        title: '竞赛标题',
-        categoryId: '分类ID(对应categories中的id)',
-        status: '状态文本',
-        registrationTime: '报名时间文本',
-        competitionTime: '竞赛时间文本',
-        views: '浏览次数'
-    }, null, 2))
-    console.log('\n竞赛对象可选字段:')
-    console.log(JSON.stringify({
-        cover: '封面图片',
-        level: '级别(国家级、省级、校级)',
-        registrationDeadline: '报名截止日期',
-        startDate: '开始日期',
-        endDate: '结束日期',
-        organizer: '主办方',
-        prize: '奖项',
-        participants: '参与人数',
-        isRegistered: '是否已报名'
-    }, null, 2))
-    console.log('\n')
-
-    // 说明
-    console.log('📝 接口说明')
-    console.log('━'.repeat(80))
-    console.log('1. 工作流程:')
-    console.log('   - 页面加载时先调用接口1获取分类列表')
-    console.log('   - 用分类的id字段作为参数调用接口2获取竞赛列表')
-    console.log('   - categoryId="all"时返回所有竞赛,其他值返回对应分类的竞赛')
-    console.log('2. 分类筛选: 通过categoryId参数精确匹配竞赛的categoryId字段')
-    console.log('3. 搜索功能: 支持按title模糊搜索,不区分大小写')
-    console.log('4. 级别筛选: 支持按level精确筛选')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 </script>
 
 <style scoped lang="scss">
+.page {
+    height: 100vh;
+    overflow: hidden;
+}
+
 .container {
-    min-height: 100vh;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
     background: #f5f5f5;
-    padding-bottom: 20rpx;
 }
 
 /* 分类标签 */
 .category-tabs {
+    flex-shrink: 0;
     background: #fff;
     padding: 20rpx 0;
     margin-bottom: 20rpx;
+}
+
+/* 列表容器 */
+.list-wrapper {
+    flex: 1;
+    overflow: hidden;
 }
 
 .tabs-scroll {
@@ -345,7 +236,7 @@ const printAPIRequirements = () => {
 
 /* 竞赛列表 */
 .competition-list {
-    padding: 0 20rpx;
+    padding: 0 20rpx 20rpx 20rpx;
 }
 
 .competition-item {
@@ -443,26 +334,6 @@ const printAPIRequirements = () => {
 
 .view-detail {
     font-size: 26rpx;
-    color: #999;
-}
-
-/* 空状态 */
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 120rpx 0;
-}
-
-.empty-icon {
-    font-size: 120rpx;
-    margin-bottom: 20rpx;
-    opacity: 0.3;
-}
-
-.empty-text {
-    font-size: 28rpx;
     color: #999;
 }
 </style>
