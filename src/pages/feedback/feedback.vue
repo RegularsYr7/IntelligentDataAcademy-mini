@@ -82,6 +82,8 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { submitFeedback } from '@/api/feedback'
+import { chooseAndUploadImage } from '@/utils/upload'
 
 // 反馈类型
 const feedbackTypes = [
@@ -119,7 +121,7 @@ const selectType = (type) => {
 }
 
 // 添加图片
-const addPhoto = () => {
+const addPhoto = async () => {
     if (form.value.photos.length >= 3) {
         uni.showToast({
             title: '最多上传3张图片',
@@ -128,14 +130,25 @@ const addPhoto = () => {
         return
     }
 
-    uni.chooseImage({
-        count: 3 - form.value.photos.length,
-        sizeType: ['compressed'],
-        sourceType: ['album', 'camera'],
-        success: (res) => {
-            form.value.photos = [...form.value.photos, ...res.tempFilePaths]
-        }
-    })
+    try {
+        // 使用封装的上传方法
+        const result = await chooseAndUploadImage(3 - form.value.photos.length)
+
+        // result 可能是单个对象或数组
+        const urls = Array.isArray(result) ? result.map(r => r.url) : [result.url]
+        form.value.photos = [...form.value.photos, ...urls]
+
+        uni.showToast({
+            title: '图片上传成功',
+            icon: 'success'
+        })
+    } catch (error) {
+        console.error('图片上传失败:', error)
+        uni.showToast({
+            title: error.message || '图片上传失败',
+            icon: 'none'
+        })
+    }
 }
 
 // 删除图片
@@ -144,7 +157,7 @@ const deletePhoto = (index) => {
 }
 
 // 提交表单
-const submitForm = () => {
+const submitForm = async () => {
     if (!canSubmit.value) {
         return
     }
@@ -177,39 +190,60 @@ const submitForm = () => {
 
     submitting.value = true
 
-    // 模拟提交
-    setTimeout(() => {
-        // 保存到本地存储
-        const feedbacks = uni.getStorageSync('feedbackRecords') || []
-        const newFeedback = {
-            id: Date.now(),
-            type: form.value.type,
-            title: form.value.title,
-            description: form.value.description,
-            photos: form.value.photos,
-            contact: form.value.contact,
-            status: 'pending', // pending: 待处理, processing: 处理中, resolved: 已解决
-            createTime: new Date().toISOString(),
-            replies: [] // 回复记录
+    try {
+        // 获取用户信息
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '未找到学生信息',
+                icon: 'none'
+            })
+            submitting.value = false
+            return
         }
 
-        feedbacks.unshift(newFeedback)
-        uni.setStorageSync('feedbackRecords', feedbacks)
+        // 反馈类型映射：前端 -> 后端
+        const typeMap = {
+            'course': '1',      // 课程内容
+            'teaching': '2',    // 教学方式
+            'environment': '3', // 教学环境
+            'other': '4'        // 其他建议
+        }
 
-        submitting.value = false
+        // 调用提交反馈接口
+        const res = await submitFeedback({
+            studentId: Number(userInfo.studentId),  // 学生ID
+            feedbackType: typeMap[form.value.type], // 反馈类型 (1-4)
+            title: form.value.title,                // 反馈标题
+            description: form.value.description,    // 详细描述
+            imageUrl: form.value.photos[0] || '',   // 主图URL（第一张图片）
+            imageUrls: form.value.photos.join(','), // 图片列表（逗号分隔）
+            contactInfo: form.value.contact         // 联系方式
+        })
+
+        console.log('反馈提交成功:', res)
 
         uni.showToast({
             title: '提交成功',
             icon: 'success'
         })
 
-        // 1.5秒后跳转到反馈记录页
+        // 延迟跳转到反馈记录页
         setTimeout(() => {
             uni.redirectTo({
                 url: '/pages/feedback-records/feedback-records'
             })
         }, 1500)
-    }, 1500)
+
+    } catch (error) {
+        console.error('提交反馈失败:', error)
+        uni.showToast({
+            title: error.message || '提交失败',
+            icon: 'none'
+        })
+    } finally {
+        submitting.value = false
+    }
 }
 
 // 查看反馈记录
@@ -221,76 +255,8 @@ const goToRecords = () => {
 
 onLoad(() => {
     console.log('反馈页加载')
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【反馈页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 上传图片')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/upload/image')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数: FormData')
-    console.log(JSON.stringify({
-        file: 'Binary file data',
-        type: 'feedback'
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            url: 'https://example.com/uploads/feedback/xxxxx.jpg'
-        }
-    }, null, 2))
-    console.log('📝 图片限制: 最多3张,每张最大5MB,支持jpg/png格式')
-    console.log('\n')
-
-    console.log('📍 接口2: 提交反馈')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/feedback')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        type: 'bug', // bug | feature | other
-        content: '反馈内容',
-        contact: '13812345678', // 可选
-        images: ['https://example.com/img1.jpg']
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '提交成功',
-        data: {
-            id: 1,
-            createTime: '2024-11-01 15:30'
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📚 数据字典')
-    console.log('━'.repeat(80))
-    console.log('type类型:')
-    console.log('  - bug: 问题反馈')
-    console.log('  - feature: 功能建议')
-    console.log('  - other: 其他')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 </script>
 
 <style scoped lang="scss">

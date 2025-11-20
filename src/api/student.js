@@ -8,17 +8,23 @@ import request from "@/utils/request";
  * @param {Object} data - 登录信息
  * @param {string} data.studentNo - 学号
  * @param {string} data.password - 密码
+ * @returns {Promise} 返回完整响应（包含 token）
  */
 export const login = (data) => {
-  return request.post("/edu/student/login", data);
+  return request.post("/edu/student/login", data, { rawResponse: true });
 };
 
 /**
  * 微信登录
  * @param {string} code - 微信授权码
+ * @returns {Promise} 返回完整响应（包含 token）
  */
 export const loginByWechat = (code) => {
-  return request.post(`/edu/student/loginByWechat`, { code });
+  return request.post(
+    `/edu/student/loginByWechat`,
+    { code },
+    { rawResponse: true }
+  );
 };
 
 /**
@@ -55,32 +61,31 @@ export const updatePassword = (data) => {
 
 /**
  * 获取我的活动
- * @param {Object} params - 查询参数
- * @param {number} params.pageNum - 页码
- * @param {number} params.pageSize - 每页数量
+ * @param {Object} data - 请求数据
+ * @param {number} data.studentId - 学生ID (必填)
+ * @param {string} data.activityStatus - 活动状态 (可选)
  */
-export const getMyActivities = (params) => {
-  return request.get("/edu/student/myActivities", params);
+export const getMyActivities = (data) => {
+  return request.post("/edu/student/myActivities", data);
 };
 
 /**
  * 获取我的组织
- * @param {Object} params - 查询参数
- * @param {number} params.pageNum - 页码
- * @param {number} params.pageSize - 每页数量
+ * @param {Object} data - 请求数据
+ * @param {number} data.studentId - 学生ID (必填)
  */
-export const getMyOrganizations = (params) => {
-  return request.get("/edu/student/myOrganizations", params);
+export const getMyOrganizations = (data) => {
+  return request.post("/edu/student/myOrganizations", data);
 };
 
 /**
  * 获取我的成长记录
- * @param {Object} params - 查询参数
- * @param {number} params.pageNum - 页码
- * @param {number} params.pageSize - 每页数量
+ * @param {Object} data - 请求数据
+ * @param {number} data.studentId - 学生ID (必填)
+ * @param {string} data.recordType - 记录类型 (可选)
  */
-export const getMyGrowthRecords = (params) => {
-  return request.get("/edu/student/myGrowthRecords", params);
+export const getMyGrowthRecords = (data) => {
+  return request.post("/edu/student/myGrowthRecords", data);
 };
 
 /**

@@ -82,6 +82,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
+import { getFeedbackList } from '@/api/feedback'
 
 // 当前状态
 const currentStatus = ref('all')
@@ -89,62 +90,82 @@ const currentStatus = ref('all')
 // 反馈记录列表
 const records = ref([])
 
-// 加载记录
-const loadRecords = () => {
-    // 从本地存储获取
-    const storedRecords = uni.getStorageSync('feedbackRecords') || []
+// 加载中状态
+const loading = ref(false)
 
-    // 如果没有数据，使用模拟数据
-    if (storedRecords.length === 0) {
-        records.value = [
-            {
-                id: 1,
-                type: 'course',
-                title: '数据结构课程难度建议',
-                description: '建议增加更多实例讲解，帮助理解算法复杂度的概念。',
-                photos: [],
-                contact: '',
-                status: 'resolved',
-                createTime: new Date(2025, 9, 25, 9, 30).toISOString(),
-                replies: [
-                    {
-                        content: '感谢您的建议，我们已经在下节课增加了实例讲解环节。',
-                        time: new Date(2025, 9, 25, 10, 0).toISOString(),
-                        isAdmin: true
-                    }
-                ]
-            },
-            {
-                id: 2,
-                type: 'teaching',
-                title: '建议增加课堂互动环节',
-                description: '希望老师能多一些提问和讨论环节，提高课堂参与度。',
-                photos: [],
-                contact: 'wx123456',
-                status: 'processing',
-                createTime: new Date(2025, 9, 27, 14, 20).toISOString(),
-                replies: [
-                    {
-                        content: '感谢您的建议，我们会在后续课程中增加互动环节。',
-                        time: new Date(2025, 9, 27, 15, 0).toISOString(),
-                        isAdmin: true
-                    }
-                ]
-            },
-            {
-                id: 3,
-                type: 'environment',
-                title: '机房设备维护建议',
-                description: '3号机房部分电脑运行速度较慢，希望能进行升级维护。',
-                photos: [],
-                contact: '',
-                status: 'pending',
-                createTime: new Date(2025, 9, 28, 12, 30).toISOString(),
-                replies: []
-            }
-        ]
-    } else {
-        records.value = storedRecords
+
+
+// 加载记录
+const loadRecords = async () => {
+    try {
+        loading.value = true
+
+        // 获取用户信息
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '未找到学生信息',
+                icon: 'none'
+            })
+            loading.value = false
+            return
+        }
+
+        // 调用反馈列表接口
+        const res = await getFeedbackList({
+            pageNum: 1,
+            pageSize: 100,
+            studentId: Number(userInfo.studentId)  // 添加 studentId 参数
+            // 如果需要按状态筛选，可以传递 status 参数
+            // status: currentStatus.value === 'all' ? undefined : statusMap[currentStatus.value]
+        })
+
+        console.log('反馈列表返回:', res)
+
+        // 状态映射：后端 -> 前端
+        const statusMap = {
+            '0': 'pending',    // 待处理
+            '1': 'processing', // 处理中
+            '2': 'resolved'    // 已解决
+        }
+
+        // 类型映射：后端 -> 前端
+        const typeMap = {
+            '1': 'course',      // 课程内容
+            '2': 'teaching',    // 教学方式
+            '3': 'environment', // 教学环境
+            '4': 'other'        // 其他建议
+        }
+
+        // 适配后端返回的数据结构
+        records.value = (res.rows || []).map(item => ({
+            id: item.feedbackId,
+            type: typeMap[item.feedbackType] || 'other',
+            title: item.title,
+            description: item.description,
+            photos: item.imageUrls ? item.imageUrls.split(',') : [],
+            contact: item.contactInfo,
+            status: statusMap[item.feedbackStatus] || 'pending',
+            createTime: item.createTime,
+            submitTime: item.submitTime,
+            replies: item.replyRecords ? JSON.parse(item.replyRecords) : [],
+            studentName: item.studentName,
+            studentNo: item.studentNo,
+            currentHandlerName: item.currentHandlerName,
+            firstReplyTime: item.firstReplyTime,
+            resolveTime: item.resolveTime
+        }))
+
+        console.log('反馈记录加载成功:', records.value)
+
+    } catch (error) {
+        console.error('获取反馈记录失败:', error)
+        uni.showToast({
+            title: '获取记录失败',
+            icon: 'none'
+        })
+    } finally {
+        loading.value = false
     }
 }
 

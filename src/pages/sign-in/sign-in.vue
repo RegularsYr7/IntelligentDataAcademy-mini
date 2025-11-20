@@ -3,10 +3,14 @@
         <view class="container">
             <!-- 顶部信息卡片 -->
             <view class="info-card">
-                <text class="card-title">📍 班级签到</text>
+                <text class="card-title">📍 {{ taskInfo?.taskName || '班级签到' }}</text>
                 <view class="time-info">
                     <text class="current-time">{{ currentTime }}</text>
                     <text class="current-date">{{ currentDate }}</text>
+                </view>
+                <view class="task-time-range" v-if="taskInfo">
+                    <text class="time-range-label">签到时间</text>
+                    <text class="time-range-text">{{ taskInfo.startTime }} - {{ taskInfo.endTime }}</text>
                 </view>
             </view>
 
@@ -83,12 +87,13 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { submitCheckin } from '@/api/checkin'
+import { submitCheckin, getCurrentTask } from '@/api/checkin'
 import { takePhotoAndUpload } from '@/utils/upload'
 import { getAddress } from '@/utils/geocode'
 
-// 任务ID
+// 任务ID和任务信息
 const taskId = ref('')
+const taskInfo = ref(null)
 
 // 当前时间和日期
 const currentTime = ref('')
@@ -112,8 +117,16 @@ const submitting = ref(false)
 
 // 是否可以提交
 const canSubmit = computed(() => {
-    return location.value.latitude && photoUrl.value && !submitting.value
+    return taskId.value && location.value.latitude && photoUrl.value && !submitting.value
 })
+
+// 格式化任务时间
+const formatTaskTime = (timeStr) => {
+    if (!timeStr) return ''
+    // 如果是完整时间格式 "2025-11-19 08:00:00"，提取时分
+    const match = timeStr.match(/(\d{2}):(\d{2})/)
+    return match ? `${match[1]}:${match[2]}` : timeStr
+}
 
 // 更新时间
 const updateTime = () => {
@@ -191,10 +204,48 @@ const takePhoto = async () => {
     }
 }
 
+// 获取当前签到任务
+const loadCurrentTask = async () => {
+    try {
+        const res = await getCurrentTask()
+        console.log('获取签到任务返回:', res)
+
+        if (res && res.taskId) {
+            taskInfo.value = res
+            taskId.value = String(res.taskId) // 转换为字符串
+            console.log('获取签到任务成功, taskId:', taskId.value)
+        } else {
+            uni.showModal({
+                title: '提示',
+                content: '当前没有可用的签到任务',
+                showCancel: false,
+                success: () => {
+                    uni.navigateBack()
+                }
+            })
+        }
+    } catch (error) {
+        console.error('获取签到任务失败:', error)
+        uni.showModal({
+            title: '获取任务失败',
+            content: error.message || '无法获取签到任务信息',
+            showCancel: false,
+            success: () => {
+                uni.navigateBack()
+            }
+        })
+    }
+}
+
 // 提交签到
 const submitSignIn = async () => {
     if (!canSubmit.value) {
-        if (!location.value.latitude) {
+        if (!taskId.value) {
+            uni.showToast({
+                title: '签到任务加载中',
+                icon: 'none'
+            })
+        } else if (!location.value.latitude) {
             uni.showToast({
                 title: '请等待位置获取',
                 icon: 'none'
@@ -208,24 +259,28 @@ const submitSignIn = async () => {
         return
     }
 
-    // 检查任务ID
-    if (!taskId.value) {
-        uni.showToast({
-            title: '签到任务ID缺失',
-            icon: 'none'
-        })
-        return
-    }
-
     submitting.value = true
 
     try {
+        // 获取用户信息
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '未找到学生信息',
+                icon: 'none'
+            })
+            submitting.value = false
+            return
+        }
+
         // 调用签到接口
         await submitCheckin({
-            taskId: taskId.value,
-            latitude: location.value.latitude,
-            longitude: location.value.longitude,
-            photoUrl: photoUrl.value // 使用上传后的服务器URL
+            taskId: Number(taskId.value),           // 转换为数字
+            studentId: Number(userInfo.studentId),  // 学生ID
+            latitude: location.value.latitude,       // 纬度
+            longitude: location.value.longitude,     // 经度
+            address: location.value.address || '',   // 地址
+            photoUrl: photoUrl.value                 // 自拍照片URL
         })
 
         uni.showToast({
@@ -259,12 +314,11 @@ const viewRecords = () => {
 
 onLoad((options) => {
     console.log('班级签到页加载')
-    // 获取任务ID
-    if (options.taskId) {
-        taskId.value = options.taskId
-    }
+
+    // 初始化页面数据
     updateTime()
     getLocation()
+    loadCurrentTask() // 获取当前签到任务
 })
 
 
@@ -310,6 +364,7 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: center;
     gap: 8rpx;
+    margin-bottom: 16rpx;
 }
 
 .current-time {
@@ -322,6 +377,27 @@ onUnmounted(() => {
 .current-date {
     font-size: 24rpx;
     color: rgba(255, 255, 255, 0.9);
+}
+
+.task-time-range {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8rpx;
+    margin-top: 16rpx;
+    padding-top: 16rpx;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.time-range-label {
+    font-size: 22rpx;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.time-range-text {
+    font-size: 26rpx;
+    color: #fff;
+    font-weight: 500;
 }
 
 /* 位置卡片 */

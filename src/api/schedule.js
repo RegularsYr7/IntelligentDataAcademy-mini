@@ -24,9 +24,11 @@ export const getCurrentWeek = (params) => {
 
 /**
  * 获取下一节课
+ * @param {Object} params - 查询参数
+ * @param {number} params.classId - 班级ID(必填)
  */
-export const getNextCourse = () => {
-  return request.get("/edu/schedule/nextCourse");
+export const getNextCourse = (params) => {
+  return request.get("/edu/schedule/nextCourse", params);
 };
 
 /**

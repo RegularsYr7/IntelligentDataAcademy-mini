@@ -17,6 +17,7 @@ import { ref } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import UserSkeleton from '@/components/UserSkeleton/UserSkeleton.vue'
 import UserContent from '@/components/UserContent/UserContent.vue'
+import { getMyActivities, getMyOrganizations, getMyGrowthRecords } from '@/api/student'
 
 // 登录状态
 const isLoggedIn = ref(false)
@@ -70,50 +71,27 @@ onShow(() => {
 // 检查登录状态
 const checkLoginStatus = () => {
     const token = uni.getStorageSync('userToken')
+    console.log('检查登录状态 - token:', token)
     isLoggedIn.value = !!token
+    console.log('登录状态:', isLoggedIn.value)
 }
 
 // 加载用户数据
-const loadUserData = () => {
+const loadUserData = async () => {
     const cachedUserInfo = uni.getStorageSync('userInfo')
+    console.log('缓存的用户信息:', cachedUserInfo)
+
     if (cachedUserInfo) {
-        console.log('加载用户信息:', cachedUserInfo)
+        console.log('开始加载用户信息:', cachedUserInfo)
 
         // 设置用户基本信息
         userInfo.value = {
             name: cachedUserInfo.name || cachedUserInfo.studentName || '未设置',
             avatar: cachedUserInfo.avatar || cachedUserInfo.avatarUrl || 'https://picsum.photos/200/200?random=user',
-            positions: extractPositions(cachedUserInfo.organizations || []),
+            positions: [],  // 从组织接口获取
             quantificationScore: cachedUserInfo.quantificationScore || cachedUserInfo.quantitativeScore || 0
         }
-
-        // 设置我的活动
-        myActivities.value = (cachedUserInfo.recentActivities || []).slice(0, 3).map(activity => ({
-            id: activity.activityId,
-            name: activity.activityName || activity.name,
-            time: activity.activityTime || activity.time,
-            status: activity.status || 'completed',
-            statusText: getStatusText(activity.status)
-        }))
-
-        // 设置我的组织
-        myOrganizations.value = (cachedUserInfo.organizations || []).map(org => ({
-            id: org.organizationId,
-            name: org.organizationName || org.name,
-            role: org.role || '成员',
-            logo: org.logo || 'https://picsum.photos/100/100?random=org'
-        }))
-
-        // 设置成长记录
-        if (cachedUserInfo.growthTrend && cachedUserInfo.growthTrend.length > 0) {
-            growthRecords.value = cachedUserInfo.growthTrend
-        } else {
-            // 如果没有成长趋势数据，生成默认数据
-            growthRecords.value = generateDefaultGrowthRecords()
-        }
-
-        // 本月获得分数
-        monthlyGain.value = cachedUserInfo.currentMonthScore || 0
+        console.log('用户基本信息:', userInfo.value)
 
         // 基本信息
         basicInfo.value = {
@@ -121,26 +99,149 @@ const loadUserData = () => {
             class: cachedUserInfo.className || '未设置',
             major: cachedUserInfo.majorName || '未设置',
             college: cachedUserInfo.collegeName || cachedUserInfo.schoolName || '未设置',
-            phone: formatPhone(cachedUserInfo.phone || '')
+            phone: formatPhone(cachedUserInfo.phone || cachedUserInfo.phoneCode || '')
+        }
+        console.log('基本信息:', basicInfo.value)
+
+        // 调用接口获取动态数据
+        const studentId = cachedUserInfo.studentId || cachedUserInfo.studentNo
+        if (studentId) {
+            await Promise.all([
+                loadMyActivities(studentId),
+                loadMyOrganizations(studentId),
+                loadGrowthRecords(studentId)
+            ])
         }
     }
 }
 
-// 从组织中提取职位
-const extractPositions = (organizations) => {
-    if (!organizations || organizations.length === 0) return []
-    return organizations.map(org => org.role).filter(role => role)
+// 加载我的活动
+const loadMyActivities = async (studentId) => {
+    try {
+        const res = await getMyActivities({
+            studentId: Number(studentId)
+        })
+        console.log('我的活动响应:', res)
+
+        // 后端返回格式: { totalCredits, participantCount, totalPoints, activityList }
+        if (res && res.activityList && Array.isArray(res.activityList)) {
+            myActivities.value = res.activityList.map(activity => ({
+                id: activity.activityId,
+                name: activity.activityName || activity.name,
+                time: formatActivityTime(activity.activityStartTime || activity.time),
+                status: mapActivityStatus(activity.activityStatus || activity.status),
+                statusText: getActivityStatusText(activity.activityStatus || activity.status)
+            }))
+        }
+    } catch (error) {
+        console.error('加载我的活动失败:', error)
+        myActivities.value = []
+    }
 }
 
-// 获取状态文本
+// 加载我的组织
+const loadMyOrganizations = async (studentId) => {
+    try {
+        const res = await getMyOrganizations({
+            studentId: Number(studentId)
+        })
+        console.log('我的组织响应:', res)
+
+        if (res && res.rows) {
+            myOrganizations.value = res.rows.map(org => ({
+                id: org.organizationId,
+                name: org.organizationName || org.name,
+                role: org.role || org.memberRole || '成员',
+                logo: org.organizationLogo || org.logo || 'https://picsum.photos/100/100?random=org'
+            }))
+
+            // 提取职位信息
+            userInfo.value.positions = myOrganizations.value.map(org => org.role).filter(role => role)
+        }
+    } catch (error) {
+        console.error('加载我的组织失败:', error)
+        myOrganizations.value = []
+    }
+}
+
+// 加载成长记录
+const loadGrowthRecords = async (studentId) => {
+    try {
+        const res = await getMyGrowthRecords({
+            studentId: Number(studentId)
+        })
+        console.log('成长记录响应:', res)
+
+        if (res && res.rows && res.rows.length > 0) {
+            growthRecords.value = res.rows.map(record => ({
+                month: record.month || record.monthName,
+                score: record.score || record.totalScore || 0
+            }))
+
+            // 计算本月获得分数（最后一条记录）
+            if (res.rows.length > 0) {
+                const lastRecord = res.rows[res.rows.length - 1]
+                monthlyGain.value = lastRecord.score || lastRecord.totalScore || 0
+            }
+        } else {
+            // 如果没有成长趋势数据，生成默认数据
+            growthRecords.value = generateDefaultGrowthRecords()
+            monthlyGain.value = 0
+        }
+    } catch (error) {
+        console.error('加载成长记录失败:', error)
+        growthRecords.value = generateDefaultGrowthRecords()
+        monthlyGain.value = 0
+    }
+}
+
+// 格式化活动时间
+const formatActivityTime = (dateTimeStr) => {
+    if (!dateTimeStr) return '时间待定'
+
+    try {
+        const date = new Date(dateTimeStr)
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+
+        return `${month}-${day} ${hours}:${minutes}`
+    } catch (error) {
+        console.error('时间格式化失败:', error)
+        return dateTimeStr
+    }
+}
+
+// 映射活动状态 - 后端状态码转前端状态
+const mapActivityStatus = (status) => {
+    const statusMap = {
+        '0': 'upcoming',    // 未开始
+        '1': 'ongoing',     // 进行中
+        '2': 'completed'    // 已结束
+    }
+    return statusMap[status] || 'completed'
+}
+
+// 获取活动状态文本
+const getActivityStatusText = (status) => {
+    const statusMap = {
+        '0': '未开始',
+        '1': '进行中',
+        '2': '已结束'
+    }
+    return statusMap[status] || '已结束'
+}
+
+// 获取状态文本（保留用于其他地方）
 const getStatusText = (status) => {
     const statusMap = {
         'ongoing': '进行中',
-        'upcoming': '即将开始',
-        'completed': '已完成',
-        'finished': '已完成'
+        'upcoming': '未开始',
+        'completed': '已结束',
+        'finished': '已结束'
     }
-    return statusMap[status] || '已完成'
+    return statusMap[status] || '已结束'
 }
 
 // 格式化手机号

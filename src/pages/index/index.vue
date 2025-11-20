@@ -56,10 +56,10 @@
 					<view class="function-icon">✅</view>
 					<text class="function-text">班级签到</text>
 				</view>
-				<view class="function-item" @tap="goToLostFound">
+				<!-- <view class="function-item" @tap="goToLostFound">
 					<view class="function-icon">🔍</view>
 					<text class="function-text">失物招领</text>
-				</view>
+				</view> -->
 				<view class="function-item" @tap="goToFeedback">
 					<view class="function-icon">💬</view>
 					<text class="function-text">我要反馈</text>
@@ -72,6 +72,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getNextCourse } from '@/api/schedule'
 
 // 校园导航图片
 const campusNavImage = ref('/static/cam.jpg')
@@ -80,12 +81,7 @@ const campusNavImage = ref('/static/cam.jpg')
 const currentDate = ref('')
 
 // 当前课程信息
-const currentClass = ref({
-	name: '高等数学',
-	time: '10:00-11:40',
-	location: '教学楼A201',
-	status: 'upcoming' // upcoming: 即将上课, ongoing: 正在上课
-})
+const currentClass = ref(null)
 
 // 课程状态文本
 const classStatus = computed(() => {
@@ -105,51 +101,42 @@ const getCurrentDate = () => {
 
 onLoad(() => {
 	getCurrentDate()
-	console.log('首页加载')
-
-	// 打印接口需求文档
-	printAPIRequirements()
+	loadNextCourse()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-	console.log('\n')
-	console.log('='.repeat(80))
-	console.log('【首页 - 后端接口需求文档】')
-	console.log('='.repeat(80))
-	console.log('\n')
-
-	// 接口2: 获取当前课程
-	console.log('📍 接口1: 获取当前课程')
-	console.log('━'.repeat(80))
-	console.log('请求方式: GET')
-	console.log('接口路径: /api/schedule/current')
-	console.log('请求头: Authorization: Bearer <token>')
-	console.log('请求参数: 无')
-	console.log('\n响应数据格式:')
-	console.log(JSON.stringify({
-		code: 200,
-		message: 'success',
-		data: {
-			currentClass: { // 当前课程,如果没有则为null
-				name: '数据结构',
-				time: '08:00-09:40',
-				location: '教学楼A301',
-				status: 'ongoing' // ongoing-进行中, upcoming-即将开始, finished-已结束
-			},
-			nextClass: { // 下一节课,可选
-				name: '操作系统',
-				time: '10:00-11:40',
-				location: '教学楼B201'
-			}
+// 加载下一节课信息
+const loadNextCourse = async () => {
+	try {
+		// 获取用户信息
+		const userInfo = uni.getStorageSync('userInfo')
+		if (!userInfo || !userInfo.classId) {
+			console.log('用户未登录或未绑定班级')
+			currentClass.value = null
+			return
 		}
-	}, null, 2))
-	console.log('\n')
 
-	console.log('='.repeat(80))
-	console.log('【接口文档打印完毕】')
-	console.log('='.repeat(80))
-	console.log('\n')
+		console.log('加载下一节课信息, classId:', userInfo.classId)
+		const res = await getNextCourse({
+			classId: Number(userInfo.classId)
+		})
+		console.log('下一节课响应:', res)
+
+		// 后端直接返回课程数据，不在 course 对象中
+		if (res && res.courseName) {
+			currentClass.value = {
+				name: res.courseName,
+				time: res.timeRange || '未知时间',
+				location: res.classroom || '未知地点',
+				status: 'upcoming' // 默认为即将上课
+			}
+		} else {
+			// 没有课程
+			currentClass.value = null
+		}
+	} catch (error) {
+		console.error('加载下一节课失败:', error)
+		currentClass.value = null
+	}
 }
 
 // 校园导航

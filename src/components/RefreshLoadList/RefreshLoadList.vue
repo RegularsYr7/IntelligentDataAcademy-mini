@@ -43,6 +43,11 @@ const props = defineProps({
         type: Function,
         default: (item) => item
     },
+    // 自定义数据提取函数(从响应中提取列表数据)
+    customDataExtractor: {
+        type: Function,
+        default: null
+    },
     // 每页数量
     pageSize: {
         type: Number,
@@ -96,15 +101,21 @@ const loadData = async (isRefresh = false) => {
         const res = await props.api(requestParams)
 
         let rawData = []
-        // 兼容不同的响应格式
-        if (res && Array.isArray(res.rows)) {
-            rawData = res.rows
-            total.value = res.total || 0
-        } else if (res && Array.isArray(res.data)) {
-            rawData = res.data
-            total.value = res.total || 0
-        } else if (res && Array.isArray(res)) {
-            rawData = res
+
+        // 如果有自定义数据提取函数,优先使用
+        if (props.customDataExtractor) {
+            rawData = props.customDataExtractor(res)
+        } else {
+            // 兼容不同的响应格式
+            if (res && Array.isArray(res.rows)) {
+                rawData = res.rows
+                total.value = res.total || 0
+            } else if (res && Array.isArray(res.data)) {
+                rawData = res.data
+                total.value = res.total || 0
+            } else if (res && Array.isArray(res)) {
+                rawData = res
+            }
         }
 
         // 使用传入的映射函数转换数据

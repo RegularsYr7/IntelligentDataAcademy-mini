@@ -22,7 +22,7 @@ const config = {
   // 基础URL,根据环境自动切换
   baseURL:
     process.env.NODE_ENV === "production"
-      ? "https://intelligentmini.rainyweb.cn"
+      ? "http://intelligentmini.rainyweb.cn"
       : "http://localhost:8081", // 改为 localhost
 
   // 请求超时时间(ms)
@@ -50,12 +50,12 @@ const requestInterceptor = (options) => {
   }
 
   // 显示加载提示(可配置)
-  if (options.loading !== false) {
-    uni.showLoading({
-      title: options.loadingText || "加载中...",
-      mask: true,
-    });
-  }
+  // if (options.loading !== false) {
+  //   uni.showLoading({
+  //     title: options.loadingText || "加载中...",
+  //     mask: true,
+  //   });
+  // }
 
   // 打印请求日志(开发环境)
   if (process.env.NODE_ENV === "development") {
@@ -89,6 +89,11 @@ const responseInterceptor = (response, options) => {
   if (statusCode === 200) {
     // 业务状态码处理
     if (data.code === 200) {
+      // 如果需要完整响应（用于登录等需要获取 token 的场景）
+      if (options.rawResponse) {
+        return Promise.resolve(data);
+      }
+
       // 如果 data 有 data 字段，返回 data.data
       // 否则返回整个 data 对象（兼容分页数据格式 {total, rows, code, msg}）
       if (data.data !== undefined) {

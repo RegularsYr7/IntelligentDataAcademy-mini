@@ -202,7 +202,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getActivityDetail, enrollActivity } from '@/api/activity'
+import { getActivityDetail, enrollActivity, cancelEnroll } from '@/api/activity'
 import { formatRichText } from '@/utils/richtext'
 
 // 当前标签页
@@ -239,7 +239,8 @@ const activity = ref({
     address: '',
     latitude: 0,
     longitude: 0,
-    isSignedUp: false
+    isSignedUp: false,
+    enrollStatus: null  // 报名状态: 0=已报名, 1=已签到, 2=已完成, 3=已取消
 })
 
 // 地图标记点
@@ -253,11 +254,16 @@ const markers = computed(() => [{
     height: 30
 }])
 
-// 是否可以报名
+// 是否可以报名或取消报名
 const canSignup = computed(() => {
+    // 如果已报名，根据状态判断是否可以取消
+    if (activity.value.isSignedUp) {
+        // enrollStatus: 0=已报名(可取消), 1=已签到(不可取消), 2=已完成(不可取消), 3=已取消(不可操作)
+        return activity.value.enrollStatus === '0'
+    }
+    // 未报名时，判断活动是否可报名
     return activity.value.status === 'recruiting' &&
-        activity.value.currentCount < activity.value.maxCount &&
-        !activity.value.isSignedUp
+        activity.value.currentCount < activity.value.maxCount
 })
 
 // 获取状态文本
@@ -273,6 +279,19 @@ const getStatusText = (status) => {
 // 获取报名按钮文本
 const getSignupText = () => {
     if (activity.value.isSignedUp) {
+        // 根据报名状态显示不同文本
+        if (activity.value.enrollStatus === '0') {
+            return '取消报名'  // 已报名，可以取消
+        }
+        if (activity.value.enrollStatus === '1') {
+            return '已签到'
+        }
+        if (activity.value.enrollStatus === '2') {
+            return '已完成'
+        }
+        if (activity.value.enrollStatus === '3') {
+            return '已取消'
+        }
         return '已报名'
     }
     if (activity.value.status === 'finished') {
@@ -292,41 +311,113 @@ const switchTab = (index) => {
     currentTab.value = index
 }
 
-// 处理报名
+// 处理报名/取消报名
 const handleSignup = async () => {
     if (!canSignup.value) {
         return
     }
 
-    uni.showModal({
-        title: '确认报名',
-        content: `确定要报名参加"${activity.value.title}"吗？`,
-        success: async (res) => {
-            if (res.confirm) {
-                try {
-                    // 调用报名接口
-                    await enrollActivity({
-                        activityId: activity.value.id
-                    })
+    // 获取用户信息
+    const userInfo = uni.getStorageSync('userInfo')
+    if (!userInfo || !userInfo.studentId) {
+        uni.showToast({
+            title: '未找到学生信息',
+            icon: 'none'
+        })
+        return
+    }
 
-                    // 报名成功，更新状态
-                    activity.value.isSignedUp = true
-                    activity.value.currentCount += 1
+    // 如果已报名，执行取消报名逻辑
+    if (activity.value.isSignedUp) {
+        // 判断报名状态
+        if (activity.value.enrollStatus === '1') {
+            uni.showToast({
+                title: '您已签到，无法取消报名',
+                icon: 'none'
+            })
+            return
+        }
+        if (activity.value.enrollStatus === '2') {
+            uni.showToast({
+                title: '活动已完成，无法取消报名',
+                icon: 'none'
+            })
+            return
+        }
+        if (activity.value.enrollStatus === '3') {
+            uni.showToast({
+                title: '您已经取消过该活动报名了',
+                icon: 'none'
+            })
+            return
+        }
 
-                    uni.showToast({
-                        title: '报名成功',
-                        icon: 'success'
-                    })
-                } catch (error) {
-                    console.error('报名失败:', error)
-                    uni.showToast({
-                        title: error.message || '报名失败',
-                        icon: 'none'
-                    })
+        // 弹出取消确认
+        uni.showModal({
+            title: '取消报名',
+            content: `确定要取消报名"${activity.value.title}"吗？`,
+            success: async (res) => {
+                if (res.confirm) {
+                    try {
+                        // 调用取消报名接口
+                        await cancelEnroll({
+                            activityId: Number(activity.value.id),
+                            studentId: Number(userInfo.studentId)
+                        })
+
+                        // 取消成功，更新状态
+                        activity.value.isSignedUp = false
+                        activity.value.enrollStatus = '3'
+                        activity.value.currentCount -= 1
+
+                        uni.showToast({
+                            title: '取消报名成功',
+                            icon: 'success'
+                        })
+                    } catch (error) {
+                        console.error('取消报名失败:', error)
+                        uni.showToast({
+                            title: error.message || '取消报名失败',
+                            icon: 'none'
+                        })
+                    }
                 }
             }
-        }
-    })
+        })
+    } else {
+        // 执行报名逻辑
+        uni.showModal({
+            title: '确认报名',
+            content: `确定要报名参加"${activity.value.title}"吗？`,
+            success: async (res) => {
+                if (res.confirm) {
+                    try {
+                        // 调用报名接口
+                        await enrollActivity({
+                            activityId: Number(activity.value.id),
+                            studentId: Number(userInfo.studentId)
+                        })
+
+                        // 报名成功，更新状态
+                        activity.value.isSignedUp = true
+                        activity.value.enrollStatus = '0'
+                        activity.value.currentCount += 1
+
+                        uni.showToast({
+                            title: '报名成功',
+                            icon: 'success'
+                        })
+                    } catch (error) {
+                        console.error('报名失败:', error)
+                        uni.showToast({
+                            title: error.message || '报名失败',
+                            icon: 'none'
+                        })
+                    }
+                }
+            }
+        })
+    }
 }
 
 // 加载活动详情
@@ -334,8 +425,12 @@ const loadActivityDetail = async (id) => {
     try {
         console.log('加载活动详情, ID:', id)
 
-        // 调用活动详情接口
-        const res = await getActivityDetail(id)
+        // 获取用户信息
+        const userInfo = uni.getStorageSync('userInfo')
+        const studentId = userInfo?.studentId
+
+        // 调用活动详情接口，传递 studentId 参数
+        const res = await getActivityDetail(id, studentId ? { studentId: Number(studentId) } : {})
         console.log('活动详情响应:', res)
 
         // API返回的数据在 data.activity 中
@@ -369,7 +464,10 @@ const loadActivityDetail = async (id) => {
             address: activityData.activityLocation || '',
             latitude: activityData.latitude || 0,
             longitude: activityData.longitude || 0,
-            isSignedUp: res.isRegistered === true || res.isRegistered === 'Y'
+            isSignedUp: res.isRegistered === true || res.isRegistered === 'Y',
+            // 报名状态: 0=已报名, 1=已签到, 2=已完成, 3=已取消
+            // 如果后端返回了enrollStatus就使用，否则已报名的默认为'0'
+            enrollStatus: res.enrollStatus || (res.isRegistered === true || res.isRegistered === 'Y' ? '0' : null)
         }
 
         console.log('活动详情加载成功:', activity.value)

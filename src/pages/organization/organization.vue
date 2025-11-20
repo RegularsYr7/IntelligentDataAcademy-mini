@@ -115,8 +115,9 @@ const loadCarouselOrganizations = async () => {
         const res = await getCarouselOrganizations()
         console.log('轮播组织响应:', res)
 
-        if (res && res.rows) {
-            banners.value = res.rows.map(org => ({
+        // 后端返回的是数组，直接使用
+        if (res && Array.isArray(res)) {
+            banners.value = res.map(org => ({
                 id: org.organizationId,
                 image: org.recommendImage || org.organizationLogo || 'https://picsum.photos/800/400?random=' + org.organizationId,
                 title: org.organizationName,
@@ -232,8 +233,13 @@ const switchFilter = (value) => {
 
 // 跳转轮播图详情
 const goToBanner = (banner) => {
-    // 可以跳转到对应组织详情
+    // 跳转到对应组织详情
     console.log('点击轮播图', banner)
+    if (banner && banner.id) {
+        uni.navigateTo({
+            url: `/pages/organization-detail/organization-detail?id=${banner.id}`
+        })
+    }
 }
 
 // 跳转组织详情

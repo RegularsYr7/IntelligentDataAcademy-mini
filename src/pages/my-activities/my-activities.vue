@@ -30,47 +30,50 @@
                 </scroll-view>
             </view>
 
-            <!-- 活动列表 -->
-            <view class="activity-list">
-                <view class="activity-item" v-for="(activity, index) in displayActivities" :key="index"
-                    @tap="goToDetail(activity)">
-                    <image class="activity-image" :src="activity.image" mode="aspectFill"></image>
-                    <view class="activity-info">
-                        <view class="activity-header">
-                            <text class="activity-title">{{ activity.title }}</text>
-                            <view class="activity-status" :class="'status-' + activity.status">
-                                <text class="status-text">{{ getStatusText(activity.status) }}</text>
+            <!-- 活动列表 - 使用组件 -->
+            <RefreshLoadList ref="listRef" :api="getMyActivities" :params="listParams" :dataMapping="mapActivityData"
+                :pageSize="10" emptyIcon="📅" :emptyText="'暂无' + getCurrentFilterText() + '活动'"
+                @load-success="onLoadSuccess" :customDataExtractor="extractActivityList">
+                <template #default="{ items }">
+                    <view class="activity-list">
+                        <view class="activity-item" v-for="activity in items" :key="activity.id"
+                            @tap="goToDetail(activity)">
+                            <image class="activity-image" :src="activity.image" mode="aspectFill"></image>
+                            <view class="activity-info">
+                                <view class="activity-header">
+                                    <text class="activity-title">{{ activity.title }}</text>
+                                    <view class="activity-status" :class="'status-' + activity.status">
+                                        <text class="status-text">{{ getStatusText(activity.status) }}</text>
+                                    </view>
+                                </view>
+                                <view class="activity-meta">
+                                    <view class="meta-item">
+                                        <text class="meta-icon">📅</text>
+                                        <text class="meta-text">{{ activity.date }}</text>
+                                    </view>
+                                    <view class="meta-item">
+                                        <text class="meta-icon">📍</text>
+                                        <text class="meta-text">{{ activity.location }}</text>
+                                    </view>
+                                </view>
+                                <view class="activity-footer">
+                                    <view class="footer-left">
+                                        <text class="credit-badge">{{ activity.credit }} 学分</text>
+                                        <text class="points-badge">{{ activity.points }} 积分</text>
+                                    </view>
+                                    <text class="organizer">{{ activity.organizer }}</text>
+                                </view>
                             </view>
-                        </view>
-                        <view class="activity-meta">
-                            <view class="meta-item">
-                                <text class="meta-icon">📅</text>
-                                <text class="meta-text">{{ activity.date }}</text>
-                            </view>
-                            <view class="meta-item">
-                                <text class="meta-icon">📍</text>
-                                <text class="meta-text">{{ activity.location }}</text>
-                            </view>
-                        </view>
-                        <view class="activity-footer">
-                            <view class="footer-left">
-                                <text class="credit-badge">{{ activity.credit }} 学分</text>
-                                <text class="points-badge">{{ activity.points }} 积分</text>
-                            </view>
-                            <text class="organizer">{{ activity.organizer }}</text>
                         </view>
                     </view>
-                </view>
+                </template>
 
-                <!-- 空状态 -->
-                <view class="empty-state" v-if="displayActivities.length === 0">
-                    <text class="empty-icon">📅</text>
-                    <text class="empty-text">暂无{{ getCurrentFilterText() }}活动</text>
+                <template #empty>
                     <view class="empty-action" @tap="goToActivityList">
                         <text class="action-text">去发现活动</text>
                     </view>
-                </view>
-            </view>
+                </template>
+            </RefreshLoadList>
         </view>
     </view>
 </template>
@@ -78,195 +81,137 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import RefreshLoadList from '@/components/RefreshLoadList/RefreshLoadList.vue'
+import { getMyActivities } from '@/api/student'
 
+const listRef = ref(null)
 const currentFilter = ref('all')
 
 // 筛选选项
 const filters = ref([
     { label: '全部', value: 'all', icon: '📋', count: 0 },
-    { label: '进行中', value: 'ongoing', icon: '🔥', count: 0 },
-    { label: '即将开始', value: 'upcoming', icon: '⏰', count: 0 },
-    { label: '已完成', value: 'completed', icon: '✅', count: 0 }
+    { label: '未开始', value: '0', icon: '⏰', count: 0 },
+    { label: '进行中', value: '1', icon: '🔥', count: 0 },
+    { label: '已结束', value: '2', icon: '✅', count: 0 }
 ])
-
-// 我的活动数据
-const myActivities = ref([
-    {
-        id: 1,
-        title: '人工智能前沿技术讲座',
-        image: 'https://picsum.photos/400/300?random=30',
-        date: '2025-11-05 14:00',
-        location: '学术报告厅A101',
-        status: 'upcoming',
-        credit: 2,
-        points: 10,
-        organizer: '科技创新协会'
-    },
-    {
-        id: 2,
-        title: '校园运动会志愿者服务',
-        image: 'https://picsum.photos/400/300?random=31',
-        date: '2025-11-03 08:00',
-        location: '田径场',
-        status: 'ongoing',
-        credit: 1,
-        points: 5,
-        organizer: '学生会'
-    },
-    {
-        id: 3,
-        title: '编程马拉松大赛',
-        image: 'https://picsum.photos/400/300?random=32',
-        date: '2025-10-20 09:00',
-        location: '计算机楼301',
-        status: 'completed',
-        credit: 3,
-        points: 15,
-        organizer: '计算机协会'
-    },
-    {
-        id: 4,
-        title: '职业规划讲座',
-        image: 'https://picsum.photos/400/300?random=33',
-        date: '2025-10-15 15:00',
-        location: '多功能厅',
-        status: 'completed',
-        credit: 1,
-        points: 5,
-        organizer: '就业指导中心'
-    },
-    {
-        id: 5,
-        title: '社团招新活动',
-        image: 'https://picsum.photos/400/300?random=34',
-        date: '2025-10-10 14:00',
-        location: '学生活动中心',
-        status: 'completed',
-        credit: 0,
-        points: 3,
-        organizer: '社团联合会'
-    },
-    {
-        id: 6,
-        title: '创新创业分享会',
-        image: 'https://picsum.photos/400/300?random=35',
-        date: '2025-11-12 16:00',
-        location: '创业园B座',
-        status: 'upcoming',
-        credit: 2,
-        points: 8,
-        organizer: '创业实践社'
-    }
-])
-
-// 筛选后的活动列表
-const displayActivities = computed(() => {
-    if (currentFilter.value === 'all') {
-        return myActivities.value
-    }
-    return myActivities.value.filter(activity => activity.status === currentFilter.value)
-})
 
 // 统计数据
-const totalActivities = computed(() => myActivities.value.length)
+const totalActivities = ref(0)
+const totalCredits = ref(0)
+const totalPoints = ref(0)
 
-const totalCredits = computed(() => {
-    return myActivities.value.reduce((sum, activity) => sum + activity.credit, 0)
+// 列表请求参数
+const listParams = computed(() => {
+    const userInfo = uni.getStorageSync('userInfo')
+    const params = {
+        studentId: userInfo?.studentId ? Number(userInfo.studentId) : null
+    }
+
+    // 添加状态筛选 - 只有非 'all' 时才传递 activityStatus
+    if (currentFilter.value !== 'all') {
+        params.activityStatus = currentFilter.value  // "0"=未开始, "1"=进行中, "2"=已结束
+    }
+
+    return params
 })
 
-const totalPoints = computed(() => {
-    return myActivities.value.reduce((sum, activity) => sum + activity.points, 0)
-})
+// 格式化时间
+const formatDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return '时间待定'
+
+    try {
+        const date = new Date(dateTimeStr)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+
+        return `${year}-${month}-${day} ${hours}:${minutes}`
+    } catch (error) {
+        console.error('时间格式化失败:', error)
+        return dateTimeStr
+    }
+}
+
+// 数据映射函数
+const mapActivityData = (item) => {
+    return {
+        id: item.activityId,
+        title: item.activityName || item.name,
+        image: item.coverImage || item.activityImage || 'https://picsum.photos/400/300?random=' + item.activityId,
+        date: formatDateTime(item.activityStartTime || item.startTime || item.date),
+        location: item.activityLocation || item.location || '未知地点',
+        status: mapActivityStatus(item.activityStatus || item.status),
+        credit: item.creditValue || item.credit || 0,
+        points: item.scoreValue || item.points || 0,
+        organizer: item.organizerNames || item.organizer
+    }
+}
+
+// 映射活动状态 - 后端状态码转前端显示状态
+const mapActivityStatus = (status) => {
+    const statusMap = {
+        '0': 'upcoming',    // 未开始
+        '1': 'ongoing',     // 进行中
+        '2': 'completed'    // 已结束
+    }
+    return statusMap[status] || status
+}
+
+// 自定义数据提取函数 - 从后端响应中提取活动列表和统计数据
+const extractActivityList = (response) => {
+    console.log('后端响应数据:', response)
+
+    // 更新统计数据
+    if (response.totalCredits !== undefined) {
+        totalCredits.value = response.totalCredits
+    }
+    if (response.totalPoints !== undefined) {
+        totalPoints.value = response.totalPoints
+    }
+    if (response.participantCount !== undefined) {
+        totalActivities.value = response.participantCount
+    }
+
+    // 返回活动列表
+    return response.activityList || []
+}
+
+// 数据加载成功回调
+const onLoadSuccess = (result) => {
+    console.log('活动列表加载成功:', result)
+    updateFilterCounts()
+}
 
 // 更新筛选项计数
 const updateFilterCounts = () => {
-    filters.value[0].count = myActivities.value.length
-    filters.value[1].count = myActivities.value.filter(a => a.status === 'ongoing').length
-    filters.value[2].count = myActivities.value.filter(a => a.status === 'upcoming').length
-    filters.value[3].count = myActivities.value.filter(a => a.status === 'completed').length
+    if (listRef.value && listRef.value.listData) {
+        const activities = listRef.value.listData
+        filters.value[0].count = activities.length  // 全部
+        filters.value[1].count = activities.filter(a => a.status === 'upcoming').length  // 未开始
+        filters.value[2].count = activities.filter(a => a.status === 'ongoing').length   // 进行中
+        filters.value[3].count = activities.filter(a => a.status === 'completed').length // 已结束
+
+        // 统计数据已在 extractActivityList 中更新,这里不再重复计算
+    }
 }
 
 onLoad(() => {
     console.log('我的活动页面加载')
-    updateFilterCounts()
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【我的活动页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取我的活动列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/activities/my')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        status: 'all', // all | upcoming | ongoing | finished
-        page: 1,
-        pageSize: 10
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    title: '大数据技术分享会',
-                    cover: 'https://example.com/cover.jpg',
-                    category: 'lecture',
-                    status: 'upcoming',
-                    startTime: '2024-11-05 14:00',
-                    endTime: '2024-11-05 16:00',
-                    location: '教学楼A301',
-                    organization: { id: 1, name: '数据科学社团' },
-                    participants: 45,
-                    maxParticipants: 100,
-                    registrationTime: '2024-10-20 10:30', // 报名时间
-                    isSignedIn: false, // 是否已签到
-                    signInTime: null // 签到时间
-                }
-            ],
-            total: 25,
-            statusCounts: {
-                all: 25,
-                upcoming: 8,
-                ongoing: 2,
-                finished: 15
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📍 接口2: 取消报名')
-    console.log('━'.repeat(80))
-    console.log('请求方式: DELETE')
-    console.log('接口路径: /api/activities/:id/register')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('📝 只能取消upcoming状态的活动,ongoing和finished不允许取消')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
+// 切换筛选
+const switchFilter = (value) => {
+    currentFilter.value = value
 }
 
 // 获取状态文本
 const getStatusText = (status) => {
     const statusMap = {
+        upcoming: '未开始',
         ongoing: '进行中',
-        upcoming: '即将开始',
-        completed: '已完成'
+        completed: '已结束'
     }
     return statusMap[status] || ''
 }
@@ -275,11 +220,6 @@ const getStatusText = (status) => {
 const getCurrentFilterText = () => {
     const filter = filters.value.find(f => f.value === currentFilter.value)
     return filter && filter.value !== 'all' ? filter.label : ''
-}
-
-// 切换筛选
-const switchFilter = (value) => {
-    currentFilter.value = value
 }
 
 // 跳转到活动详情

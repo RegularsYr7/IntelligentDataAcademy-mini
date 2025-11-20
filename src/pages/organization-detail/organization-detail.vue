@@ -111,7 +111,12 @@
                     <text class="btn-icon">⚙️</text>
                     <text class="btn-text">管理组织</text>
                 </button>
-                <!-- 非管理员显示申请加入按钮 -->
+                <!-- 普通成员显示已加入状态 -->
+                <button v-else-if="isMember" class="action-btn disabled-btn full-width" disabled>
+                    <text class="btn-icon">✓</text>
+                    <text class="btn-text">已加入</text>
+                </button>
+                <!-- 非成员显示申请加入按钮 -->
                 <button v-else class="action-btn primary-btn full-width" @tap="joinOrg">
                     <text class="btn-icon">✨</text>
                     <text class="btn-text">申请加入</text>
@@ -125,6 +130,9 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getOrganizationDetail, applyOrganization } from '@/api/organization'
+
+// 是否为组织成员
+const isMember = ref(false)
 
 // 是否为管理员
 const isAdmin = ref(false)
@@ -185,11 +193,15 @@ const loadOrgDetail = async (id) => {
             }
 
             // 设置是否为成员和角色
-            if (res.isMember) {
+            isMember.value = res.isMember === true || res.isMember === 'Y'
+            if (isMember.value) {
+                // memberRole 可能的值: 'president'(会长), 'admin'(管理员), 'member'(普通成员)
                 isAdmin.value = res.memberRole === 'president' || res.memberRole === 'admin'
             }
 
             console.log('组织详情加载成功:', organization.value)
+            console.log('是否为成员:', isMember.value)
+            console.log('是否为管理员:', isAdmin.value)
         }
     } catch (error) {
         console.error('加载组织详情失败:', error)
@@ -298,6 +310,16 @@ const manageOrg = () => {
 // 申请加入
 const joinOrg = async () => {
     try {
+        // 获取用户信息
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
         const res = await uni.showModal({
             title: '申请加入',
             content: `确定要申请加入${organization.value.name}吗？`,
@@ -309,7 +331,8 @@ const joinOrg = async () => {
             const applyReason = res.content || '我想加入这个组织'
 
             await applyOrganization({
-                organizationId: organization.value.id,
+                studentId: Number(userInfo.studentId),
+                organizationId: Number(organization.value.id),
                 applyReason: applyReason
             })
 
@@ -591,6 +614,15 @@ const joinOrg = async () => {
     .btn-icon,
     .btn-text {
         color: #fff;
+    }
+}
+
+.disabled-btn {
+    background: #f5f5f5;
+
+    .btn-icon,
+    .btn-text {
+        color: #999;
     }
 }
 

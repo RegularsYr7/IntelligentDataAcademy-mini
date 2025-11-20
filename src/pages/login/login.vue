@@ -109,16 +109,21 @@ const accountLogin = async (formData) => {
 
     try {
         // 调用登录接口
-        const data = await login({
+        const response = await login({
             studentNo: formData.username,
             password: formData.password
         })
 
-        console.log('登录响应数据:', data)
+        console.log('登录响应数据:', response)
 
-        // 保存token（如果后端返回了token，否则使用临时token）
-        const token = data.token || 'temp_token_' + Date.now()
+        // 保存 token
+        const token = response.token
+        console.log('准备保存的 token:', token)
         uni.setStorageSync('userToken', token)
+        console.log('token 保存成功，验证:', uni.getStorageSync('userToken'))
+
+        // 获取用户数据
+        const data = response.data
 
         // 构建用户信息对象
         const userInfo = {
@@ -129,7 +134,7 @@ const accountLogin = async (formData) => {
             studentNo: data.studentNo,
             quantificationScore: data.quantitativeScore || 0,
             idCard: data.idCard,
-            phone: data.phone || '',
+            phone: data.phoneCode || '',
 
             // ========== 学籍信息 ==========
             schoolId: data.schoolId,
@@ -322,13 +327,18 @@ const getPhoneNumber = async (e) => {
         try {
             console.log('调用微信登录接口，code:', code)
 
-            const data = await loginByWechat(code)
+            const response = await loginByWechat(code)
 
-            console.log('微信登录响应数据:', data)
+            console.log('微信登录响应数据:', response)
 
-            // 保存token
-            const token = data.token || 'temp_token_' + Date.now()
+            // 保存 token
+            const token = response.token
+            console.log('准备保存的 token:', token)
             uni.setStorageSync('userToken', token)
+            console.log('token 保存成功，验证:', uni.getStorageSync('userToken'))
+
+            // 获取用户数据
+            const data = response.data
 
             // 构建用户信息对象（与账号密码登录保持一致）
             const userInfo = {
@@ -339,7 +349,7 @@ const getPhoneNumber = async (e) => {
                 studentNo: data.studentNo,
                 quantificationScore: data.quantitativeScore || 0,
                 idCard: data.idCard,
-                phone: data.phone || '',
+                phone: data.phoneCode || '',
 
                 // ========== 学籍信息 ==========
                 schoolId: data.schoolId,

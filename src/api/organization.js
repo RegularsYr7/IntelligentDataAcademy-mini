@@ -34,8 +34,9 @@ export const getCarouselOrganizations = (params) => {
 /**
  * 申请加入组织
  * @param {Object} data - 申请信息
- * @param {string} data.organizationId - 组织ID
- * @param {string} data.applyReason - 申请理由
+ * @param {number} data.studentId - 学生ID
+ * @param {number} data.organizationId - 组织ID
+ * @param {string} data.applyReason - 申请理由(可选)
  */
 export const applyOrganization = (data) => {
   return request.post("/edu/organization/apply", data);

@@ -33,81 +33,97 @@
                 </view>
             </view>
 
-            <!-- 帖子列表 -->
-            <view class="post-list">
-                <view class="post-item" v-for="(item, index) in postList" :key="index" @tap="viewPost(item)">
-                    <view class="post-header">
-                        <image class="user-avatar" :src="item.userAvatar" mode="aspectFill"></image>
-                        <view class="user-info">
-                            <view class="user-name-row">
-                                <text class="user-name">{{ item.userName }}</text>
+            <!-- 帖子列表 - 使用 RefreshLoadList 组件 -->
+            <view class="list-container">
+                <RefreshLoadList ref="listRef" :api="currentApi" :params="listParams" :dataMapping="mapPostData"
+                    :pageSize="10" emptyIcon="📝" emptyText="暂无内容">
+                    <template #default="{ items }">
+                        <view class="post-list">
+                            <view class="post-item" v-for="(item, index) in items" :key="index" @tap="viewPost(item)">
+                                <view class="post-header">
+                                    <image class="user-avatar" :src="item.userAvatar" mode="aspectFill"></image>
+                                    <view class="user-info">
+                                        <view class="user-name-row">
+                                            <text class="user-name">{{ item.userName }}</text>
+                                        </view>
+                                        <text class="post-time">{{ item.time }}</text>
+                                    </view>
+                                    <view class="follow-btn" v-if="!item.isFollowed" @tap.stop="followUser(item)">
+                                        <text class="follow-text">+ 关注</text>
+                                    </view>
+                                </view>
+
+                                <view class="post-content">
+                                    <text class="post-title">{{ item.title }}</text>
+                                    <text class="post-detail" v-if="item.detail">{{ item.detail }}</text>
+
+                                    <!-- 图片列表 -->
+                                    <view class="post-images" v-if="item.images && item.images.length > 0"
+                                        :class="'images-' + item.images.length">
+                                        <image class="post-image" v-for="(img, idx) in item.images" :key="idx"
+                                            :src="img" mode="aspectFill" @tap.stop="previewImage(item.images, idx)">
+                                        </image>
+                                    </view>
+
+                                    <!-- 标签 -->
+                                    <view class="post-tags" v-if="item.tags && item.tags.length > 0">
+                                        <text class="tag" v-for="(tag, idx) in item.tags" :key="idx"
+                                            @tap.stop="searchTag(tag)">#{{ tag }}</text>
+                                    </view>
+                                </view>
+
+                                <view class="post-footer">
+                                    <view class="footer-item" @tap.stop="toggleLike(item)">
+                                        <text class="icon" :class="{ liked: item.isLiked }">{{ item.isLiked ? '❤️' :
+                                            '🤍'
+                                            }}</text>
+                                        <text class="count" :class="{ liked: item.isLiked }">{{ item.likes }}</text>
+                                    </view>
+                                    <view class="footer-item" @tap.stop="viewComments(item)">
+                                        <text class="icon">💬</text>
+                                        <text class="count">{{ item.comments }}</text>
+                                    </view>
+                                    <view class="footer-item" @tap.stop="collectPost(item)">
+                                        <text class="icon">{{ item.isCollected ? '⭐' : '☆' }}</text>
+                                        <text class="count">{{ item.collects }}</text>
+                                    </view>
+                                </view>
                             </view>
-                            <text class="post-time">{{ item.time }}</text>
                         </view>
-                        <view class="follow-btn" v-if="!item.isFollowed" @tap.stop="followUser(item)">
-                            <text class="follow-text">+ 关注</text>
-                        </view>
-                    </view>
+                    </template>
 
-                    <view class="post-content">
-                        <text class="post-title">{{ item.title }}</text>
-                        <text class="post-detail" v-if="item.detail">{{ item.detail }}</text>
-
-                        <!-- 图片列表 -->
-                        <view class="post-images" v-if="item.images && item.images.length > 0"
-                            :class="'images-' + item.images.length">
-                            <image class="post-image" v-for="(img, idx) in item.images" :key="idx" :src="img"
-                                mode="aspectFill" @tap.stop="previewImage(item.images, idx)"></image>
-                        </view>
-
-                        <!-- 标签 -->
-                        <view class="post-tags" v-if="item.tags && item.tags.length > 0">
-                            <text class="tag" v-for="(tag, idx) in item.tags" :key="idx" @tap.stop="searchTag(tag)">#{{
-                                tag }}</text>
-                        </view>
-                    </view>
-
-                    <view class="post-footer">
-                        <view class="footer-item" @tap.stop="toggleLike(item)">
-                            <text class="icon" :class="{ liked: item.isLiked }">{{ item.isLiked ? '❤️' : '🤍'
-                                }}</text>
-                            <text class="count" :class="{ liked: item.isLiked }">{{ item.likes }}</text>
-                        </view>
-                        <view class="footer-item" @tap.stop="viewComments(item)">
-                            <text class="icon">💬</text>
-                            <text class="count">{{ item.comments }}</text>
-                        </view>
-                        <view class="footer-item" @tap.stop="collectPost(item)">
-                            <text class="icon">{{ item.isCollected ? '⭐' : '☆' }}</text>
-                            <text class="count">{{ item.collects }}</text>
-                        </view>
-                        <view class="footer-item" @tap.stop="sharePost(item)">
-                            <text class="icon">📤</text>
-                            <text class="count">分享</text>
-                        </view>
-                    </view>
-                </view>
-            </view>
-
-            <!-- 空状态 -->
-            <view class="empty-state" v-if="postList.length === 0">
-                <text class="empty-icon">📝</text>
-                <text class="empty-text">暂无内容</text>
-                <text class="empty-hint">快来发布第一条帖子吧~</text>
-            </view>
-
-            <!-- 发布按钮 -->
-            <view class="fab-btn" @tap="publishPost">
+                    <template #empty>
+                        <!-- <view class="empty-action" @tap="publishPost">
+                            <text class="action-text">快来发布第一条帖子吧~</text>
+                        </view> -->
+                    </template>
+                </RefreshLoadList>
+            </view> <!-- 发布按钮 -->
+            <!-- <view class="fab-btn" @tap="publishPost">
                 <text class="fab-icon">✏️</text>
-            </view>
+            </view> -->
         </view>
     </view>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import RefreshLoadList from '@/components/RefreshLoadList/RefreshLoadList.vue'
+import {
+    getPostList,
+    getPostsByCreateTime,
+    getPostsByFollowing,
+    getPostsByViewCount,
+    likePost,
+    unlikePost,
+    collectPost as collectPostApi,
+    uncollectPost,
+    followUser as followUserApi,
+    unfollowUser
+} from '@/api/community'
 
+const listRef = ref(null)
 const searchKeyword = ref('')
 const unreadCount = ref(3)
 const currentCategory = ref('all')
@@ -125,15 +141,6 @@ const categories = ref([
     { id: 'tech', name: '技术', icon: '💻' }
 ])
 
-// 热门话题
-const hotTopics = ref([
-    { id: 1, title: '期末复习攻略', count: 2365 },
-    { id: 2, title: '校园美食推荐', count: 1892 },
-    { id: 3, title: '实习经验分享', count: 1567 },
-    { id: 4, title: '考研交流', count: 1234 },
-    { id: 5, title: '社团招新', count: 998 }
-])
-
 // 排序选项
 const sortOptions = ref([
     { label: '热门', value: 'hot' },
@@ -141,239 +148,119 @@ const sortOptions = ref([
     { label: '关注', value: 'follow' }
 ])
 
-// 帖子列表
-const postList = ref([
-    {
-        id: 1,
-        userAvatar: 'https://picsum.photos/100/100?random=31',
-        userName: '学习委员',
-        time: '10分钟前',
-        title: '高数期末复习重点整理,学弟学妹们快来看!',
-        detail: '马上期末考试了,整理了一份高数的重点知识点和常考题型,希望能帮到大家。重点章节包括:极限、导数、积分、微分方程等...',
-        images: ['https://picsum.photos/400/300?random=41', 'https://picsum.photos/400/300?random=42', 'https://picsum.photos/400/300?random=43'],
-        tags: ['学习', '高数', '期末复习'],
-        likes: 328,
-        comments: 56,
-        collects: 189,
-        isLiked: false,
-        isCollected: false,
-        isFollowed: false
-    },
-    {
-        id: 2,
-        userAvatar: 'https://picsum.photos/100/100?random=32',
-        userName: '代码诗人',
-        time: '1小时前',
-        title: 'Python爬虫实战教程,从入门到进阶',
-        detail: '最近做了一个爬虫项目,踩了不少坑,分享一下经验。包括:反爬虫处理、数据清洗、多线程优化等技巧。',
-        images: ['https://picsum.photos/400/300?random=44'],
-        tags: ['编程', 'Python', '爬虫'],
-        likes: 256,
-        comments: 43,
-        collects: 124,
-        isLiked: true,
-        isCollected: true,
-        isFollowed: false
-    },
-    {
-        id: 3,
-        userAvatar: 'https://picsum.photos/100/100?random=33',
-        userName: '美食探索家',
-        time: '2小时前',
-        title: '学校周边超好吃的10家餐厅推荐!',
-        detail: '作为一个资深吃货,把学校附近好吃的店都吃了个遍,今天给大家推荐10家性价比超高的餐厅~',
-        images: [
-            'https://picsum.photos/400/300?random=45',
-            'https://picsum.photos/400/300?random=46',
-            'https://picsum.photos/400/300?random=47',
-            'https://picsum.photos/400/300?random=48'
-        ],
-        tags: ['美食', '探店', '校园生活'],
-        likes: 523,
-        comments: 89,
-        collects: 267,
-        isLiked: false,
-        isCollected: false,
-        isFollowed: true
-    },
-    {
-        id: 4,
-        userAvatar: 'https://picsum.photos/100/100?random=34',
-        userName: '运动达人',
-        time: '5小时前',
-        title: '健身房使用指南,新生必看!',
-        detail: '学校健身房开放时间、收费标准、器材使用注意事项全攻略。',
-        tags: ['运动', '健身', '新生指南'],
-        likes: 167,
-        comments: 34,
-        collects: 92,
-        isLiked: false,
-        isCollected: false,
-        isFollowed: false
-    },
-    {
-        id: 5,
-        userAvatar: 'https://picsum.photos/100/100?random=35',
-        userName: '求职小白',
-        time: '1天前',
-        title: '字节跳动实习面试经验分享',
-        detail: '刚拿到字节的实习offer,分享一下面试流程和准备经验,希望能帮到正在找实习的同学们。',
-        images: ['https://picsum.photos/400/300?random=49', 'https://picsum.photos/400/300?random=50'],
-        tags: ['实习', '面试经验', '字节跳动'],
-        likes: 489,
-        comments: 78,
-        collects: 234,
-        isLiked: true,
-        isCollected: false,
-        isFollowed: false
-    },
-    {
-        id: 6,
-        userAvatar: 'https://picsum.photos/100/100?random=36',
-        userName: '英语学习者',
-        time: '1天前',
-        title: '四级考试高分秘籍,亲测有效!',
-        detail: '上次考了620分,分享一下我的备考经验和学习方法。重点:词汇积累、听力训练、阅读技巧、写作模板。',
-        tags: ['英语', '四级', '学习方法'],
-        likes: 412,
-        comments: 67,
-        collects: 298,
-        isLiked: false,
-        isCollected: true,
-        isFollowed: false
-    },
-    {
-        id: 7,
-        userAvatar: 'https://picsum.photos/100/100?random=37',
-        userName: '社团负责人',
-        time: '2天前',
-        title: '计算机协会招新啦!欢迎新成员加入',
-        detail: '我们是一个充满活力的技术社团,定期举办技术分享会、项目实战、竞赛培训等活动。无论你是小白还是大神,都欢迎加入!',
-        images: ['https://picsum.photos/400/300?random=51'],
-        tags: ['社团', '招新', '计算机'],
-        likes: 234,
-        comments: 45,
-        collects: 67,
-        isLiked: false,
-        isCollected: false,
-        isFollowed: false
-    },
-    {
-        id: 8,
-        userAvatar: 'https://picsum.photos/100/100?random=38',
-        userName: '摄影爱好者',
-        time: '3天前',
-        title: '校园秋景大片来袭,美哭了!',
-        detail: '趁着秋高气爽,拍了一组校园秋景照片,分享给大家~',
-        images: [
-            'https://picsum.photos/400/300?random=52',
-            'https://picsum.photos/400/300?random=53',
-            'https://picsum.photos/400/300?random=54',
-            'https://picsum.photos/400/300?random=55',
-            'https://picsum.photos/400/300?random=56',
-            'https://picsum.photos/400/300?random=57'
-        ],
-        tags: ['摄影', '校园', '秋天'],
-        likes: 678,
-        comments: 123,
-        collects: 345,
-        isLiked: true,
-        isCollected: true,
-        isFollowed: true
+// 根据排序类型返回对应的 API
+const currentApi = computed(() => {
+    switch (currentSort.value) {
+        case 'hot':
+            return getPostsByViewCount  // 按浏览量（热门）
+        case 'latest':
+            return getPostsByCreateTime  // 按创建时间（最新）
+        case 'follow':
+            return getPostsByFollowing   // 关注的人
+        default:
+            return getPostList           // 默认列表
     }
-])
+})
+
+// 列表请求参数
+const listParams = computed(() => {
+    const params = {
+        currentStudentId: uni.getStorageSync('userInfo')?.studentId // 当前学生ID，用于查询交互状态
+    }
+
+    // 分类筛选参数
+    if (currentCategory.value === 'all') {
+        // 推荐分类：设置 isRecommended = "Y"
+        params.isRecommended = "Y"
+    } else {
+        // 其他分类：映射到后端 type 字段
+        const typeMapping = {
+            'study': '1',    // 学习
+            'life': '2',     // 生活
+            'activity': '3', // 活动
+            'job': '4',      // 求职
+            'food': '5',     // 美食
+            'sport': '6',    // 运动
+            'tech': '7'      // 技术
+        }
+        params.type = typeMapping[currentCategory.value]
+    }
+
+    // 搜索关键词参数
+    if (searchKeyword.value) {
+        params.search = searchKeyword.value
+    }
+
+    return params
+})
 
 onLoad(() => {
     console.log('社区页面加载')
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【社区问答页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
+// 数据映射函数 - 后端字段转前端格式
+const mapPostData = (item) => {
+    return {
+        id: item.postId,
+        studentId: item.studentId, // 保存学生ID，用于关注
+        userAvatar: item.studentAvatar || 'https://picsum.photos/100/100?random=' + item.studentId,
+        userName: item.studentName || '匿名用户',
+        time: formatTime(item.createTime),
+        title: item.title,
+        detail: item.contentPreview || '',
+        images: parseImages(item.images),
+        tags: parseTags(item.tags),
+        likes: item.likeCount || 0,
+        comments: item.commentCount || 0,
+        collects: item.collectCount || 0,
+        isLiked: item.isLiked || false,
+        isCollected: item.isCollected || false,
+        isFollowed: item.isFollowed || false
+    }
+}
 
-    console.log('📍 接口1: 获取帖子列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/posts')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        tab: 'recommend', // recommend | latest | hot
-        keyword: '', // 搜索关键词
-        page: 1,
-        pageSize: 10
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    title: '如何学好数据分析?',
-                    content: '最近在学习数据分析...',
-                    images: ['https://example.com/img1.jpg'],
-                    author: {
-                        id: 1,
-                        name: '张三',
-                        avatar: 'https://example.com/avatar.jpg'
-                    },
-                    likeCount: 128,
-                    commentCount: 45,
-                    viewCount: 1205,
-                    isLiked: false,
-                    isFavorited: false,
-                    createTime: '2024-11-01 10:30',
-                    tags: ['数据分析', '学习']
-                }
-            ],
-            total: 156
-        }
-    }, null, 2))
-    console.log('\n')
+// 解析图片字符串 - "url1,url2,url3" -> ["url1", "url2", "url3"]
+const parseImages = (imagesStr) => {
+    if (!imagesStr) return []
+    return imagesStr.split(',').filter(img => img.trim())
+}
 
-    console.log('📍 接口2: 点赞/取消点赞')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/posts/:id/like (点赞) 或 /api/posts/:id/unlike (取消)')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('\n')
+// 解析标签字符串 - "#学习,#高数,#期末复习" -> ["学习", "高数", "期末复习"]
+const parseTags = (tagsStr) => {
+    if (!tagsStr) return []
+    return tagsStr.split(',').map(tag => tag.trim().replace('#', '')).filter(tag => tag)
+}
 
-    console.log('📍 接口3: 收藏/取消收藏')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/posts/:id/favorite (收藏) 或 /api/posts/:id/unfavorite (取消)')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('\n')
+// 格式化时间
+const formatTime = (dateTimeStr) => {
+    if (!dateTimeStr) return ''
 
-    console.log('📚 数据字典')
-    console.log('━'.repeat(80))
-    console.log('tab类型:')
-    console.log('  - recommend: 推荐 (基于用户兴趣的算法推荐)')
-    console.log('  - latest: 最新 (按发布时间倒序)')
-    console.log('  - hot: 热门 (按点赞数+评论数综合排序)')
-    console.log('\n')
+    try {
+        const date = new Date(dateTimeStr)
+        const now = new Date()
+        const diff = now - date
 
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
+        const minutes = Math.floor(diff / 60000)
+        const hours = Math.floor(diff / 3600000)
+        const days = Math.floor(diff / 86400000)
+
+        if (minutes < 1) return '刚刚'
+        if (minutes < 60) return `${minutes}分钟前`
+        if (hours < 24) return `${hours}小时前`
+        if (days < 7) return `${days}天前`
+
+        // 超过7天显示日期
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${month}-${day}`
+    } catch (error) {
+        return dateTimeStr
+    }
 }
 
 // 搜索
 const searchContent = () => {
     if (searchKeyword.value.trim()) {
-        uni.showToast({
-            title: '搜索: ' + searchKeyword.value,
-            icon: 'none'
-        })
     }
 }
 
@@ -387,20 +274,13 @@ const goToMessage = () => {
 // 切换分类
 const switchCategory = (categoryId) => {
     currentCategory.value = categoryId
-    uni.showToast({
-        title: '切换到: ' + categories.value.find(c => c.id === categoryId).name,
-        icon: 'none'
-    })
+    // RefreshLoadList 会自动监听 listParams 变化并重新加载
 }
-
 
 // 切换排序
 const switchSort = (sortValue) => {
     currentSort.value = sortValue
-    uni.showToast({
-        title: '切换排序: ' + sortOptions.value.find(s => s.value === sortValue).label,
-        icon: 'none'
-    })
+    // RefreshLoadList 会自动监听 currentApi 和 listParams 变化并重新加载
 }
 
 // 查看帖子
@@ -411,12 +291,39 @@ const viewPost = (post) => {
 }
 
 // 关注用户
-const followUser = (post) => {
-    post.isFollowed = true
-    uni.showToast({
-        title: '已关注 ' + post.userName,
-        icon: 'success'
-    })
+const followUser = async (post) => {
+    try {
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
+        // 调用关注接口 - 传递所有必需参数
+        await followUserApi({
+            followerId: userInfo.studentId,                    // 关注者ID（当前用户）
+            followeeId: post.studentId,                        // 被关注者ID
+            followerName: userInfo.name,                       // 关注者姓名
+            followerAvatar: userInfo.avatar || '',             // 关注者头像（可选）
+            followeeName: post.userName,                       // 被关注者姓名
+            followeeAvatar: post.userAvatar || ''              // 被关注者头像（可选）
+        })
+
+        post.isFollowed = true
+        uni.showToast({
+            title: '已关注 ' + post.userName,
+            icon: 'success'
+        })
+    } catch (error) {
+        console.error('关注失败:', error)
+        uni.showToast({
+            title: '关注失败',
+            icon: 'none'
+        })
+    }
 }
 
 // 预览图片
@@ -436,13 +343,51 @@ const searchTag = (tag) => {
 }
 
 // 点赞
-const toggleLike = (post) => {
-    post.isLiked = !post.isLiked
-    post.likes += post.isLiked ? 1 : -1
-    uni.showToast({
-        title: post.isLiked ? '已点赞' : '取消点赞',
-        icon: 'none'
-    })
+const toggleLike = async (post) => {
+    try {
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
+        const isLiking = !post.isLiked
+
+        // 调用点赞/取消点赞接口 - 传递所有必需参数
+        if (isLiking) {
+            await likePost({
+                studentId: userInfo.studentId,           // 当前用户ID
+                postId: post.id,                         // 帖子ID
+                studentName: userInfo.name,              // 学生姓名
+                studentAvatar: userInfo.avatar || ''     // 学生头像（可选）
+            })
+        } else {
+            await unlikePost({
+                studentId: userInfo.studentId,           // 当前用户ID
+                postId: post.id,                         // 帖子ID
+                studentName: userInfo.name,              // 学生姓名
+                studentAvatar: userInfo.avatar || ''     // 学生头像（可选）
+            })
+        }
+
+        // 更新本地状态
+        post.isLiked = isLiking
+        post.likes += isLiking ? 1 : -1
+
+        uni.showToast({
+            title: isLiking ? '已点赞' : '取消点赞',
+            icon: 'none'
+        })
+    } catch (error) {
+        console.error('点赞操作失败:', error)
+        uni.showToast({
+            title: '操作失败',
+            icon: 'none'
+        })
+    }
 }
 
 // 查看评论
@@ -454,21 +399,49 @@ const viewComments = (post) => {
 }
 
 // 收藏
-const collectPost = (post) => {
-    post.isCollected = !post.isCollected
-    post.collects += post.isCollected ? 1 : -1
-    uni.showToast({
-        title: post.isCollected ? '已收藏' : '取消收藏',
-        icon: 'none'
-    })
-}
+const collectPost = async (post) => {
+    try {
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
 
-// 分享
-const sharePost = (post) => {
-    uni.showShareMenu({
-        title: post.title,
-        path: '/pages/qa/qa'
-    })
+        const isCollecting = !post.isCollected
+
+        // 调用收藏/取消收藏接口 - 传递所有必需参数
+        if (isCollecting) {
+            await collectPostApi({
+                studentId: userInfo.studentId,      // 当前用户ID
+                postId: post.id,                    // 帖子ID
+                studentName: userInfo.name          // 学生姓名
+            })
+        } else {
+            await uncollectPost({
+                studentId: userInfo.studentId,      // 当前用户ID
+                postId: post.id,                    // 帖子ID
+                studentName: userInfo.name          // 学生姓名
+            })
+        }
+
+        // 更新本地状态
+        post.isCollected = isCollecting
+        post.collects += isCollecting ? 1 : -1
+
+        uni.showToast({
+            title: isCollecting ? '已收藏' : '取消收藏',
+            icon: 'none'
+        })
+    } catch (error) {
+        console.error('收藏操作失败:', error)
+        uni.showToast({
+            title: '操作失败',
+            icon: 'none'
+        })
+    }
 }
 
 // 发布帖子
@@ -688,6 +661,11 @@ const publishPost = () => {
             border-radius: 2rpx;
         }
     }
+}
+
+/* 列表容器 */
+.list-container {
+    height: calc(100vh - 180rpx); // 减去顶部栏(88rpx) + 分类导航(80rpx) + 排序栏(约60rpx)
 }
 
 /* 帖子列表 */
@@ -955,6 +933,22 @@ const publishPost = () => {
         font-size: 24rpx;
         color: #ccc;
     }
+}
+
+.empty-action {
+    margin-top: 20rpx;
+    padding: 16rpx 40rpx;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 40rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-text {
+    font-size: 28rpx;
+    color: #fff;
+    font-weight: bold;
 }
 
 /* 悬浮发布按钮 */

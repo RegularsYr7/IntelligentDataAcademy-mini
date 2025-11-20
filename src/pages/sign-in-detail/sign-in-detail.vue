@@ -73,16 +73,7 @@
                 <text class="remark-text">{{ record.remark }}</text>
             </view>
 
-            <!-- 底部操作 -->
-            <view class="footer-actions">
-                <button class="action-btn secondary-btn" @tap="shareRecord">
-                    <text class="btn-icon">📤</text>
-                    <text>分享</text>
-                </button>
-                <button class="action-btn primary-btn" @tap="goBack">
-                    <text>返回</text>
-                </button>
-            </view>
+
         </view>
     </view>
 </template>
@@ -90,6 +81,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getRecordDetail } from '@/api/checkin'
 
 // 签到记录详情
 const record = ref({
@@ -101,9 +93,12 @@ const record = ref({
         longitude: null,
         address: ''
     },
-    status: 'success',
+    status: '1',
     remark: ''
 })
+
+// 加载中状态
+const loading = ref(false)
 
 // 地图标记
 const markers = computed(() => {
@@ -120,29 +115,47 @@ const markers = computed(() => {
 })
 
 // 加载记录详情
-const loadRecordDetail = (id) => {
-    // 从本地存储获取所有记录
-    const records = uni.getStorageSync('signInRecords') || []
+const loadRecordDetail = async (id) => {
+    if (!id) {
+        uni.showToast({
+            title: '记录ID缺失',
+            icon: 'none'
+        })
+        return
+    }
 
-    // 查找对应的记录
-    const foundRecord = records.find(r => r.id == id)
+    try {
+        loading.value = true
+        const res = await getRecordDetail(id)
 
-    if (foundRecord) {
-        record.value = foundRecord
-    } else {
-        // 如果找不到，使用模拟数据
+        console.log('签到详情返回:', res)
+
+        // 适配后端返回的数据结构
         record.value = {
-            id: id,
-            time: new Date().toISOString(),
-            photo: 'https://picsum.photos/300/400?random=' + id,
+            id: res.recordId,
+            taskId: res.taskId,
+            time: res.createTime,          // 使用 createTime 作为签到时间 "2025-11-19 22:01:14"
+            photo: res.photoUrl,
             location: {
-                latitude: 39.9042,
-                longitude: 116.4074,
-                address: '北京市海淀区中关村大街1号'
+                latitude: res.latitude,
+                longitude: res.longitude,
+                address: res.address || '未获取到地址信息'
             },
-            status: 'success',
-            remark: '今日签到正常'
+            status: res.checkinStatus,  // 1=正常 2=迟到 3=缺勤
+            remark: res.remark || '',
+            studentName: res.studentName,
+            studentNo: res.studentNo
         }
+
+        console.log('签到详情加载成功:', record.value)
+    } catch (error) {
+        console.error('获取签到详情失败:', error)
+        uni.showToast({
+            title: '获取详情失败',
+            icon: 'none'
+        })
+    } finally {
+        loading.value = false
     }
 }
 
@@ -165,9 +178,9 @@ const formatDateTime = (timeStr) => {
 // 获取状态文本
 const getStatusText = (status) => {
     const statusMap = {
-        'success': '签到成功',
-        'late': '迟到',
-        'absent': '缺勤'
+        '1': '签到成功',
+        '2': '迟到',
+        '3': '缺勤'
     }
     return statusMap[status] || '未知'
 }
@@ -401,17 +414,20 @@ const printAPIRequirements = () => {
     border-radius: 20rpx;
     font-size: 24rpx;
 
-    &.status-success {
+    // 状态 1=正常
+    &.status-1 {
         background: rgba(82, 196, 26, 0.1);
         color: #52c41a;
     }
 
-    &.status-late {
+    // 状态 2=迟到
+    &.status-2 {
         background: rgba(250, 173, 20, 0.1);
         color: #faad14;
     }
 
-    &.status-absent {
+    // 状态 3=缺勤
+    &.status-3 {
         background: rgba(245, 87, 108, 0.1);
         color: #f5576c;
     }

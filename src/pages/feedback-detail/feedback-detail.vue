@@ -50,8 +50,10 @@
                     <text class="title-icon">✏️</text>
                     <text class="title-text">追加说明</text>
                 </view>
-                <textarea class="append-input" v-model="appendContent" placeholder="可以在此追加更多信息或回复管理员..."
-                    maxlength="300" />
+                <view class="append-input-wrapper">
+                    <textarea class="append-input" v-model="appendContent" placeholder="可以在此追加更多信息或回复管理员..."
+                        maxlength="300" />
+                </view>
                 <view class="append-footer">
                     <text class="char-count">{{ appendContent.length }}/300</text>
                     <button class="append-btn" @tap="submitAppend" :disabled="!appendContent.trim()">
@@ -72,6 +74,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getFeedbackDetail, appendFeedback } from '@/api/feedback'
 
 // 反馈详情
 const feedback = ref({
@@ -89,35 +92,68 @@ const feedback = ref({
 // 追加内容
 const appendContent = ref('')
 
+// 加载中状态
+const loading = ref(false)
+
 // 加载详情
-const loadFeedbackDetail = (id) => {
-    // 从本地存储获取所有数据
-    const feedbacks = uni.getStorageSync('feedbackRecords') || []
+const loadFeedbackDetail = async (id) => {
+    if (!id) {
+        uni.showToast({
+            title: '反馈ID缺失',
+            icon: 'none'
+        })
+        return
+    }
 
-    // 查找对应的反馈
-    const foundFeedback = feedbacks.find(f => f.id == id)
+    try {
+        loading.value = true
+        const res = await getFeedbackDetail(id)
 
-    if (foundFeedback) {
-        feedback.value = foundFeedback
-    } else {
-        // 如果找不到，使用模拟数据
-        feedback.value = {
-            id: id,
-            type: 'course',
-            title: '数据结构课程难度建议',
-            description: '建议增加更多实例讲解，帮助理解算法复杂度的概念。希望老师能在讲解理论的同时，多举一些实际应用的例子。',
-            photos: [],
-            contact: '',
-            status: 'processing',
-            createTime: new Date().toISOString(),
-            replies: [
-                {
-                    content: '感谢您的建议，我们已经收到反馈，会在后续课程中增加实例讲解。',
-                    time: new Date(Date.now() - 3600000).toISOString(),
-                    isAdmin: true
-                }
-            ]
+        console.log('反馈详情返回:', res)
+
+        // 状态映射：后端 -> 前端
+        const statusMap = {
+            '0': 'pending',    // 待处理
+            '1': 'processing', // 处理中
+            '2': 'resolved'    // 已解决
         }
+
+        // 类型映射：后端 -> 前端
+        const typeMap = {
+            '1': 'course',      // 课程内容
+            '2': 'teaching',    // 教学方式
+            '3': 'environment', // 教学环境
+            '4': 'other'        // 其他建议
+        }
+
+        // 适配后端返回的数据结构
+        feedback.value = {
+            id: res.feedbackId,
+            type: typeMap[res.feedbackType] || 'other',
+            title: res.title,
+            description: res.description,
+            photos: res.imageUrls ? res.imageUrls.split(',').filter(url => url) : [],
+            contact: res.contactInfo,
+            status: statusMap[res.feedbackStatus] || 'pending',
+            createTime: res.createTime,
+            submitTime: res.submitTime,
+            replies: res.replyRecords ? JSON.parse(res.replyRecords) : [],
+            studentName: res.studentName,
+            studentNo: res.studentNo,
+            currentHandlerName: res.currentHandlerName,
+            firstReplyTime: res.firstReplyTime,
+            resolveTime: res.resolveTime
+        }
+
+        console.log('反馈详情加载成功:', feedback.value)
+    } catch (error) {
+        console.error('获取反馈详情失败:', error)
+        uni.showToast({
+            title: '获取详情失败',
+            icon: 'none'
+        })
+    } finally {
+        loading.value = false
     }
 }
 
@@ -192,39 +228,49 @@ const previewPhoto = (index) => {
 }
 
 // 提交追加内容
-const submitAppend = () => {
+const submitAppend = async () => {
     if (!appendContent.value.trim()) {
         return
     }
 
-    // 添加新回复
-    const newReply = {
-        content: appendContent.value,
-        time: new Date().toISOString(),
-        isAdmin: false
+    try {
+        // 获取用户信息
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '未找到学生信息',
+                icon: 'none'
+            })
+            return
+        }
+
+        // 调用追加反馈接口
+        await appendFeedback({
+            feedbackId: Number(feedback.value.id),  // 反馈ID
+            studentId: Number(userInfo.studentId),  // 学生ID
+            content: appendContent.value            // 追加内容
+        })
+
+        uni.showToast({
+            title: '追加成功',
+            icon: 'success'
+        })
+
+        // 清空输入框
+        appendContent.value = ''
+
+        // 重新加载详情
+        setTimeout(() => {
+            loadFeedbackDetail(feedback.value.id)
+        }, 1000)
+
+    } catch (error) {
+        console.error('追加说明失败:', error)
+        uni.showToast({
+            title: error.message || '追加失败',
+            icon: 'none'
+        })
     }
-
-    if (!feedback.value.replies) {
-        feedback.value.replies = []
-    }
-
-    feedback.value.replies.push(newReply)
-
-    // 更新本地存储
-    const feedbacks = uni.getStorageSync('feedbackRecords') || []
-    const index = feedbacks.findIndex(f => f.id === feedback.value.id)
-    if (index !== -1) {
-        feedbacks[index] = feedback.value
-        uni.setStorageSync('feedbackRecords', feedbacks)
-    }
-
-    // 清空输入框
-    appendContent.value = ''
-
-    uni.showToast({
-        title: '提交成功',
-        icon: 'success'
-    })
 }
 
 onLoad((options) => {
@@ -484,6 +530,11 @@ const printAPIRequirements = () => {
 }
 
 /* 追加区域 */
+.append-input-wrapper {
+    width: 100%;
+    box-sizing: border-box;
+}
+
 .append-input {
     width: 100%;
     min-height: 200rpx;
@@ -492,6 +543,7 @@ const printAPIRequirements = () => {
     padding: 20rpx;
     font-size: 28rpx;
     color: #333;
+    box-sizing: border-box;
 }
 
 .append-footer {

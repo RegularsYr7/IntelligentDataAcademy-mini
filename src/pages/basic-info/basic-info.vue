@@ -200,11 +200,40 @@ const hometownText = computed(() => {
     return '未设置'
 })
 
-onLoad(() => {
-    console.log('基本信息页面加载')
+// 加载用户信息
+const loadUserInfo = () => {
+    const cachedUserInfo = uni.getStorageSync('userInfo')
+    if (cachedUserInfo) {
+        console.log('加载缓存的用户信息:', cachedUserInfo)
 
-    // 初始化省份列表
-    initProvinceList()
+        // 填充用户信息
+        userInfo.value = {
+            name: cachedUserInfo.studentName || cachedUserInfo.name || '未设置',
+            avatar: cachedUserInfo.avatarUrl || cachedUserInfo.avatar || 'https://picsum.photos/200/200?random=user',
+            school: cachedUserInfo.schoolName || '未设置',
+            college: cachedUserInfo.collegeName || '未设置',
+            educationLevel: cachedUserInfo.educationLevel || '未设置',
+            major: cachedUserInfo.majorName || '未设置',
+            grade: cachedUserInfo.grade || '未设置',
+            schoolSystem: cachedUserInfo.schoolingLength ? `${cachedUserInfo.schoolingLength}年制` : '未设置',
+            class: cachedUserInfo.className || '未设置',
+            studentId: cachedUserInfo.studentNo || cachedUserInfo.studentId || '未设置',
+            idCard: formatIdCard(cachedUserInfo.idCard),
+            enrollmentDate: formatDate(cachedUserInfo.enrollmentDate),
+            graduationDate: formatDate(cachedUserInfo.graduationDate),
+            ethnicity: cachedUserInfo.nation || '未设置',
+            politicalStatus: cachedUserInfo.politicalStatus || '未设置',
+            birthday: formatBirthday(cachedUserInfo.birthday),
+            hometownProvinceId: 1, // 暂时使用默认值，如果后端有省市ID则使用
+            hometownCityId: 36,
+            bloodType: cachedUserInfo.bloodType || '未设置'
+        }
+
+        // 如果有家乡字符串，尝试解析
+        if (cachedUserInfo.hometown) {
+            parseHometown(cachedUserInfo.hometown)
+        }
+    }
 
     // 初始化城市列表
     cityList.value = getCityListByProvinceId(userInfo.value.hometownProvinceId)
@@ -212,9 +241,6 @@ onLoad(() => {
     // 更新家乡选择器的列数据
     hometownColumns.value[0] = provinceList.value.map(p => p.name)
     hometownColumns.value[1] = cityList.value.map(c => c.name)
-
-    // 打印接口需求文档
-    printAPIRequirements()
 
     // 初始化家乡选择器的索引
     const provinceIndex = provinceList.value.findIndex(p => p.id === userInfo.value.hometownProvinceId)
@@ -226,113 +252,62 @@ onLoad(() => {
     if (cityIndex !== -1) {
         hometownIndexes.value[1] = cityIndex
     }
+}
+
+// 格式化身份证号（脱敏处理）
+const formatIdCard = (idCard) => {
+    if (!idCard) return '未设置'
+    if (idCard.length === 18) {
+        return idCard.substring(0, 6) + '********' + idCard.substring(14)
+    }
+    return idCard
+}
+
+// 格式化日期
+const formatDate = (dateStr) => {
+    if (!dateStr) return '未设置'
+    try {
+        const date = new Date(dateStr)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}年${month}月${day}日`
+    } catch (error) {
+        return dateStr
+    }
+}
+
+// 格式化生日
+const formatBirthday = (birthday) => {
+    if (!birthday) return ''
+    try {
+        const date = new Date(birthday)
+        const year = date.getFullYear()
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        return `${year}-${month}-${day}`
+    } catch (error) {
+        return birthday
+    }
+}
+
+// 解析家乡字符串（如果后端返回的是字符串格式）
+const parseHometown = (hometownStr) => {
+    // 这里可以根据实际情况解析家乡字符串
+    // 暂时保持默认值
+    console.log('家乡信息:', hometownStr)
+}
+
+onLoad(() => {
+    console.log('基本信息页面加载')
+
+    // 初始化省份列表
+    initProvinceList()
+
+    // 从缓存加载用户信息
+    loadUserInfo()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【基本信息页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取用户基本信息')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/user/profile')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            id: 1,
-            avatar: 'https://example.com/avatar.jpg',
-            name: '张三',
-            gender: 'male', // male | female | other
-            birthday: '2000-01-01',
-            phone: '13812345678',
-            email: 'zhangsan@example.com',
-            studentId: '2021001',
-            college: '计算机学院',
-            major: '数据科学与大数据技术',
-            grade: '2021',
-            class: '1班',
-            hometownProvinceId: 1,
-            hometownProvinceName: '四川省',
-            hometownCityId: 1,
-            hometownCityName: '成都市',
-            introduction: '个人简介...'
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📍 接口2: 上传头像')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/upload/avatar')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数: FormData')
-    console.log(JSON.stringify({
-        file: 'Binary file data'
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            url: 'https://example.com/avatars/xxxxx.jpg'
-        }
-    }, null, 2))
-    console.log('📝 图片限制: 最大2MB,支持jpg/png格式,建议尺寸500x500')
-    console.log('\n')
-
-    console.log('📍 接口3: 更新基本信息')
-    console.log('━'.repeat(80))
-    console.log('请求方式: PUT')
-    console.log('接口路径: /api/user/profile')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        avatar: 'https://example.com/avatar.jpg',
-        name: '张三',
-        gender: 'male',
-        birthday: '2000-01-01',
-        email: 'zhangsan@example.com',
-        hometownProvinceId: 1,
-        hometownCityId: 1,
-        introduction: '个人简介...'
-    }, null, 2))
-    console.log('📝 学号、学院、专业等教务系统字段不允许修改')
-    console.log('\n')
-
-    console.log('📍 接口4: 获取省市列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/common/regions')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        parentId: 0 // 0获取省份列表,传入省份ID获取城市列表
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: [
-            {
-                id: 1,
-                name: '四川省',
-                code: '510000'
-            }
-        ]
-    }, null, 2))
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 // 修改头像
 const changeAvatar = () => {

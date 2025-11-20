@@ -19,9 +19,11 @@ export const getActivityList = (params) => {
 /**
  * 获取活动详情
  * @param {string} id - 活动ID
+ * @param {Object} params - 查询参数(可选)
+ * @param {number} params.studentId - 学生ID(可选)
  */
-export const getActivityDetail = (id) => {
-  return request.get(`/edu/activity/detail/${id}`);
+export const getActivityDetail = (id, params = {}) => {
+  return request.get(`/edu/activity/detail/${id}`, params);
 };
 
 /**
@@ -35,11 +37,15 @@ export const enrollActivity = (data) => {
 
 /**
  * 取消报名
- * @param {Object} data - 取消报名信息
- * @param {string} data.activityId - 活动ID
+ * @param {Object} params - 取消报名信息
+ * @param {number} params.activityId - 活动ID
+ * @param {number} params.studentId - 学生ID
  */
-export const cancelEnroll = (data) => {
-  return request.post("/edu/activity/cancelEnroll", data);
+export const cancelEnroll = (params) => {
+  const { studentId, activityId } = params;
+  return request.post(
+    `/edu/activity/cancelEnroll?studentId=${studentId}&activityId=${activityId}`
+  );
 };
 
 /**

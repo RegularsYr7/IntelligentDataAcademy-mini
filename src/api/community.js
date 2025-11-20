@@ -42,10 +42,15 @@ export const getPostsByViewCount = (params) => {
 
 /**
  * 获取帖子详情
- * @param {string} id - 帖子ID
+ * @param {string} idOrUrl - 帖子ID或完整URL（包含查询参数）
  */
-export const getPostDetail = (id) => {
-  return request.get(`/edu/communityPost/detail/${id}`);
+export const getPostDetail = (idOrUrl) => {
+  // 如果包含查询参数，直接使用
+  if (idOrUrl.includes("?")) {
+    return request.get(`/edu/communityPost/detail/${idOrUrl}`);
+  }
+  // 否则只使用ID
+  return request.get(`/edu/communityPost/detail/${idOrUrl}`);
 };
 
 /**
@@ -96,8 +101,11 @@ export const getPostTypesMap = () => {
 /**
  * 评论帖子
  * @param {Object} data - 评论信息
- * @param {string} data.postId - 帖子ID
- * @param {string} data.content - 评论内容
+ * @param {Long} data.studentId - 学生ID
+ * @param {Long} data.postId - 帖子ID
+ * @param {String} data.content - 评论内容
+ * @param {String} data.studentName - 学生姓名
+ * @param {String} data.studentAvatar - 学生头像（可选）
  */
 export const commentPost = (data) => {
   return request.post("/edu/communityComment/commentPost", data);
@@ -106,8 +114,14 @@ export const commentPost = (data) => {
 /**
  * 回复评论
  * @param {Object} data - 回复信息
- * @param {string} data.commentId - 评论ID
- * @param {string} data.content - 回复内容
+ * @param {Long} data.studentId - 学生ID
+ * @param {Long} data.postId - 帖子ID
+ * @param {Long} data.parentId - 父评论ID
+ * @param {Long} data.replyToId - 回复对象ID
+ * @param {String} data.replyToName - 被回复人姓名
+ * @param {String} data.content - 回复内容
+ * @param {String} data.studentName - 学生姓名
+ * @param {String} data.studentAvatar - 学生头像（可选）
  */
 export const replyComment = (data) => {
   return request.post("/edu/communityComment/replyComment", data);

@@ -73,6 +73,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad, onShow } from '@dcloudio/uni-app'
+import { getMyRecords } from '@/api/checkin'
 
 // 签到记录列表
 const records = ref([])
@@ -80,52 +81,55 @@ const records = ref([])
 // 当前筛选
 const currentFilter = ref('all')
 
-// 加载记录
-const loadRecords = () => {
-    // 从本地存储获取记录
-    const storedRecords = uni.getStorageSync('signInRecords') || []
+// 加载中状态
+const loading = ref(false)
 
-    // 如果没有记录，添加一些模拟数据用于演示
-    if (storedRecords.length === 0) {
-        records.value = [
-            {
-                id: 1,
-                time: new Date(2025, 9, 28, 8, 30, 0).toISOString(),
-                photo: 'https://picsum.photos/300/400?random=1',
-                location: {
-                    latitude: 39.9042,
-                    longitude: 116.4074,
-                    address: '北京市海淀区中关村大街1号'
-                },
-                status: 'success'
+// 获取用户信息
+const userInfo = uni.getStorageSync('userInfo') || {}
+const studentId = userInfo.studentId
+
+// 加载记录
+const loadRecords = async () => {
+    try {
+        loading.value = true
+
+        // 调用签到记录接口
+        const res = await getMyRecords({
+            pageNum: 1,
+            pageSize: 100,
+            studentId: studentId
+        })
+
+        // 适配后端返回的数据结构
+        records.value = (res.rows || []).map(item => ({
+            id: item.recordId,              // 记录ID
+            taskId: item.taskId,            // 任务ID
+            time: item.createTime,          // 签到时间 "2025-11-19 22:01:14"
+            photo: item.photoUrl,           // 照片URL
+            status: item.checkinStatus,     // 签到状态 (1=正常 2=迟到 3=缺勤)
+            location: {
+                latitude: item.latitude,
+                longitude: item.longitude,
+                address: item.address
             },
-            {
-                id: 2,
-                time: new Date(2025, 9, 27, 8, 25, 0).toISOString(),
-                photo: 'https://picsum.photos/300/400?random=2',
-                location: {
-                    latitude: 39.9042,
-                    longitude: 116.4074,
-                    address: '北京市海淀区中关村大街1号'
-                },
-                status: 'success'
-            },
-            {
-                id: 3,
-                time: new Date(2025, 9, 26, 8, 35, 0).toISOString(),
-                photo: 'https://picsum.photos/300/400?random=3',
-                location: {
-                    latitude: 39.9042,
-                    longitude: 116.4074,
-                    address: '北京市海淀区中关村大街1号'
-                },
-                status: 'late'
-            }
-        ]
-    } else {
-        records.value = storedRecords
+            remark: item.remark,            // 备注
+            studentName: item.studentName,  // 学生姓名
+            studentNo: item.studentNo       // 学号
+        }))
+
+        console.log('签到记录加载成功:', records.value)
+
+    } catch (error) {
+        console.error('获取签到记录失败:', error)
+        uni.showToast({
+            title: '获取记录失败',
+            icon: 'none'
+        })
+    } finally {
+        loading.value = false
     }
 }
+
 
 // 筛选后的记录
 const filteredRecords = computed(() => {
@@ -202,9 +206,9 @@ const formatTime = (timeStr) => {
 // 获取状态文本
 const getStatusText = (status) => {
     const statusMap = {
-        'success': '正常',
-        'late': '迟到',
-        'absent': '缺勤'
+        '1': '正常',
+        '2': '迟到',
+        '3': '缺勤'
     }
     return statusMap[status] || '未知'
 }
@@ -224,82 +228,12 @@ const goToSignIn = () => {
 }
 
 onLoad(() => {
-    console.log('签到记录页加载')
-    loadRecords()
 
-    // 打印接口需求文档
-    printAPIRequirements()
+    loadRecords()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【签到记录页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取我的签到记录')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/sign-in/my-records')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        type: 'all', // all | signed | missed
-        startDate: '2024-10-01',
-        endDate: '2024-11-05',
-        page: 1,
-        pageSize: 10
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    task: {
-                        id: 1,
-                        title: '数据库原理课',
-                        location: '教学楼A301'
-                    },
-                    signTime: '2024-11-05 14:05',
-                    isOnTime: true,
-                    status: 'signed', // signed | missed
-                    taskDate: '2024-11-05'
-                }
-            ],
-            total: 45,
-            statistics: {
-                totalCount: 50, // 总签到任务数
-                signedCount: 45, // 已签到次数
-                missedCount: 5, // 缺席次数
-                signRate: 90 // 签到率百分比
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📚 数据字典')
-    console.log('━'.repeat(80))
-    console.log('status状态:')
-    console.log('  - signed: 已签到')
-    console.log('  - missed: 缺席')
-    console.log('\nisOnTime字段:')
-    console.log('  - true: 准时签到')
-    console.log('  - false: 迟到签到')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 onShow(() => {
-    // 页面显示时重新加载记录(从签到页返回时会刷新)
     loadRecords()
 })
 </script>
@@ -425,17 +359,20 @@ onShow(() => {
     border-radius: 20rpx;
     font-size: 22rpx;
 
-    &.status-success {
+    // 状态 1=正常
+    &.status-1 {
         background: rgba(82, 196, 26, 0.1);
         color: #52c41a;
     }
 
-    &.status-late {
+    // 状态 2=迟到
+    &.status-2 {
         background: rgba(250, 173, 20, 0.1);
         color: #faad14;
     }
 
-    &.status-absent {
+    // 状态 3=缺勤
+    &.status-3 {
         background: rgba(245, 87, 108, 0.1);
         color: #f5576c;
     }
