@@ -81,6 +81,11 @@
                     </view>
                 </view>
             </view>
+
+            <!-- 底部操作栏 -->
+            <view class="bottom-actions">
+                <button class="delete-btn" @tap="handleDelete">删除消息</button>
+            </view>
         </view>
     </view>
 </template>
@@ -88,41 +93,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { deleteMessage, followUser } from '@/api/community'
 
 const messageId = ref(null)
-
-// 消息数据
-const message = ref({
-    id: 1,
-    type: 'reply',
-    avatar: 'https://picsum.photos/100/100?random=61',
-    senderName: '大一萌新',
-    preview: '回复了你: 太有用了！正好明天考高数，感谢学长的整理！',
-    time: '5分钟前',
-    isRead: true,
-    content: '太有用了！正好明天考高数，感谢学长的整理！',
-    postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-})
-
-// 相关消息
-const relatedMessages = ref([
-    {
-        id: 2,
-        type: 'like',
-        avatar: 'https://picsum.photos/100/100?random=62',
-        senderName: '数学苦手',
-        preview: '赞了你的帖子《高数期末复习重点整理》',
-        time: '10分钟前'
-    },
-    {
-        id: 3,
-        type: 'reply',
-        avatar: 'https://picsum.photos/100/100?random=63',
-        senderName: '路过的学霸',
-        preview: '回复了你: 微分方程要多做题，掌握解题套路就好了',
-        time: '1小时前'
-    }
-])
+const message = ref({})
+const relatedMessages = ref([])
 
 // 消息类型标签
 const typeLabel = computed(() => {
@@ -137,153 +112,57 @@ const typeLabel = computed(() => {
 
 onLoad((options) => {
     messageId.value = options.id
-    // 这里应该根据id获取消息详情
-    console.log('消息详情页加载', messageId.value)
 
-    // 模拟根据id获取不同消息
-    if (options.id) {
-        loadMessageDetail(options.id)
-    }
+    // 监听事件通道，获取传递的消息数据
+    const instance = getCurrentPages()[getCurrentPages().length - 1]
+    const eventChannel = instance.getOpenerEventChannel()
 
-    // 打印接口需求文档
-    printAPIRequirements()
+    eventChannel.on('acceptMessageData', (data) => {
+        console.log('接收到消息数据:', data)
+        if (data && data.data) {
+            message.value = {
+                ...data.data,
+                postTitle: getPostTitle(data.data)
+            }
+        }
+        relatedMessages.value = []
+    })
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【消息详情页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取消息详情')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/messages/:id')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({ id: 1 }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            id: 1,
-            type: 'system',
-            title: '系统通知',
-            content: '您的账号已完成实名认证',
-            isRead: false,
-            createTime: '2024-11-01 15:30',
-            relatedId: null,
-            relatedType: null,
-            sender: {
-                id: 0,
-                name: '系统',
-                avatar: ''
-            },
-            actions: [ // 可执行的操作(可选)
-                {
-                    text: '查看详情',
-                    url: '/pages/xxx/xxx',
-                    params: { id: 123 }
-                }
-            ]
-        }
-    }, null, 2))
-    console.log('📝 获取详情时自动标记为已读')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
-
-// 加载消息详情
-const loadMessageDetail = (id) => {
-    // 模拟数据,实际应该从服务器获取
-    const messages = {
-        '1': {
-            id: 1,
-            type: 'reply',
-            avatar: 'https://picsum.photos/100/100?random=61',
-            senderName: '大一萌新',
-            preview: '回复了你: 太有用了！正好明天考高数，感谢学长的整理！',
-            time: '5分钟前',
-            isRead: true,
-            content: '太有用了！正好明天考高数，感谢学长的整理！',
-            postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-        },
-        '2': {
-            id: 2,
-            type: 'like',
-            avatar: 'https://picsum.photos/100/100?random=62',
-            senderName: '数学苦手',
-            preview: '赞了你的帖子《高数期末复习重点整理》',
-            time: '10分钟前',
-            isRead: true,
-            postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-        },
-        '3': {
-            id: 3,
-            type: 'reply',
-            avatar: 'https://picsum.photos/100/100?random=63',
-            senderName: '路过的学霸',
-            preview: '回复了你: 微分方程要多做题，掌握解题套路就好了',
-            time: '1小时前',
-            isRead: true,
-            content: '微分方程要多做题，掌握解题套路就好了',
-            postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-        },
-        '4': {
-            id: 4,
-            type: 'follow',
-            avatar: 'https://picsum.photos/100/100?random=64',
-            senderName: '学习打卡',
-            preview: '关注了你',
-            time: '2小时前',
-            isRead: true
-        },
-        '5': {
-            id: 5,
-            type: 'like',
-            avatar: 'https://picsum.photos/100/100?random=65',
-            senderName: '考研人',
-            preview: '赞了你的评论',
-            time: '3小时前',
-            isRead: true,
-            content: '加油！相信你一定能考好的~',
-            postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-        },
-        '6': {
-            id: 6,
-            type: 'system',
-            avatar: 'https://picsum.photos/100/100?random=100',
-            senderName: '系统消息',
-            preview: '你的帖子《Python爬虫实战教程》已通过审核',
-            time: '1天前',
-            isRead: true
-        }
+// 根据消息类型和关联信息生成帖子标题
+const getPostTitle = (msg) => {
+    // 如果是评论/回复/点赞，显示相关帖子
+    if (msg.relatedType === '1' && msg.relatedId) {
+        return '相关帖子' // 可以根据relatedId去获取帖子标题
     }
-
-    if (messages[id]) {
-        message.value = messages[id]
+    if (msg.relatedType === '2' && msg.relatedId) {
+        return '相关评论'
     }
+    return null
 }
 
 // 查看帖子
 const viewPost = () => {
-    uni.navigateTo({
-        url: '/pages/post-detail/post-detail?id=1'
-    })
+    // relatedType: 1=帖子, 2=评论
+    if (message.value.relatedType === '1' && message.value.relatedId) {
+        uni.navigateTo({
+            url: `/pages/post-detail/post-detail?id=${message.value.relatedId}`
+        })
+    } else if (message.value.relatedType === '2' && message.value.relatedId) {
+        // 如果是评论，也跳转到帖子详情（需要通过评论ID获取帖子ID，或者直接跳转）
+        uni.navigateTo({
+            url: `/pages/post-detail/post-detail?commentId=${message.value.relatedId}`
+        })
+    }
 }
 
 // 回复消息
 const replyMessage = () => {
-    uni.navigateTo({
-        url: `/pages/post-detail/post-detail?id=1&reply=${message.value.senderName}`
-    })
+    if (message.value.relatedType === '1' && message.value.relatedId) {
+        uni.navigateTo({
+            url: `/pages/post-detail/post-detail?id=${message.value.relatedId}&replyTo=${message.value.senderId}`
+        })
+    }
 }
 
 // 点赞消息
@@ -295,17 +174,49 @@ const likeMessage = () => {
 }
 
 // 回关
-const followBack = () => {
-    uni.showToast({
-        title: '已关注 ' + message.value.senderName,
-        icon: 'success'
-    })
+const followBack = async () => {
+    if (!message.value.senderId) return
+
+    try {
+        // 调用关注接口 - 需要从community.js导入followUser
+        // await followUser({ followedId: message.value.senderId })
+        uni.showToast({
+            title: '已关注 ' + message.value.senderName,
+            icon: 'success'
+        })
+    } catch (e) {
+        console.error('关注失败', e)
+        uni.showToast({
+            title: '关注失败',
+            icon: 'none'
+        })
+    }
 }
 
 // 查看相关消息
 const viewRelatedMessage = (msg) => {
-    uni.navigateTo({
-        url: `/pages/message-detail/message-detail?id=${msg.id}`
+    // 逻辑同上，可能需要重新加载或跳转
+}
+
+// 删除消息
+const handleDelete = () => {
+    uni.showModal({
+        title: '提示',
+        content: '确定要删除这条消息吗？',
+        success: async (res) => {
+            if (res.confirm) {
+                try {
+                    await deleteMessage(messageId.value)
+                    uni.showToast({ title: '删除成功', icon: 'success' })
+                    setTimeout(() => {
+                        uni.navigateBack()
+                    }, 1500)
+                } catch (e) {
+                    console.error('删除失败', e)
+                    uni.showToast({ title: '删除失败', icon: 'none' })
+                }
+            }
+        }
     })
 }
 </script>
@@ -397,7 +308,7 @@ const viewRelatedMessage = (msg) => {
 
 .follow-btn {
     padding: 12rpx 32rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 24rpx;
     transition: all 0.3s;
 
@@ -490,7 +401,7 @@ const viewRelatedMessage = (msg) => {
 }
 
 .reply-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
     .btn-icon,
     .btn-text {
@@ -593,5 +504,35 @@ const viewRelatedMessage = (msg) => {
     color: #999;
     flex-shrink: 0;
     margin-left: 12rpx;
+}
+
+/* 底部操作栏 */
+.bottom-actions {
+    padding: 30rpx;
+    margin-top: 40rpx;
+    padding: 16rpx;
+    background-color: #fff;
+    border-top: 1rpx solid #f0f0f0;
+    display: flex;
+    justify-content: center;
+}
+
+.delete-btn {
+    padding: 12rpx 24rpx;
+    background-color: #fff;
+    color: #ff4d4f;
+    font-size: 30rpx;
+    border-radius: 44rpx;
+    border: none;
+    transition: all 0.3s;
+
+    &:active {
+        opacity: 0.8;
+        transform: scale(0.95);
+    }
+
+    &::after {
+        border: none;
+    }
 }
 </style>

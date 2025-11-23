@@ -3,6 +3,9 @@
         <scroll-view class="scroll-container" scroll-y="true" @scrolltolower="loadMore" refresher-enabled
             :refresher-triggered="refreshing" @refresherrefresh="onRefresh" @refresherrestore="onRestore">
 
+            <!-- 头部插槽 - 用于放置搜索栏、筛选栏等需要随列表滚动的元素 -->
+            <slot name="header"></slot>
+
             <!-- 列表内容插槽 - 父组件自定义样式 -->
             <slot :items="listData" :loading="loading" :refreshing="refreshing"></slot>
 
@@ -199,6 +202,12 @@ watch(() => props.params, async (newParams, oldParams) => {
     }
 }, { deep: true })
 
+// 监听 api 变化,自动重新加载
+watch(() => props.api, async () => {
+    console.log('API 变化,重新加载数据')
+    await reload()
+})
+
 // 暴露方法给父组件
 defineExpose({
     reload,
@@ -216,7 +225,8 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .refresh-load-list {
-    height: 100%;
+    height: 100vh;
+    /* 使用视口高度 */
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -224,7 +234,9 @@ onMounted(() => {
 
 .scroll-container {
     flex: 1;
-    height: 100%;
+    height: 0;
+    /* 关键：让 flex item 能够正确计算高度 */
+    overflow: hidden;
 }
 
 /* 加载状态 */

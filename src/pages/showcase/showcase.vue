@@ -1,50 +1,49 @@
 <template>
     <view class="page">
         <view class="container">
-            <!-- 分类标签 -->
-            <view class="category-tabs">
-                <scroll-view scroll-x="true" class="tabs-scroll">
-                    <view class="tab-item" v-for="(category, index) in categories" :key="index"
-                        :class="{ active: currentCategory === category.id }" @tap="switchCategory(category.id)">
-                        {{ category.name }}
+            <RefreshLoadList ref="listRef" :api="getShowcaseList" :params="requestParams" :dataMapping="mapShowcaseData"
+                :pageSize="10" emptyIcon="🎨" emptyText="暂无风采展示" class="list-container">
+
+                <template #header>
+                    <!-- 分类标签 -->
+                    <view class="category-tabs">
+                        <scroll-view scroll-x="true" class="tabs-scroll">
+                            <view class="tab-item" v-for="(category, index) in categories" :key="index"
+                                :class="{ active: currentCategory === category.id }" @tap="switchCategory(category.id)">
+                                {{ category.name }}
+                            </view>
+                        </scroll-view>
                     </view>
-                </scroll-view>
-            </view>
+                </template>
 
-            <!-- 使用通用列表组件 -->
-            <view class="list-wrapper">
-                <RefreshLoadList ref="listRef" :api="getShowcaseList" :params="requestParams"
-                    :dataMapping="mapShowcaseData" :pageSize="10" emptyIcon="🎨" emptyText="暂无风采展示">
-
-                    <!-- 自定义列表项样式 -->
-                    <template #default="{ items }">
-                        <view class="showcase-list">
-                            <view class="showcase-item" v-for="item in items" :key="item.id" @tap="goToDetail(item.id)">
-                                <image class="item-image" :src="item.coverImage" mode="aspectFill"></image>
-                                <view class="item-content">
-                                    <view class="item-header">
-                                        <text class="item-title">{{ item.title }}</text>
-                                        <view class="item-type" :class="getTypeClass(item.type)">
-                                            {{ getTypeName(item.type) }}
-                                        </view>
+                <!-- 自定义列表项样式 -->
+                <template #default="{ items }">
+                    <view class="showcase-list">
+                        <view class="showcase-item" v-for="item in items" :key="item.id" @tap="goToDetail(item.id)">
+                            <image class="item-image" :src="item.coverImage" mode="aspectFill"></image>
+                            <view class="item-content">
+                                <view class="item-header">
+                                    <text class="item-title">{{ item.title }}</text>
+                                    <view class="item-type" :class="getTypeClass(item.type)">
+                                        {{ getTypeName(item.type) }}
                                     </view>
-                                    <text class="item-desc">{{ item.description }}</text>
-                                    <view class="item-footer">
-                                        <text class="item-meta">
-                                            <text class="meta-icon">👁</text>
-                                            {{ item.views }} 次浏览
-                                        </text>
-                                        <text class="item-meta">
-                                            <text class="meta-icon">🕒</text>
-                                            {{ item.publishTime }}
-                                        </text>
-                                    </view>
+                                </view>
+                                <text class="item-desc">{{ item.description }}</text>
+                                <view class="item-footer">
+                                    <text class="item-meta">
+                                        <text class="meta-icon">👁</text>
+                                        {{ item.views }} 次浏览
+                                    </text>
+                                    <text class="item-meta">
+                                        <text class="meta-icon">🕒</text>
+                                        {{ item.publishTime }}
+                                    </text>
                                 </view>
                             </view>
                         </view>
-                    </template>
-                </RefreshLoadList>
-            </view>
+                    </view>
+                </template>
+            </RefreshLoadList>
         </view>
     </view>
 </template>
@@ -52,7 +51,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getShowcaseList } from '@/api/showcase'
+import { getShowcaseList, getShowcaseTypesMap } from '@/api/showcase'
 import RefreshLoadList from '@/components/RefreshLoadList/RefreshLoadList.vue'
 
 // 列表组件引用
@@ -60,10 +59,7 @@ const listRef = ref(null)
 
 // 分类数据
 const categories = ref([
-    { id: 'all', name: '全部' },
-    { id: 'student', name: '优秀学生' },
-    { id: 'teacher', name: '优秀教师' },
-    { id: 'organization', name: '优秀组织' }
+    { id: 'all', name: '全部' }
 ])
 
 // 当前选中分类
@@ -73,15 +69,9 @@ const currentCategory = ref('all')
 const requestParams = computed(() => {
     const params = {}
 
-    // 如果有选中的分类且不是"全部",添加分类筛选
+    // 如果有选中的分类且不是"全部",直接使用value值
     if (currentCategory.value !== 'all') {
-        // 前端分类映射到后端
-        const categoryMap = {
-            'student': '1',      // 优秀学生
-            'teacher': '2',      // 优秀教师
-            'organization': '3'  // 优秀组织
-        }
-        params.showcaseType = categoryMap[currentCategory.value]
+        params.type = currentCategory.value
     }
 
     return params
@@ -102,7 +92,7 @@ const mapShowcaseData = (item) => {
         coverImage: item.coverImageUrl || 'https://picsum.photos/400/300?random=' + item.showcaseId,
         description: item.displayInfo || item.introduction || '',
         views: item.viewCount || 0,
-        publishTime: item.displayTime || item.createTime || ''
+        publishTime: item.displayTime || ''
     }
 }
 
@@ -134,8 +124,42 @@ const goToDetail = (id) => {
     })
 }
 
+// 获取风采展示类型映射
+const fetchTypesMap = async () => {
+    try {
+        const res = await getShowcaseTypesMap()
+        console.log('风采展示类型映射原始数据:', res)
+
+        // 接口直接返回数组(与competition一样)
+        const dataArray = Array.isArray(res) ? res : (res.data || [])
+        console.log('数据数组:', dataArray)
+
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+            const categoryList = dataArray.map(item => ({
+                id: item.value,
+                name: item.label
+            }))
+
+            console.log('转换后的分类:', categoryList)
+
+            // 保留"全部"选项,添加接口返回的分类
+            categories.value = [
+                { id: 'all', name: '全部' },
+                ...categoryList
+            ]
+
+            console.log('最终的分类数据:', categories.value)
+        } else {
+            console.log('数据格式不正确或数据为空')
+        }
+    } catch (error) {
+        console.error('获取风采展示类型映射失败:', error)
+    }
+}
+
 onLoad(() => {
-    // 页面加载完成
+    // 页面加载完成,获取类型映射
+    fetchTypesMap()
 })
 
 </script>
@@ -153,18 +177,17 @@ onLoad(() => {
     background: #f5f5f5;
 }
 
+.list-container {
+    flex: 1;
+    height: 0;
+    width: 100%;
+}
+
 /* 分类标签 */
 .category-tabs {
-    flex-shrink: 0;
     background: #fff;
     padding: 20rpx 0;
     margin-bottom: 20rpx;
-}
-
-/* 列表容器 */
-.list-wrapper {
-    flex: 1;
-    overflow: hidden;
 }
 
 .tabs-scroll {

@@ -2,19 +2,21 @@
     <view class="skeleton-wrapper">
         <!-- 骨架屏头部 -->
         <view class="skeleton-profile-card">
-            <view class="skeleton-profile-header">
-                <view class="skeleton-avatar"></view>
-                <view class="skeleton-user-detail">
-                    <view class="skeleton-name"></view>
-                    <view class="skeleton-tags">
-                        <view class="skeleton-tag"></view>
-                        <view class="skeleton-tag"></view>
+            <view class="skeleton-profile-layout">
+                <view class="skeleton-profile-left">
+                    <view class="skeleton-avatar"></view>
+                    <view class="skeleton-user-detail">
+                        <view class="skeleton-name"></view>
+                        <view class="skeleton-tags">
+                            <view class="skeleton-tag"></view>
+                            <view class="skeleton-tag"></view>
+                        </view>
                     </view>
                 </view>
-            </view>
-            <view class="skeleton-score-box">
-                <view class="skeleton-score-label"></view>
-                <view class="skeleton-score-value"></view>
+                <view class="skeleton-profile-right">
+                    <view class="skeleton-score-value"></view>
+                    <view class="skeleton-score-label"></view>
+                </view>
             </view>
         </view>
 
@@ -53,17 +55,36 @@ const goToLogin = () => {
 }
 
 .skeleton-profile-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 5vh 30rpx 40rpx 30rpx;
     margin-bottom: 20rpx;
     position: relative;
     overflow: hidden;
 }
 
-.skeleton-profile-header {
+.skeleton-profile-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.skeleton-profile-left {
     display: flex;
     align-items: center;
-    margin-bottom: 30rpx;
+    flex: 1;
+    margin-right: 20rpx;
+}
+
+.skeleton-profile-right {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 16rpx;
+    padding: 20rpx;
+    min-width: 160rpx;
+    height: 120rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .skeleton-avatar {
@@ -73,6 +94,7 @@ const goToLogin = () => {
     background: rgba(255, 255, 255, 0.2);
     margin-right: 24rpx;
     animation: skeleton-loading 1.5s ease-in-out infinite;
+    flex-shrink: 0;
 }
 
 .skeleton-user-detail {
@@ -101,29 +123,20 @@ const goToLogin = () => {
     animation: skeleton-loading 1.5s ease-in-out infinite;
 }
 
-.skeleton-score-box {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 16rpx;
-    padding: 24rpx;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12rpx;
-}
-
-.skeleton-score-label {
-    width: 120rpx;
-    height: 28rpx;
+.skeleton-score-value {
+    width: 80rpx;
+    height: 50rpx;
     background: rgba(255, 255, 255, 0.2);
-    border-radius: 14rpx;
+    border-radius: 8rpx;
+    margin-bottom: 12rpx;
     animation: skeleton-loading 1.5s ease-in-out infinite;
 }
 
-.skeleton-score-value {
-    width: 160rpx;
-    height: 60rpx;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 30rpx;
+.skeleton-score-label {
+    width: 100rpx;
+    height: 24rpx;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 12rpx;
     animation: skeleton-loading 1.5s ease-in-out infinite;
 }
 
@@ -223,7 +236,7 @@ const goToLogin = () => {
 .guide-login-btn {
     width: 300rpx;
     height: 80rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     color: #fff;
     border-radius: 40rpx;
     font-size: 30rpx;

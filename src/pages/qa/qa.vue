@@ -1,42 +1,44 @@
 <template>
     <view class="page">
         <view class="community-container">
-            <!-- 顶部搜索栏 -->
-            <view class="top-bar">
-                <view class="search-box">
-                    <text class="search-icon">🔍</text>
-                    <input class="search-input" placeholder="搜索话题、帖子..." v-model="searchKeyword"
-                        @confirm="searchContent" />
-                </view>
-                <view class="message-icon" @tap="goToMessage">
-                    <text class="icon">✉️</text>
-                    <view class="badge" v-if="unreadCount > 0">{{ unreadCount }}</view>
-                </view>
-            </view>
-
-            <!-- 分类导航 -->
-            <scroll-view class="category-nav" scroll-x>
-                <view class="category-list">
-                    <view class="category-item" v-for="(category, index) in categories" :key="index"
-                        :class="{ active: currentCategory === category.id }" @tap="switchCategory(category.id)">
-                        <text class="category-icon">{{ category.icon }}</text>
-                        <text class="category-name">{{ category.name }}</text>
-                    </view>
-                </view>
-            </scroll-view>
-
-            <!-- 排序选项 -->
-            <view class="sort-bar">
-                <view class="sort-item" v-for="(sort, index) in sortOptions" :key="index"
-                    :class="{ active: currentSort === sort.value }" @tap="switchSort(sort.value)">
-                    <text class="sort-text">{{ sort.label }}</text>
-                </view>
-            </view>
-
             <!-- 帖子列表 - 使用 RefreshLoadList 组件 -->
             <view class="list-container">
                 <RefreshLoadList ref="listRef" :api="currentApi" :params="listParams" :dataMapping="mapPostData"
                     :pageSize="10" emptyIcon="📝" emptyText="暂无内容">
+                    <template #header>
+                        <!-- 顶部搜索栏 -->
+                        <view class="top-bar">
+                            <view class="search-box">
+                                <text class="search-icon">🔍</text>
+                                <input class="search-input" placeholder="搜索话题、帖子..." v-model="searchKeyword"
+                                    @confirm="searchContent" />
+                            </view>
+                            <view class="message-icon" @tap="goToMessage">
+                                <text class="icon">✉️</text>
+                                <view class="badge" v-if="unreadCount > 0">{{ unreadCount }}</view>
+                            </view>
+                        </view>
+
+                        <!-- 分类导航 -->
+                        <scroll-view class="category-nav" scroll-x>
+                            <view class="category-list">
+                                <view class="category-item" v-for="(category, index) in categories" :key="index"
+                                    :class="{ active: currentCategory === category.id }"
+                                    @tap="switchCategory(category.id)">
+                                    <text class="category-icon">{{ category.icon }}</text>
+                                    <text class="category-name">{{ category.name }}</text>
+                                </view>
+                            </view>
+                        </scroll-view>
+
+                        <!-- 排序选项 -->
+                        <view class="sort-bar">
+                            <view class="sort-item" v-for="(sort, index) in sortOptions" :key="index"
+                                :class="{ active: currentSort === sort.value }" @tap="switchSort(sort.value)">
+                                <text class="sort-text">{{ sort.label }}</text>
+                            </view>
+                        </view>
+                    </template>
                     <template #default="{ items }">
                         <view class="post-list">
                             <view class="post-item" v-for="(item, index) in items" :key="index" @tap="viewPost(item)">
@@ -48,14 +50,19 @@
                                         </view>
                                         <text class="post-time">{{ item.time }}</text>
                                     </view>
-                                    <view class="follow-btn" v-if="!item.isFollowed" @tap.stop="followUser(item)">
-                                        <text class="follow-text">+ 关注</text>
+                                    <view class="follow-btn" :class="{ followed: item.isFollowed }"
+                                        v-if="item.studentId !== currentStudentId" @tap.stop="followUser(item)">
+                                        <text class="follow-text">{{ item.isFollowed ? '已关注' : '+ 关注' }}</text>
+                                    </view>
+                                    <view class="delete-btn" v-if="item.studentId === currentStudentId"
+                                        @tap.stop="deletePost(item)">
+                                        <text class="delete-text">🗑️ 删除</text>
                                     </view>
                                 </view>
 
                                 <view class="post-content">
                                     <text class="post-title">{{ item.title }}</text>
-                                    <text class="post-detail" v-if="item.detail">{{ item.detail }}</text>
+                                    <rich-text class="post-detail" v-if="item.detail" :nodes="item.detail"></rich-text>
 
                                     <!-- 图片列表 -->
                                     <view class="post-images" v-if="item.images && item.images.length > 0"
@@ -76,7 +83,7 @@
                                     <view class="footer-item" @tap.stop="toggleLike(item)">
                                         <text class="icon" :class="{ liked: item.isLiked }">{{ item.isLiked ? '❤️' :
                                             '🤍'
-                                            }}</text>
+                                        }}</text>
                                         <text class="count" :class="{ liked: item.isLiked }">{{ item.likes }}</text>
                                     </view>
                                     <view class="footer-item" @tap.stop="viewComments(item)">
@@ -93,22 +100,22 @@
                     </template>
 
                     <template #empty>
-                        <!-- <view class="empty-action" @tap="publishPost">
+                        <view class="empty-action" @tap="publishPost">
                             <text class="action-text">快来发布第一条帖子吧~</text>
-                        </view> -->
+                        </view>
                     </template>
                 </RefreshLoadList>
             </view> <!-- 发布按钮 -->
-            <!-- <view class="fab-btn" @tap="publishPost">
+            <view class="fab-btn" @tap="publishPost">
                 <text class="fab-icon">✏️</text>
-            </view> -->
+            </view>
         </view>
     </view>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow, onUnload } from '@dcloudio/uni-app'
 import RefreshLoadList from '@/components/RefreshLoadList/RefreshLoadList.vue'
 import {
     getPostList,
@@ -120,31 +127,77 @@ import {
     collectPost as collectPostApi,
     uncollectPost,
     followUser as followUserApi,
-    unfollowUser
+    unfollowUser,
+    getUnreadCount,
+    getPostTypesMap,
+    deleteOwnPost
 } from '@/api/community'
+import { formatRichText } from '@/utils/richtext'
 
 const listRef = ref(null)
 const searchKeyword = ref('')
-const unreadCount = ref(3)
+const unreadCount = ref(0)
 const currentCategory = ref('all')
-const currentSort = ref('hot')
+const currentSort = ref('latest')
+const currentStudentId = ref(null)
 
 // 分类列表
 const categories = ref([
-    { id: 'all', name: '推荐', icon: '🌟' },
-    { id: 'study', name: '学习', icon: '📚' },
-    { id: 'life', name: '生活', icon: '🏠' },
-    { id: 'activity', name: '活动', icon: '🎉' },
-    { id: 'job', name: '求职', icon: '💼' },
-    { id: 'food', name: '美食', icon: '🍜' },
-    { id: 'sport', name: '运动', icon: '⚽' },
-    { id: 'tech', name: '技术', icon: '💻' }
+    { id: 'all', name: '推荐', icon: '🌟' }
 ])
+
+// 图标映射
+const getIconByType = (type) => {
+    const iconMap = {
+        '1': '📚',  // 学习
+        '2': '🏠',  // 生活
+        '3': '🎉',  // 活动
+        '4': '💼',  // 求职
+        '5': '🍜',  // 美食
+        '6': '⚽',  // 运动
+        '7': '💻'   // 技术
+    }
+    return iconMap[type] || '📝'
+}
+
+// 加载帖子类型
+const loadPostTypes = async () => {
+    try {
+        const res = await getPostTypesMap()
+        console.log('帖子类型映射原始数据:', res)
+
+        // 接口直接返回数组(与其他map接口一样)
+        const dataArray = Array.isArray(res) ? res : (res.data || [])
+        console.log('数据数组:', dataArray)
+
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+            const types = dataArray.map(item => ({
+                id: item.value,
+                name: item.label,
+                icon: getIconByType(item.value)
+            }))
+
+            console.log('转换后的类型:', types)
+
+            // 保留"推荐"选项,添加接口返回的类型
+            categories.value = [
+                { id: 'all', name: '全部', icon: '🌟' },
+                ...types
+            ]
+
+            console.log('最终的分类数据:', categories.value)
+        } else {
+            console.log('数据格式不正确或数据为空')
+        }
+    } catch (error) {
+        console.error('加载帖子类型失败:', error)
+    }
+}
 
 // 排序选项
 const sortOptions = ref([
-    { label: '热门', value: 'hot' },
     { label: '最新', value: 'latest' },
+    { label: '热门', value: 'hot' },
     { label: '关注', value: 'follow' }
 ])
 
@@ -164,26 +217,21 @@ const currentApi = computed(() => {
 
 // 列表请求参数
 const listParams = computed(() => {
+    const userInfo = uni.getStorageSync('userInfo')
     const params = {
-        currentStudentId: uni.getStorageSync('userInfo')?.studentId // 当前学生ID，用于查询交互状态
+        currentStudentId: userInfo?.studentId, // 当前学生ID，用于查询交互状态
+        studentId: userInfo?.studentId // 某些接口（如关注列表）需要 studentId 参数
     }
 
     // 分类筛选参数
     if (currentCategory.value === 'all') {
         // 推荐分类：设置 isRecommended = "Y"
-        params.isRecommended = "Y"
-    } else {
-        // 其他分类：映射到后端 type 字段
-        const typeMapping = {
-            'study': '1',    // 学习
-            'life': '2',     // 生活
-            'activity': '3', // 活动
-            'job': '4',      // 求职
-            'food': '5',     // 美食
-            'sport': '6',    // 运动
-            'tech': '7'      // 技术
+        if (currentSort.value !== 'follow') {
+            params.isRecommended = "Y"
         }
-        params.type = typeMapping[currentCategory.value]
+    } else {
+        // 其他分类：直接使用后端返回的 value 作为 type
+        params.type = currentCategory.value
     }
 
     // 搜索关键词参数
@@ -196,7 +244,60 @@ const listParams = computed(() => {
 
 onLoad(() => {
     console.log('社区页面加载')
+    const userInfo = uni.getStorageSync('userInfo')
+    if (userInfo) {
+        currentStudentId.value = userInfo.studentId
+    }
+    // 加载帖子类型
+    loadPostTypes()
+    loadUnreadCount()
+
+    // 监听删除帖子事件
+    uni.$on('refreshPostList', () => {
+        console.log('收到刷新列表事件')
+        if (listRef.value) {
+            listRef.value.reload()
+        }
+    })
 })
+
+onUnload(() => {
+    // 页面卸载时移除事件监听
+    uni.$off('refreshPostList')
+})
+
+onShow(() => {
+    // 每次显示页面时刷新未读数
+    loadUnreadCount()
+
+    // 检查是否需要刷新列表
+    const shouldRefresh = uni.getStorageSync('refreshQaList')
+    if (shouldRefresh) {
+        console.log('检测到刷新标志，自动刷新列表')
+        uni.removeStorageSync('refreshQaList')
+        // 延迟一点执行，确保组件已准备好
+        setTimeout(() => {
+            if (listRef.value) {
+                listRef.value.reload()
+            }
+        }, 100)
+    }
+})
+
+// 加载未读消息数量
+const loadUnreadCount = async () => {
+    const userInfo = uni.getStorageSync('userInfo')
+    if (!userInfo || !userInfo.studentId) return
+
+    try {
+        const res = await getUnreadCount({ studentId: userInfo.studentId })
+        if (res && res.data) {
+            unreadCount.value = res.data.totalUnread || 0
+        }
+    } catch (e) {
+        console.error('获取未读消息数失败', e)
+    }
+}
 
 // 数据映射函数 - 后端字段转前端格式
 const mapPostData = (item) => {
@@ -207,7 +308,7 @@ const mapPostData = (item) => {
         userName: item.studentName || '匿名用户',
         time: formatTime(item.createTime),
         title: item.title,
-        detail: item.contentPreview || '',
+        detail: formatRichText(item.contentPreview || ''),
         images: parseImages(item.images),
         tags: parseTags(item.tags),
         likes: item.likeCount || 0,
@@ -290,7 +391,7 @@ const viewPost = (post) => {
     })
 }
 
-// 关注用户
+// 关注/取消关注用户
 const followUser = async (post) => {
     try {
         const userInfo = uni.getStorageSync('userInfo')
@@ -302,25 +403,47 @@ const followUser = async (post) => {
             return
         }
 
-        // 调用关注接口 - 传递所有必需参数
-        await followUserApi({
-            followerId: userInfo.studentId,                    // 关注者ID（当前用户）
-            followeeId: post.studentId,                        // 被关注者ID
-            followerName: userInfo.name,                       // 关注者姓名
-            followerAvatar: userInfo.avatar || '',             // 关注者头像（可选）
-            followeeName: post.userName,                       // 被关注者姓名
-            followeeAvatar: post.userAvatar || ''              // 被关注者头像（可选）
-        })
+        if (String(post.studentId) === String(userInfo.studentId)) {
+            uni.showToast({
+                title: '不能关注自己',
+                icon: 'none'
+            })
+            return
+        }
 
-        post.isFollowed = true
-        uni.showToast({
-            title: '已关注 ' + post.userName,
-            icon: 'success'
-        })
+        if (post.isFollowed) {
+            // 取消关注
+            await unfollowUser({
+                followerId: userInfo.studentId,
+                followeeId: post.studentId,
+                studentId: userInfo.studentId
+            })
+            post.isFollowed = false
+            uni.showToast({
+                title: '已取消关注',
+                icon: 'none'
+            })
+        } else {
+            // 关注
+            await followUserApi({
+                followerId: userInfo.studentId,                    // 关注者ID（当前用户）
+                followeeId: post.studentId,                        // 被关注者ID
+                followerName: userInfo.name,                       // 关注者姓名
+                followerAvatar: userInfo.avatar || '',             // 关注者头像（可选）
+                followeeName: post.userName,                       // 被关注者姓名
+                followeeAvatar: post.userAvatar || '',             // 被关注者头像（可选）
+                studentId: userInfo.studentId
+            })
+            post.isFollowed = true
+            uni.showToast({
+                title: '已关注 ' + post.userName,
+                icon: 'success'
+            })
+        }
     } catch (error) {
-        console.error('关注失败:', error)
+        console.error('操作失败:', error)
         uni.showToast({
-            title: '关注失败',
+            title: '操作失败',
             icon: 'none'
         })
     }
@@ -349,6 +472,14 @@ const toggleLike = async (post) => {
         if (!userInfo || !userInfo.studentId) {
             uni.showToast({
                 title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
+        if (String(post.studentId) === String(userInfo.studentId)) {
+            uni.showToast({
+                title: '不能给自己点赞',
                 icon: 'none'
             })
             return
@@ -410,6 +541,14 @@ const collectPost = async (post) => {
             return
         }
 
+        if (String(post.studentId) === String(userInfo.studentId)) {
+            uni.showToast({
+                title: '不能收藏自己的帖子',
+                icon: 'none'
+            })
+            return
+        }
+
         const isCollecting = !post.isCollected
 
         // 调用收藏/取消收藏接口 - 传递所有必需参数
@@ -450,13 +589,65 @@ const publishPost = () => {
         url: '/pages/publish-post/publish-post'
     })
 }
+
+// 删除帖子
+const deletePost = async (post) => {
+    try {
+        const result = await uni.showModal({
+            title: '确认删除',
+            content: '确定要删除这条帖子吗？删除后无法恢复',
+            confirmText: '删除',
+            confirmColor: '#ff4444'
+        })
+
+        if (!result.confirm) {
+            return
+        }
+
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
+        uni.showLoading({
+            title: '删除中...'
+        })
+
+        await deleteOwnPost({
+            postId: post.id,
+            studentId: userInfo.studentId
+        })
+
+        uni.hideLoading()
+        uni.showToast({
+            title: '删除成功',
+            icon: 'success'
+        })
+
+        // 刷新列表
+        if (listRef.value) {
+            listRef.value.reload()
+        }
+    } catch (error) {
+        uni.hideLoading()
+        console.error('删除帖子失败:', error)
+        uni.showToast({
+            title: error.message || '删除失败',
+            icon: 'none'
+        })
+    }
+}
 </script>
 
 <style scoped lang="scss">
 .community-container {
-    min-height: 100vh;
+    height: 100vh;
     background-color: #f5f5f5;
-    padding-bottom: 100rpx;
+    overflow: hidden;
 }
 
 /* 顶部搜索栏 */
@@ -548,7 +739,7 @@ const publishPost = () => {
     transition: all 0.3s;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
         .category-icon,
         .category-name {
@@ -657,7 +848,7 @@ const publishPost = () => {
             transform: translateX(-50%);
             width: 40rpx;
             height: 4rpx;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
             border-radius: 2rpx;
         }
     }
@@ -665,7 +856,7 @@ const publishPost = () => {
 
 /* 列表容器 */
 .list-container {
-    height: calc(100vh - 180rpx); // 减去顶部栏(88rpx) + 分类导航(80rpx) + 排序栏(约60rpx)
+    height: 100%;
 }
 
 /* 帖子列表 */
@@ -716,7 +907,7 @@ const publishPost = () => {
 
 .user-badge {
     padding: 2rpx 12rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 8rpx;
     font-size: 20rpx;
 }
@@ -733,7 +924,35 @@ const publishPost = () => {
 
 .follow-btn {
     padding: 8rpx 20rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    border-radius: 20rpx;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &.followed {
+        background: #f0f0f0;
+
+        .follow-text {
+            color: #999;
+        }
+    }
+
+    &:active {
+        opacity: 0.8;
+        transform: scale(0.95);
+    }
+}
+
+.follow-text {
+    font-size: 24rpx;
+    color: #fff;
+}
+
+.delete-btn {
+    padding: 8rpx 20rpx;
+    background: #ffebee;
     border-radius: 20rpx;
     transition: all 0.3s;
     display: flex;
@@ -746,9 +965,9 @@ const publishPost = () => {
     }
 }
 
-.follow-text {
+.delete-text {
     font-size: 24rpx;
-    color: #fff;
+    color: #f44336;
 }
 
 .post-content {
@@ -785,10 +1004,12 @@ const publishPost = () => {
     margin-bottom: 16rpx;
 
     &.images-1 {
-        grid-template-columns: 1fr;
+        grid-template-columns: 2fr 1fr;
 
         .post-image {
-            height: 400rpx;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
             border-radius: 12rpx;
         }
     }
@@ -798,20 +1019,14 @@ const publishPost = () => {
         grid-template-columns: 1fr 1fr;
 
         .post-image {
-            height: 200rpx;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
             border-radius: 8rpx;
         }
     }
 
-    &.images-3 {
-        grid-template-columns: 1fr 1fr 1fr;
-
-        .post-image {
-            height: 180rpx;
-            border-radius: 8rpx;
-        }
-    }
-
+    &.images-3,
     &.images-5,
     &.images-6,
     &.images-7,
@@ -820,7 +1035,9 @@ const publishPost = () => {
         grid-template-columns: 1fr 1fr 1fr;
 
         .post-image {
-            height: 180rpx;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
             border-radius: 8rpx;
         }
     }
@@ -938,7 +1155,7 @@ const publishPost = () => {
 .empty-action {
     margin-top: 20rpx;
     padding: 16rpx 40rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 40rpx;
     display: flex;
     align-items: center;
@@ -958,12 +1175,12 @@ const publishPost = () => {
     bottom: 120rpx;
     width: 100rpx;
     height: 100rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 8rpx 24rpx rgba(102, 126, 234, 0.4);
+    box-shadow: 0 8rpx 24rpx rgba(0, 210, 255, 0.4);
     z-index: 99;
     transition: all 0.3s;
 

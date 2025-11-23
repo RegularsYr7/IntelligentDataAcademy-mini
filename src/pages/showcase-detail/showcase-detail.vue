@@ -737,7 +737,7 @@ onLoad((options) => {
 
 /* 简介卡片 */
 .intro-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 30rpx;
     margin-bottom: 20rpx;
 }
@@ -821,7 +821,7 @@ onLoad((options) => {
     border: none;
 
     &.btn-save-image {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
         color: #fff;
         font-weight: bold;
     }

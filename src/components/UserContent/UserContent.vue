@@ -2,23 +2,25 @@
     <view class="content-wrapper">
         <!-- 个人信息卡片 -->
         <view class="profile-card">
-            <view class="profile-header">
-                <image class="avatar" :src="userInfo.avatar" mode="aspectFill"></image>
-                <view class="user-detail">
-                    <text class="user-name">{{ userInfo.name }}</text>
-                    <view class="position-tags">
-                        <text class="position-tag" v-for="(position, index) in userInfo.positions" :key="index">
-                            {{ position }}
-                        </text>
+            <view class="profile-layout">
+                <view class="profile-left">
+                    <image class="avatar" :src="userInfo.avatar" mode="aspectFill"></image>
+                    <view class="user-detail">
+                        <text class="user-name">{{ userInfo.name }}</text>
+                        <view class="position-tags">
+                            <text class="position-tag" v-for="(position, index) in userInfo.positions" :key="index">
+                                {{ position }}
+                            </text>
+                        </view>
                     </view>
                 </view>
-            </view>
 
-            <!-- 量化分数 -->
-            <view class="score-container">
-                <view class="score-box">
-                    <text class="score-label">量化分数</text>
-                    <text class="score-value">{{ userInfo.quantificationScore }}</text>
+                <!-- 量化分数 -->
+                <view class="profile-right">
+                    <view class="score-box">
+                        <text class="score-value">{{ userInfo.quantificationScore }}</text>
+                        <text class="score-label">量化分数</text>
+                    </view>
                 </view>
             </view>
         </view>
@@ -256,15 +258,32 @@ const handleLogout = () => {
 
 /* 个人信息卡片 */
 .profile-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 5vh 30rpx 40rpx 30rpx;
     margin-bottom: 20rpx;
 }
 
-.profile-header {
+.profile-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.profile-left {
     display: flex;
     align-items: center;
-    margin-bottom: 30rpx;
+    flex: 1;
+    margin-right: 20rpx;
+}
+
+.profile-right {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 16rpx;
+    padding: 20rpx;
+    backdrop-filter: blur(10rpx);
+    min-width: 160rpx;
+    display: flex;
+    justify-content: center;
 }
 
 .avatar {
@@ -273,10 +292,12 @@ const handleLogout = () => {
     border-radius: 50%;
     border: 4rpx solid rgba(255, 255, 255, 0.5);
     margin-right: 24rpx;
+    flex-shrink: 0;
 }
 
 .user-detail {
     flex: 1;
+    overflow: hidden;
 }
 
 .user-name {
@@ -284,47 +305,44 @@ const handleLogout = () => {
     font-weight: bold;
     color: #fff;
     display: block;
-    margin-bottom: 16rpx;
+    margin-bottom: 12rpx;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .position-tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 12rpx;
+    gap: 10rpx;
 }
 
 .position-tag {
-    padding: 8rpx 16rpx;
+    padding: 4rpx 12rpx;
     background: rgba(255, 255, 255, 0.2);
     border-radius: 20rpx;
-    font-size: 24rpx;
+    font-size: 22rpx;
     color: #fff;
-    backdrop-filter: blur(10rpx);
-}
-
-.score-container {
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 16rpx;
-    padding: 24rpx;
     backdrop-filter: blur(10rpx);
 }
 
 .score-box {
-    text-align: center;
-}
-
-.score-label {
-    font-size: 26rpx;
-    color: rgba(255, 255, 255, 0.9);
-    display: block;
-    margin-bottom: 12rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .score-value {
-    font-size: 56rpx;
+    font-size: 48rpx;
     font-weight: bold;
     color: #fff;
-    display: block;
+    line-height: 1.2;
+}
+
+.score-label {
+    font-size: 22rpx;
+    color: rgba(255, 255, 255, 0.8);
+    margin-top: 4rpx;
 }
 
 /* 功能模块 */
@@ -600,7 +618,7 @@ const handleLogout = () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     color: #fff;
     opacity: 0.9;
 

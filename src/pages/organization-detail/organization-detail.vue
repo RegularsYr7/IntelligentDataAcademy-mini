@@ -129,13 +129,15 @@
 <script setup>
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getOrganizationDetail, applyOrganization } from '@/api/organization'
+import { getOrganizationDetail, applyOrganization, } from '@/api/organization'
 
 // 是否为组织成员
 const isMember = ref(false)
 
 // 是否为管理员
 const isAdmin = ref(false)
+
+const organizationLevelsMap = ref({})
 
 // 组织详情数据
 const organization = ref({
@@ -155,19 +157,28 @@ const organization = ref({
     honors: []
 })
 
+
+
 // 加载组织详情
 const loadOrgDetail = async (id) => {
     try {
         console.log('加载组织详情, ID:', id)
 
-        const res = await getOrganizationDetail(id)
+        const userInfo = uni.getStorageSync('userInfo')
+        const params = {}
+        if (userInfo && (userInfo.studentId || userInfo.id)) {
+            params.studentId = userInfo.studentId || userInfo.id
+        }
+
+        const res = await getOrganizationDetail(id, params)
         console.log('组织详情响应:', res)
 
         if (res && res.organization) {
-            const org = res.organization
+            const data = res
+            const org = data.organization
 
             // 解析主要负责人 - 使用API返回的结构化数据
-            const leaders = parseLeadersFromAPI(res.mainLeaders || [])
+            const leaders = parseLeadersFromAPI(data.mainLeaders || [])
 
             // 解析主要活动
             const activities = parseActivities(org.mainActivities)
@@ -181,8 +192,8 @@ const loadOrgDetail = async (id) => {
                 logo: org.organizationLogo || org.recommendImage || 'https://picsum.photos/300/300?random=20',
                 intro: org.introduction || org.displayText || '暂无简介',
                 level: org.organizationLevel,
-                college: org.collegeName || '',
-                className: org.className || '',
+                college: org.collegeName, // 暂时展示ID，后续可能需要字典映射
+                className: org.className,
                 memberCount: org.memberCount || 0,
                 foundedYear: org.establishYear || '未知',
                 location: org.officeLocation || '',
@@ -193,10 +204,10 @@ const loadOrgDetail = async (id) => {
             }
 
             // 设置是否为成员和角色
-            isMember.value = res.isMember === true || res.isMember === 'Y'
+            isMember.value = data.isMember === true
             if (isMember.value) {
-                // memberRole 可能的值: 'president'(会长), 'admin'(管理员), 'member'(普通成员)
-                isAdmin.value = res.memberRole === 'president' || res.memberRole === 'admin'
+                // memberRole: "2"=主席, "1"=管理员, "0"=普通成员
+                isAdmin.value = data.memberRole === '2' || data.memberRole === '1'
             }
 
             console.log('组织详情加载成功:', organization.value)
@@ -277,25 +288,16 @@ onLoad((options) => {
     console.log('组织详情页加载', id)
 
     // 检查当前用户是否为管理员
-    checkAdminStatus(id)
+    // checkAdminStatus(id) // Removed redundant check
 })
 
-// 检查管理员状态
-const checkAdminStatus = (orgId) => {
-    // TODO: 从服务器验证当前用户是否为该组织管理员
-    // 暂时设置为false，后续可以通过API查询
-    isAdmin.value = false
-}
 
 // 获取级别文本
 const getLevelText = (level) => {
     const levelMap = {
         '1': '校级组织',
         '2': '院级组织',
-        '3': '班级组织',
-        'school': '校级组织',
-        'college': '院级组织',
-        'class': '班级组织'
+        '3': '班级组织'
     }
     return levelMap[level] || '未知'
 }
@@ -312,7 +314,7 @@ const joinOrg = async () => {
     try {
         // 获取用户信息
         const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        if (!userInfo || (!userInfo.studentId && !userInfo.id)) {
             uni.showToast({
                 title: '请先登录',
                 icon: 'none'
@@ -322,24 +324,32 @@ const joinOrg = async () => {
 
         const res = await uni.showModal({
             title: '申请加入',
-            content: `确定要申请加入${organization.value.name}吗？`,
+            content: ``,
             editable: true,
-            placeholderText: '请输入申请理由(可选)'
+            placeholderText: '请输入申请理由'
         })
 
         if (res.confirm) {
             const applyReason = res.content || '我想加入这个组织'
 
-            await applyOrganization({
-                studentId: Number(userInfo.studentId),
-                organizationId: Number(organization.value.id),
-                applyReason: applyReason
-            })
+            try {
+                await applyOrganization({
+                    studentId: Number(userInfo.studentId || userInfo.id),
+                    organizationId: Number(organization.value.id),
+                    applyReason: applyReason
+                })
 
-            uni.showToast({
-                title: '申请已提交',
-                icon: 'success'
-            })
+                uni.showToast({
+                    title: '申请已提交',
+                    icon: 'success'
+                })
+            } catch (error) {
+                uni.showToast({
+                    title: error.message || '申请失败',
+                    icon: 'none',
+                    duration: 3000
+                })
+            }
         }
     } catch (error) {
         console.error('申请加入失败:', error)
@@ -360,7 +370,7 @@ const joinOrg = async () => {
 
 /* 组织头部 */
 .org-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 60rpx 30rpx 40rpx;
     display: flex;
     flex-direction: column;
@@ -526,7 +536,7 @@ const joinOrg = async () => {
 .activity-dot {
     width: 12rpx;
     height: 12rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 50%;
     margin-top: 10rpx;
     flex-shrink: 0;
@@ -609,7 +619,7 @@ const joinOrg = async () => {
 }
 
 .primary-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
     .btn-icon,
     .btn-text {

@@ -317,7 +317,7 @@ onLoad(() => {
     transition: all 0.3s;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
         .type-icon,
         .type-label {
@@ -455,7 +455,7 @@ onLoad(() => {
 .submit-btn {
     width: 100%;
     height: 90rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     color: #fff;
     font-size: 32rpx;
     font-weight: bold;

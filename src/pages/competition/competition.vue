@@ -1,55 +1,54 @@
 <template>
     <view class="page">
         <view class="container">
-            <!-- 分类标签 -->
-            <view class="category-tabs">
-                <scroll-view scroll-x="true" class="tabs-scroll">
-                    <view class="tab-item" v-for="(category, index) in categories" :key="index"
-                        :class="{ active: currentCategory === category.id }" @tap="switchCategory(category.id)">
-                        {{ category.name }}
+            <RefreshLoadList ref="listRef" :api="getCompetitionList" :params="requestParams"
+                :dataMapping="mapCompetitionData" :pageSize="10" emptyIcon="📋" emptyText="暂无竞赛信息"
+                class="list-container">
+
+                <template #header>
+                    <!-- 分类标签 -->
+                    <view class="category-tabs">
+                        <scroll-view scroll-x="true" class="tabs-scroll">
+                            <view class="tab-item" v-for="(category, index) in categories" :key="index"
+                                :class="{ active: currentCategory === category.id }" @tap="switchCategory(category.id)">
+                                {{ category.name }}
+                            </view>
+                        </scroll-view>
                     </view>
-                </scroll-view>
-            </view>
+                </template>
 
-            <!-- 使用通用列表组件 -->
-            <view class="list-wrapper">
-                <RefreshLoadList ref="listRef" :api="getCompetitionList" :params="requestParams"
-                    :dataMapping="mapCompetitionData" :pageSize="10" emptyIcon="📋" emptyText="暂无竞赛信息">
-
-                    <!-- 自定义列表项样式 -->
-                    <template #default="{ items }">
-                        <view class="competition-list">
-                            <view class="competition-item" v-for="item in items" :key="item.id"
-                                @tap="goToDetail(item.id)">
-                                <view class="item-header">
-                                    <text class="item-title">{{ item.title }}</text>
-                                    <view class="item-status" :class="getStatusClass(item.status)">
-                                        {{ item.status }}
-                                    </view>
-                                </view>
-                                <view class="item-info">
-                                    <view class="info-row">
-                                        <text class="info-label">报名时间：</text>
-                                        <text class="info-value">{{ item.registrationTime }}</text>
-                                    </view>
-                                    <view class="info-row">
-                                        <text class="info-label">竞赛时间：</text>
-                                        <text class="info-value">{{ item.competitionTime }}</text>
-                                    </view>
-                                    <view class="info-row">
-                                        <text class="info-label">浏览次数：</text>
-                                        <text class="info-value">{{ item.views }} 次</text>
-                                    </view>
-                                </view>
-                                <view class="item-footer">
-                                    <text class="category-tag">{{ getCategoryName(item.categoryId) }}</text>
-                                    <text class="view-detail">查看详情 ></text>
+                <!-- 自定义列表项样式 -->
+                <template #default="{ items }">
+                    <view class="competition-list">
+                        <view class="competition-item" v-for="item in items" :key="item.id" @tap="goToDetail(item.id)">
+                            <view class="item-header">
+                                <text class="item-title">{{ item.title }}</text>
+                                <view class="item-status" :class="getStatusClass(item.status)">
+                                    {{ item.status }}
                                 </view>
                             </view>
+                            <view class="item-info">
+                                <view class="info-row">
+                                    <text class="info-label">报名时间：</text>
+                                    <text class="info-value">{{ item.registrationTime }}</text>
+                                </view>
+                                <view class="info-row">
+                                    <text class="info-label">竞赛时间：</text>
+                                    <text class="info-value">{{ item.competitionTime }}</text>
+                                </view>
+                                <view class="info-row">
+                                    <text class="info-label">浏览次数：</text>
+                                    <text class="info-value">{{ item.views }} 次</text>
+                                </view>
+                            </view>
+                            <view class="item-footer">
+                                <text class="category-tag">{{ getCategoryName(item.categoryId) }}</text>
+                                <text class="view-detail">查看详情 ></text>
+                            </view>
                         </view>
-                    </template>
-                </RefreshLoadList>
-            </view>
+                    </view>
+                </template>
+            </RefreshLoadList>
         </view>
     </view>
 </template>
@@ -57,7 +56,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getCompetitionList } from '@/api/competition'
+import { getCompetitionList, getCompetitionCategoriesMap } from '@/api/competition'
 import RefreshLoadList from '@/components/RefreshLoadList/RefreshLoadList.vue'
 
 // 列表组件引用
@@ -65,12 +64,7 @@ const listRef = ref(null)
 
 // 分类数据
 const categories = ref([
-    { id: 'all', name: '全部' },
-    { id: 'academic', name: '学科竞赛' },
-    { id: 'skills', name: '技能竞赛' },
-    { id: 'innovation', name: '创新创业' },
-    { id: 'culture', name: '文化艺术' },
-    { id: 'sports', name: '体育竞技' }
+    { id: 'all', name: '全部' }
 ])
 
 // 当前选中分类
@@ -97,17 +91,9 @@ const competitionStatusMap = {
 const requestParams = computed(() => {
     const params = {}
 
-    // 如果有选中的分类且不是"全部",需要转换为后端的分类值
+    // 如果有选中的分类且不是"全部",直接使用value值
     if (currentCategory.value !== 'all') {
-        // 反向映射: 前端分类 -> 后端类型
-        const categoryReverseMap = {
-            'academic': '1',
-            'skills': '2',
-            'innovation': '3',
-            'culture': '4',
-            'sports': '5'
-        }
-        params.competitionCategory = categoryReverseMap[currentCategory.value]
+        params.category = currentCategory.value
     }
 
     return params
@@ -123,7 +109,7 @@ const mapCompetitionData = (item) => {
         registrationTime: formatTimeRange(item.registrationStartTime, item.registrationEndTime),
         competitionTime: formatDateTime(item.competitionStartTime),
         views: item.viewCount || 0,
-        publishTime: item.createTime || ''
+        publishTime: item.publishTime || ''
     }
 }
 
@@ -172,8 +158,52 @@ const goToDetail = (id) => {
     })
 }
 
+// 获取竞赛分类映射
+const fetchCategoriesMap = async () => {
+    try {
+        const res = await getCompetitionCategoriesMap()
+        console.log('竞赛分类映射原始数据:', res)
+
+        // 接口直接返回数组,不是包含在res.data中
+        const dataArray = Array.isArray(res) ? res : (res.data || [])
+        console.log('数据数组:', dataArray)
+
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+            // 去重处理
+            const uniqueCategories = []
+            const valueSet = new Set()
+
+            dataArray.forEach(item => {
+                console.log('处理项:', item)
+                if (!valueSet.has(item.value)) {
+                    valueSet.add(item.value)
+                    uniqueCategories.push({
+                        id: item.value,
+                        name: item.label
+                    })
+                }
+            })
+
+            console.log('去重后的分类:', uniqueCategories)
+
+            // 保留"全部"选项,添加接口返回的分类
+            categories.value = [
+                { id: 'all', name: '全部' },
+                ...uniqueCategories
+            ]
+
+            console.log('最终的分类数据:', categories.value)
+        } else {
+            console.log('数据格式不正确或数据为空')
+        }
+    } catch (error) {
+        console.error('获取竞赛分类映射失败:', error)
+    }
+}
+
 onLoad(() => {
-    // 页面加载完成
+    // 页面加载完成,获取分类映射
+    fetchCategoriesMap()
 })
 
 </script>
@@ -193,16 +223,15 @@ onLoad(() => {
 
 /* 分类标签 */
 .category-tabs {
-    flex-shrink: 0;
     background: #fff;
     padding: 20rpx 0;
     margin-bottom: 20rpx;
 }
 
-/* 列表容器 */
-.list-wrapper {
+.list-container {
     flex: 1;
-    overflow: hidden;
+    height: 0;
+    width: 100%;
 }
 
 .tabs-scroll {
@@ -221,7 +250,7 @@ onLoad(() => {
 
     &.active {
         color: #fff;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
         font-weight: bold;
     }
 

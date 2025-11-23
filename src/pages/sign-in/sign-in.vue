@@ -186,10 +186,25 @@ const takePhoto = async () => {
     try {
         // 拍照并自动上传
         const result = await takePhotoAndUpload()
+        console.log('拍照上传结果:', result)
+
+        // 兼容不同的返回格式
+        let url = ''
+        if (typeof result === 'string') {
+            url = result
+        } else if (result.url) {
+            url = result.url
+        } else if (result.fileName) {
+            url = result.fileName
+        }
+
+        if (!url) {
+            throw new Error('上传成功但未返回图片URL')
+        }
 
         // 保存本地路径（用于显示）和服务器URL（用于提交）
-        photoPath.value = result.url // 用服务器URL显示
-        photoUrl.value = result.url
+        photoPath.value = url // 用服务器URL显示
+        photoUrl.value = url
 
         uni.showToast({
             title: '照片已上传',
@@ -218,10 +233,7 @@ const loadCurrentTask = async () => {
             uni.showModal({
                 title: '提示',
                 content: '当前没有可用的签到任务',
-                showCancel: false,
-                success: () => {
-                    uni.navigateBack()
-                }
+                showCancel: false
             })
         }
     } catch (error) {
@@ -344,7 +356,7 @@ onUnmounted(() => {
 
 /* 信息卡片 */
 .info-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 16rpx;
     padding: 40rpx 30rpx;
     margin-bottom: 20rpx;
@@ -591,7 +603,7 @@ onUnmounted(() => {
 }
 
 .primary-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     color: #fff;
     font-weight: bold;
 

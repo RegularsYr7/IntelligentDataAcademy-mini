@@ -37,7 +37,7 @@
 						<text class="class-status">{{ classStatus }}</text>
 						<text class="class-name">{{ currentClass.name }}</text>
 						<view class="class-info">
-							<text class="class-time">{{ currentClass.time }}</text>
+							<text class="class-time">{{ currentClass.weekDay }} {{ currentClass.time }}</text>
 							<text class="class-location">📍 {{ currentClass.location }}</text>
 						</view>
 					</view>
@@ -71,7 +71,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { getNextCourse } from '@/api/schedule'
 
 // 校园导航图片
@@ -101,6 +101,10 @@ const getCurrentDate = () => {
 
 onLoad(() => {
 	getCurrentDate()
+
+})
+
+onShow(() => {
 	loadNextCourse()
 })
 
@@ -127,7 +131,8 @@ const loadNextCourse = async () => {
 				name: res.courseName,
 				time: res.timeRange || '未知时间',
 				location: res.classroom || '未知地点',
-				status: 'upcoming' // 默认为即将上课
+				weekDay: res.weekDay || '',
+				status: res.isCurrentCourse ? 'ongoing' : 'upcoming'
 			}
 		} else {
 			// 没有课程
@@ -245,7 +250,7 @@ const goToFeedback = () => {
 
 .info-card {
 	flex: 1;
-	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 	border-radius: 16rpx;
 	padding: 30rpx 24rpx;
 	display: flex;

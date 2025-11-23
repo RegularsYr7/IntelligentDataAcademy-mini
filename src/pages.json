@@ -35,6 +35,12 @@
       }
     },
     {
+      "path": "pages/pending-reviews/pending-reviews",
+      "style": {
+        "navigationBarTitleText": "待审核列表"
+      }
+    },
+    {
       "path": "pages/member-manage/member-manage",
       "style": {
         "navigationBarTitleText": "人员管理"
@@ -171,6 +177,18 @@
       "path": "pages/activity-detail/activity-detail",
       "style": {
         "navigationBarTitleText": "活动详情"
+      }
+    },
+    {
+      "path": "pages/activity-manage/activity-manage",
+      "style": {
+        "navigationBarTitleText": "活动管理"
+      }
+    },
+    {
+      "path": "pages/activity-participants/activity-participants",
+      "style": {
+        "navigationBarTitleText": "报名人员"
       }
     },
     {

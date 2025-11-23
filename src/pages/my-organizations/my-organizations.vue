@@ -58,7 +58,7 @@
             </view>
 
             <!-- 推荐组织 -->
-            <view class="recommend-section" v-if="recommendOrganizations.length > 0">
+            <!-- <view class="recommend-section" v-if="recommendOrganizations.length > 0">
                 <view class="section-header">
                     <text class="section-title">推荐组织</text>
                     <text class="section-more" @tap="goToOrganizationList">查看更多 ›</text>
@@ -76,172 +76,109 @@
                         <text class="recommend-count">{{ org.memberCount }}人</text>
                     </view>
                 </view>
-            </view>
+            </view> -->
         </view>
     </view>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import { getMyOrganizations } from '@/api/student'
+import { getCarouselOrganizations } from '@/api/organization'
 
 // 我参与的组织
-const myOrganizations = ref([
-    {
-        id: 1,
-        name: '学生会',
-        logo: 'https://picsum.photos/200/200?random=10',
-        intro: '校学生会是在校党委领导、校团委指导下的学生组织，服务全校师生',
-        level: 'school',
-        memberCount: 120,
-        foundedYear: '2010',
-        myRole: '主席'
-    },
-    {
-        id: 4,
-        name: '数据学院学生会',
-        logo: 'https://picsum.photos/200/200?random=13',
-        intro: '数据科学与大数据技术学院学生会，服务学院全体学生',
-        level: 'college',
-        memberCount: 45,
-        foundedYear: '2018',
-        myRole: '副主席'
-    },
-    {
-        id: 5,
-        name: '计算机协会',
-        logo: 'https://picsum.photos/200/200?random=14',
-        intro: '计算机技术交流与学习平台，定期举办技术分享会',
-        level: 'college',
-        memberCount: 68,
-        foundedYear: '2016',
-        myRole: '技术部部长'
-    },
-    {
-        id: 7,
-        name: '数据21-1班委会',
-        logo: 'https://picsum.photos/200/200?random=16',
-        intro: '数据科学21-1班班委会，为班级同学服务',
-        level: 'class',
-        memberCount: 8,
-        foundedYear: '2021',
-        myRole: '班长'
-    }
-])
+const myOrganizations = ref([])
 
 // 推荐组织
-const recommendOrganizations = ref([
-    {
-        id: 2,
-        name: '科技创新协会',
-        logo: 'https://picsum.photos/200/200?random=11',
-        intro: '致力于培养学生科技创新能力',
-        level: 'school',
-        memberCount: 85
-    },
-    {
-        id: 3,
-        name: '青年志愿者协会',
-        logo: 'https://picsum.photos/200/200?random=12',
-        intro: '传递爱心，服务社会',
-        level: 'school',
-        memberCount: 150
-    },
-    {
-        id: 9,
-        name: '摄影协会',
-        logo: 'https://picsum.photos/200/200?random=18',
-        intro: '用镜头记录美好',
-        level: 'school',
-        memberCount: 42
-    }
-])
+const recommendOrganizations = ref([])
 
 // 统计数据
-const leaderCount = computed(() => {
-    return myOrganizations.value.filter(org =>
-        org.myRole && !org.myRole.includes('成员')
-    ).length
-})
-
-const totalMembers = computed(() => {
-    return myOrganizations.value.reduce((sum, org) => sum + org.memberCount, 0)
-})
+const leaderCount = ref(0)
+const totalMembers = ref(0)
 
 onLoad(() => {
     console.log('我的组织页面加载')
-
-    // 打印接口需求文档
-    printAPIRequirements()
+    loadData()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【我的组织页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
+onShow(() => {
+    loadData()
+})
 
-    console.log('📍 接口1: 获取我加入的组织列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/organizations/my')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        role: 'all', // all | admin | member (筛选我的角色)
-        page: 1,
-        pageSize: 10
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    name: '数据科学社团',
-                    logo: 'https://example.com/logo.jpg',
-                    level: 'school',
-                    memberCount: 156,
-                    activityCount: 28,
-                    myRole: 'admin', // president | admin | member
-                    joinTime: '2024-09-01 10:30',
-                    isActive: true // 组织是否活跃
-                }
-            ],
-            total: 5,
-            roleCounts: {
-                all: 5,
-                admin: 2, // 包含president
-                member: 3
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📍 接口2: 退出组织')
-    console.log('━'.repeat(80))
-    console.log('请求方式: DELETE')
-    console.log('接口路径: /api/organizations/:id/quit')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('📝 社长不能直接退出,需要先转让社长职位')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
+const loadData = () => {
+    const userInfo = uni.getStorageSync('userInfo')
+    if (userInfo) {
+        fetchMyOrganizations(userInfo.studentId || userInfo.id)
+    }
+    // fetchRecommendOrganizations()
 }
+
+// 获取我的组织
+const fetchMyOrganizations = async (studentId) => {
+    try {
+        const res = await getMyOrganizations({
+            studentId: Number(studentId)
+        })
+
+        // Handle new response structure
+        if (res) {
+            // Update stats from response if available
+            if (res.positionCount !== undefined) leaderCount.value = res.positionCount
+            if (res.totalMemberCount !== undefined) totalMembers.value = res.totalMemberCount
+
+            const list = res.organizationList || res.rows || []
+
+            myOrganizations.value = list.map(org => ({
+                id: org.organizationId,
+                name: org.organizationName || org.name,
+                logo: org.organizationLogo || org.logo || 'https://picsum.photos/200/200?random=' + org.organizationId,
+                intro: org.displayText || org.introduction || org.intro || '暂无简介',
+                level: org.organizationLevel || org.level || '1', // Default to school level if missing
+                memberCount: org.memberCount || 0,
+                foundedYear: org.establishYear || org.foundedYear || '2020',
+                myRole: org.myMemberTag || getRoleName(org.myMemberRole) || '成员'
+            }))
+        }
+    } catch (error) {
+        console.error('获取我的组织失败:', error)
+    }
+}
+
+const getRoleName = (role) => {
+    const map = { '2': '主席', '1': '管理员', '0': '成员' }
+    return map[role] || '成员'
+}
+
+// 获取推荐组织
+const fetchRecommendOrganizations = async () => {
+    try {
+        const res = await getCarouselOrganizations()
+        // 兼容处理：可能是直接返回数组，或者是包含在 data 字段中
+        const list = Array.isArray(res) ? res : (res.data || [])
+
+        if (list.length > 0) {
+            recommendOrganizations.value = list.map(org => ({
+                id: org.organizationId,
+                name: org.organizationName || org.name,
+                logo: org.organizationLogo || org.logo || 'https://picsum.photos/200/200?random=' + org.organizationId,
+                intro: org.introduction || org.intro,
+                level: org.organizationLevel || org.level,
+                memberCount: org.memberCount || 0
+            }))
+        }
+    } catch (error) {
+        console.error('获取推荐组织失败:', error)
+    }
+}
+
 
 // 获取级别文本
 const getLevelText = (level) => {
     const levelMap = {
-        school: '校级',
-        college: '院级',
-        class: '班级'
+        '1': '校级',
+        '2': '院级',
+        '3': '班级',
     }
     return levelMap[level] || '未知'
 }
@@ -270,7 +207,7 @@ const goToOrganizationList = () => {
 
 /* 统计头部 */
 .stats-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 40rpx 30rpx;
     display: flex;
     justify-content: space-around;
@@ -427,7 +364,7 @@ const goToOrganizationList = () => {
 .my-role {
     display: flex;
     align-items: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 4rpx 12rpx;
     border-radius: 12rpx;
     margin-left: auto;
@@ -467,7 +404,7 @@ const goToOrganizationList = () => {
 
 .empty-action {
     padding: 16rpx 40rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 40rpx;
 }
 

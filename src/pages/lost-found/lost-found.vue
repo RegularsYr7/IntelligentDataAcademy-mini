@@ -328,7 +328,7 @@ onShow(() => {
     transition: all 0.3s;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
         color: #fff;
         font-weight: bold;
     }
@@ -475,7 +475,7 @@ onShow(() => {
     width: 100rpx;
     height: 100rpx;
     border-radius: 50%;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     display: flex;
     align-items: center;
     justify-content: center;

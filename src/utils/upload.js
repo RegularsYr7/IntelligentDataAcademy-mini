@@ -4,10 +4,7 @@
 import request from "./request";
 
 // 获取基础URL配置
-const BASE_URL =
-  process.env.NODE_ENV === "production"
-    ? "https://intelligentmini.rainyweb.cn"
-    : "http://localhost:8081";
+const BASE_URL = "https://intelligentmini.rainyweb.cn";
 
 // 上传服务器地址
 const UPLOAD_URL = `${BASE_URL}/common/upload`;
@@ -33,11 +30,28 @@ export const chooseAndUploadImage = (options = {}) => {
       sizeType,
       sourceType,
       success: async (res) => {
-        const tempFilePath = res.tempFilePaths[0];
+        console.log("chooseAndUploadImage 完整响应:", res);
+
+        // 优先使用 tempFiles，如果不存在则使用 tempFilePaths
+        let tempFilePath = "";
+
+        if (res.tempFiles && res.tempFiles.length > 0) {
+          const file = res.tempFiles[0];
+          tempFilePath = file.path || file.tempFilePath || res.tempFilePaths[0];
+        } else {
+          tempFilePath = res.tempFilePaths[0];
+        }
+
+        console.log("准备上传的文件路径:", tempFilePath);
+
+        if (!tempFilePath) {
+          reject(new Error("未获取到文件路径"));
+          return;
+        }
 
         try {
           // 使用 request.upload 方法上传
-          const result = await request.upload("/common/upload", tempFilePath);
+          const result = await request.upload(UPLOAD_URL, tempFilePath);
           resolve(result);
         } catch (error) {
           reject(error);
@@ -90,7 +104,7 @@ export const chooseImage = (options = {}) => {
  * @returns {Promise} 返回上传结果
  */
 export const uploadImage = (filePath, options = {}) => {
-  const { url = "/common/upload", formData = {}, name = "file" } = options;
+  const { url = UPLOAD_URL, formData = {}, name = "file" } = options;
 
   // 使用 request.upload 方法
   return request.upload(url, filePath, formData, { name });

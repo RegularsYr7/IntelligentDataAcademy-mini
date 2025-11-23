@@ -3,29 +3,30 @@
         <view class="container">
             <!-- 活动图片 -->
             <view class="activity-banner">
-                <image class="banner-image" :src="activity.image" mode="aspectFill"></image>
+                <image class="banner-image" :src="activity.coverImage" mode="aspectFill"></image>
                 <view class="status-overlay">
-                    <view class="status-badge" :class="'status-' + activity.status">
-                        {{ getStatusText(activity.status) }}
+                    <view class="status-badge" :class="'status-' + mapCurrentStatusToDisplay(currentStatus)">
+                        {{ getStatusTextByCode(currentStatus) }}
                     </view>
                 </view>
             </view>
 
             <!-- 活动基础信息 -->
             <view class="activity-header">
-                <text class="activity-title">{{ activity.title }}</text>
+                <text class="activity-title">{{ activity.activityName }}</text>
                 <view class="header-info">
                     <view class="info-item">
                         <text class="info-icon">📍</text>
-                        <text class="info-text">{{ activity.location }}</text>
+                        <text class="info-text">{{ activity.activityLocation }}</text>
                     </view>
                     <view class="info-item">
                         <text class="info-icon">🆔</text>
-                        <text class="info-text">活动编号: {{ activity.id }}</text>
+                        <text class="info-text">活动编号: {{ activity.activityId }}</text>
                     </view>
                     <view class="info-item">
                         <text class="info-icon">👥</text>
-                        <text class="info-text">{{ activity.currentCount }}/{{ activity.maxCount }} 人</text>
+                        <text class="info-text">{{ activity.currentParticipants }}/{{ activity.maxParticipants }}
+                            人</text>
                     </view>
                 </view>
             </view>
@@ -49,7 +50,7 @@
                             <text class="title-icon">🏢</text>
                             <text class="title-text">活动组织</text>
                         </view>
-                        <text class="section-content">{{ activity.organizer }}</text>
+                        <text class="section-content">{{ activity.organizerNames }}</text>
                     </view>
 
                     <view class="detail-section">
@@ -57,7 +58,7 @@
                             <text class="title-icon">📝</text>
                             <text class="title-text">活动详情</text>
                         </view>
-                        <rich-text class="section-content" :nodes="activity.description"></rich-text>
+                        <rich-text class="section-content" :nodes="formatRichText(activity.activityDetail)"></rich-text>
                     </view>
 
                     <view class="detail-section">
@@ -65,7 +66,7 @@
                             <text class="title-icon">⚠️</text>
                             <text class="title-text">参与须知</text>
                         </view>
-                        <text class="section-content">{{ activity.notice }}</text>
+                        <text class="section-content">{{ activity.remark }}</text>
                     </view>
                 </view>
 
@@ -74,35 +75,39 @@
                     <view class="info-grid">
                         <view class="grid-item">
                             <text class="item-label">报名时间</text>
-                            <text class="item-value">{{ activity.signupStart }} 至 {{ activity.signupEnd }}</text>
+                            <view class="time-column">
+                                <text class="time-text">{{ activity.registerStartTime }}</text>
+                                <text class="time-separator">至</text>
+                                <text class="time-text">{{ activity.registerEndTime }}</text>
+                            </view>
                         </view>
                         <view class="grid-item">
                             <text class="item-label">活动时间</text>
-                            <text class="item-value">{{ activity.activityStart }} 至 {{ activity.activityEnd }}</text>
+                            <view class="time-column">
+                                <text class="time-text">{{ activity.activityStartTime }}</text>
+                                <text class="time-separator">至</text>
+                                <text class="time-text">{{ activity.activityEndTime }}</text>
+                            </view>
                         </view>
                         <view class="grid-item">
                             <text class="item-label">活动级别</text>
-                            <text class="item-value">{{ activity.level }}</text>
+                            <text class="item-value">{{ activity.activityLevel }}</text>
                         </view>
                         <view class="grid-item">
                             <text class="item-label">参与范围</text>
-                            <text class="item-value">{{ activity.range }}</text>
+                            <text class="item-value">{{ activity.participateScope }}</text>
                         </view>
                         <view class="grid-item">
                             <text class="item-label">活动请假</text>
-                            <text class="item-value">{{ activity.allowLeave ? '支持' : '不支持' }}</text>
+                            <text class="item-value">{{ activity.allowLeave === 'Y' ? '支持' : '不支持' }}</text>
                         </view>
                         <view class="grid-item">
                             <text class="item-label">最多报名</text>
-                            <text class="item-value">{{ activity.maxCount }} 人</text>
+                            <text class="item-value">{{ activity.maxParticipants }} 人</text>
                         </view>
                         <view class="grid-item">
-                            <text class="item-label">学分设置</text>
-                            <text class="item-value">{{ activity.credit }} 学分</text>
-                        </view>
-                        <view class="grid-item">
-                            <text class="item-label">活动积分</text>
-                            <text class="item-value">{{ activity.points }} 积分</text>
+                            <text class="item-label">量化分设置</text>
+                            <text class="item-value">{{ activity.creditValue }} 量化分</text>
                         </view>
                     </view>
 
@@ -113,7 +118,8 @@
                             <text class="title-text">活动标签</text>
                         </view>
                         <view class="tags-list">
-                            <view class="tag-item" v-for="(tag, index) in activity.tags" :key="index">
+                            <view class="tag-item" v-for="(tag, index) in parseActivityTags(activity.activityTags)"
+                                :key="index">
                                 {{ tag }}
                             </view>
                         </view>
@@ -122,44 +128,26 @@
 
                 <!-- 人员 -->
                 <view class="content-panel" v-if="currentTab === 2">
-                    <!-- 负责人 -->
-                    <view class="person-section" v-if="activity.leaders && activity.leaders.length > 0">
+                    <view class="person-section">
                         <view class="section-title">
-                            <text class="title-icon">👑</text>
-                            <text class="title-text">负责人</text>
+                            <text class="title-text">人员列表</text>
                         </view>
-                        <view class="person-list">
-                            <view class="person-item" v-for="person in activity.leaders" :key="person.id">
-                                <image class="person-avatar" :src="person.avatar" mode="aspectFill"></image>
-                                <text class="person-name">{{ person.name }}</text>
+                        <view class="person-list-vertical">
+                            <view class="person-row" v-for="(person, index) in sortedPersonnel" :key="index">
+                                <view class="person-left">
+                                    <image class="person-avatar-small"
+                                        :src="person.avatar || 'https://picsum.photos/100/100'" mode="aspectFill">
+                                    </image>
+                                    <text class="person-name-text">{{ person.name }}</text>
+                                </view>
+                                <view class="person-right">
+                                    <view class="role-tag" :class="getRoleClass(person.roleType)">
+                                        {{ person.roleName }}
+                                    </view>
+                                </view>
                             </view>
-                        </view>
-                    </view>
-
-                    <!-- 组织者 -->
-                    <view class="person-section" v-if="activity.organizers && activity.organizers.length > 0">
-                        <view class="section-title">
-                            <text class="title-icon">👨‍💼</text>
-                            <text class="title-text">组织者</text>
-                        </view>
-                        <view class="person-list">
-                            <view class="person-item" v-for="person in activity.organizers" :key="person.id">
-                                <image class="person-avatar" :src="person.avatar" mode="aspectFill"></image>
-                                <text class="person-name">{{ person.name }}</text>
-                            </view>
-                        </view>
-                    </view>
-
-                    <!-- 参与人员 -->
-                    <view class="person-section" v-if="activity.participants && activity.participants.length > 0">
-                        <view class="section-title">
-                            <text class="title-icon">👥</text>
-                            <text class="title-text">参与人员 ({{ activity.participants.length }})</text>
-                        </view>
-                        <view class="person-list">
-                            <view class="person-item" v-for="person in activity.participants" :key="person.id">
-                                <image class="person-avatar" :src="person.avatar" mode="aspectFill"></image>
-                                <text class="person-name">{{ person.name }}</text>
+                            <view v-if="sortedPersonnel.length === 0" class="empty-person">
+                                <text>暂无人员信息</text>
                             </view>
                         </view>
                     </view>
@@ -172,27 +160,80 @@
                             <text class="title-icon">📍</text>
                             <text class="title-text">活动地址</text>
                         </view>
-                        <text class="location-address">{{ activity.address }}</text>
+                        <text class="location-address">{{ activity.activityLocation }}</text>
 
                         <!-- 地图 -->
                         <view class="map-container">
-                            <map class="activity-map" :latitude="activity.latitude" :longitude="activity.longitude"
-                                :markers="markers" :show-location="true"></map>
+                            <map class="activity-map" :latitude="activity.latitude || 0"
+                                :longitude="activity.longitude || 0" :markers="markers" :show-location="true"></map>
                         </view>
 
                         <!-- 坐标信息 -->
                         <view class="coordinate-info">
-                            <text class="coordinate-text">经度: {{ activity.longitude }}</text>
-                            <text class="coordinate-text">纬度: {{ activity.latitude }}</text>
+                            <text class="coordinate-text">经度: {{ activity.longitude || 0 }}</text>
+                            <text class="coordinate-text">纬度: {{ activity.latitude || 0 }}</text>
                         </view>
                     </view>
                 </view>
             </view>
 
-            <!-- 底部报名按钮 -->
+            <!-- 底部操作按钮 -->
             <view class="footer-action">
-                <button class="signup-btn" :class="{ disabled: !canSignup }" :disabled="!canSignup" @tap="handleSignup">
-                    {{ getSignupText() }}
+                <!-- 活动状态: 1=预热中, 2=报名中, 3=等待中, 4=进行中, 5=已结束, 6=已完结 -->
+
+                <!-- 预热中: 显示即将开始 -->
+                <view v-if="currentStatus === 1" class="status-tip">
+                    <text>活动即将开始报名</text>
+                </view>
+
+                <!-- 报名中: 显示报名/取消报名按钮 -->
+                <view v-if="currentStatus === 2" class="action-buttons">
+                    <button class="signup-btn" :class="{ disabled: !canSignup }" :disabled="!canSignup"
+                        @tap="handleSignup">
+                        {{ getSignupText() }}
+                    </button>
+
+                    <!-- 管理员: 管理活动按钮 -->
+                    <button v-if="isLeader" class="manage-btn" @tap="goToManage">
+                        <text>管理活动</text>
+                    </button>
+                </view>
+
+                <!-- 等待中: 报名结束，等待活动开始 -->
+                <view v-if="currentStatus === 3" class="status-tip">
+                    <text>报名已结束，等待活动开始</text>
+                </view>
+
+                <!-- 活动进行中: 显示签到按钮(参与者) 或 管理活动按钮(管理员) -->
+                <view v-if="currentStatus === 4" class="action-buttons">
+                    <!-- 普通参与者: 签到按钮 -->
+                    <button v-if="isRegistered" class="checkin-btn" @tap="handleCheckin">
+                        <text class="btn-icon">📷</text>
+                        <text>签到</text>
+                    </button>
+
+                    <!-- 管理员: 管理活动按钮 -->
+                    <button v-if="isLeader" class="manage-btn" @tap="goToManage">
+                        <text class="btn-icon">⚙️</text>
+                        <text>管理活动</text>
+                    </button>
+                </view>
+
+                <!-- 活动已结束: 显示已结束提示 -->
+                <view v-if="currentStatus === 5" class="status-tip">
+                    <text>活动已结束</text>
+                </view>
+
+                <!-- 活动已完结: 显示已完结提示 -->
+                <view v-if="currentStatus === 6" class="status-tip">
+                    <text>活动已完结</text>
+                </view>
+
+                <!-- 管理员在其他状态(非报名中/非进行中)也可以管理 -->
+                <button v-if="isLeader && currentStatus !== 4 && currentStatus !== 2" class="manage-btn-small"
+                    @tap="goToManage">
+                    <text class="btn-icon">⚙️</text>
+                    <text>管理活动</text>
                 </button>
             </view>
         </view>
@@ -202,53 +243,66 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getActivityDetail, enrollActivity, cancelEnroll } from '@/api/activity'
+import { getActivityDetail, enrollActivity, cancelEnroll, signInActivity } from '@/api/activity'
 import { formatRichText } from '@/utils/richtext'
 
 // 当前标签页
-const currentTab = ref(0)
+const currentTab = ref(1)
 
 // 标签页列表
 const tabs = ['详情', '信息', '人员', '地址']
 
+// 活动当前状态 (从后端返回)
+const currentStatus = ref(1)
+// 1 = 预热中：活动发布后，报名时间未到
+// 2 = 报名中：当前时间在报名时间范围内
+// 3 = 等待中：报名结束但活动未开始
+// 4 = 进行中：活动进行时间范围内
+// 5 = 已结束：活动时间已过
+// 6 = 已完结：管理员手动完结
+
+// 是否是管理员(负责人)
+const isLeader = ref(false)
+
+// 是否已报名
+const isRegistered = ref(false)
+
 // 活动详情数据
 const activity = ref({
-    id: null,
-    image: '',
-    title: '',
-    status: 'recruiting',
-    location: '',
-    currentCount: 0,
-    maxCount: 0,
-    organizer: '',
-    description: '',
-    notice: '',
-    signupStart: '',
-    signupEnd: '',
-    activityStart: '',
-    activityEnd: '',
-    level: '',
-    range: '',
-    allowLeave: false,
-    credit: 0,
-    points: 0,
-    tags: [],
+    activityId: null,
+    coverImage: '',
+    activityName: '',
+    activityStatus: '0',
+    activityLocation: '',
+    currentParticipants: 0,
+    maxParticipants: 0,
+    organizerNames: '',
+    activityDetail: '',
+    remark: '',
+    registerStartTime: '',
+    registerEndTime: '',
+    activityStartTime: '',
+    activityEndTime: '',
+    activityLevel: '',
+    participateScope: '',
+    allowLeave: 'N',
+    creditValue: 0,
+    scoreValue: 0,
+    activityTags: null,
     leaders: [],
     organizers: [],
     participants: [],
-    address: '',
     latitude: 0,
     longitude: 0,
-    isSignedUp: false,
-    enrollStatus: null  // 报名状态: 0=已报名, 1=已签到, 2=已完成, 3=已取消
+    enrollStatus: null
 })
 
 // 地图标记点
 const markers = computed(() => [{
     id: 1,
-    latitude: activity.value.latitude,
-    longitude: activity.value.longitude,
-    title: activity.value.title,
+    latitude: activity.value.latitude || 0,
+    longitude: activity.value.longitude || 0,
+    title: activity.value.activityName,
     iconPath: '/static/marker.png',
     width: 30,
     height: 30
@@ -256,29 +310,50 @@ const markers = computed(() => [{
 
 // 是否可以报名或取消报名
 const canSignup = computed(() => {
+    // 只有在报名中状态才能操作
+    if (currentStatus.value !== 2) {
+        return false
+    }
+
     // 如果已报名，根据状态判断是否可以取消
-    if (activity.value.isSignedUp) {
+    if (isRegistered.value) {
         // enrollStatus: 0=已报名(可取消), 1=已签到(不可取消), 2=已完成(不可取消), 3=已取消(不可操作)
         return activity.value.enrollStatus === '0'
     }
-    // 未报名时，判断活动是否可报名
-    return activity.value.status === 'recruiting' &&
-        activity.value.currentCount < activity.value.maxCount
+
+    // 未报名时，判断人数是否已满
+    return activity.value.currentParticipants < activity.value.maxParticipants
 })
 
-// 获取状态文本
+// 获取状态文本（通过字符串状态）
 const getStatusText = (status) => {
     const statusMap = {
+        'upcoming': '预热中',
         'recruiting': '报名中',
+        'waiting': '等待中',
         'ongoing': '进行中',
-        'finished': '已结束'
+        'finished': '已结束',
+        'completed': '已完结'
     }
     return statusMap[status] || ''
 }
 
+// 获取状态文本（通过状态码）
+const getStatusTextByCode = (statusCode) => {
+    const statusMap = {
+        1: '预热中',
+        2: '报名中',
+        3: '等待中',
+        4: '进行中',
+        5: '已结束',
+        6: '已完结'
+    }
+    return statusMap[statusCode] || ''
+}
+
 // 获取报名按钮文本
 const getSignupText = () => {
-    if (activity.value.isSignedUp) {
+    if (isRegistered.value) {
         // 根据报名状态显示不同文本
         if (activity.value.enrollStatus === '0') {
             return '取消报名'  // 已报名，可以取消
@@ -294,16 +369,83 @@ const getSignupText = () => {
         }
         return '已报名'
     }
-    if (activity.value.status === 'finished') {
-        return '活动已结束'
-    }
-    if (activity.value.status === 'ongoing') {
-        return '活动进行中'
-    }
-    if (activity.value.currentCount >= activity.value.maxCount) {
+
+    if (activity.value.currentParticipants >= activity.value.maxParticipants) {
         return '报名已满'
     }
+
     return '立即报名'
+}
+
+// 签到功能 - 跳转扫码页面
+const handleCheckin = () => {
+    // 支持扫码签到(可从相册选择二维码)
+    uni.scanCode({
+        onlyFromCamera: false,  // 允许从相册选择二维码
+        scanType: ['qrCode'],
+        success: (res) => {
+            console.log('扫码结果:', res)
+            // 处理签到逻辑
+            handleCheckinSubmit(res.result)
+        },
+        fail: (err) => {
+            console.error('扫码失败:', err)
+            uni.showToast({
+                title: '扫码失败',
+                icon: 'none'
+            })
+        }
+    })
+}
+
+// 提交签到
+const handleCheckinSubmit = async (qrData) => {
+    try {
+        // 获取用户信息
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '未找到学生信息',
+                icon: 'none'
+            })
+            return
+        }
+
+        // 调用签到接口
+        const res = await signInActivity({
+            signInCode: qrData,
+            studentId: Number(userInfo.studentId),
+            activityId: Number(activity.value.activityId)
+        })
+
+        if (res.success) {
+            uni.showToast({
+                title: res.message || '签到成功',
+                icon: 'success'
+            })
+
+            // 重新加载活动详情
+            loadActivityDetail(activity.value.activityId)
+        } else {
+            uni.showToast({
+                title: res.message || '签到失败',
+                icon: 'none'
+            })
+        }
+    } catch (error) {
+        console.error('签到失败:', error)
+        uni.showToast({
+            title: error.message || '签到失败',
+            icon: 'none'
+        })
+    }
+}
+
+// 跳转到管理活动页面
+const goToManage = () => {
+    uni.navigateTo({
+        url: `/pages/activity-manage/activity-manage?id=${activity.value.activityId}&status=${currentStatus.value}`
+    })
 }
 
 // 切换标签页
@@ -328,7 +470,7 @@ const handleSignup = async () => {
     }
 
     // 如果已报名，执行取消报名逻辑
-    if (activity.value.isSignedUp) {
+    if (isRegistered.value) {
         // 判断报名状态
         if (activity.value.enrollStatus === '1') {
             uni.showToast({
@@ -355,20 +497,17 @@ const handleSignup = async () => {
         // 弹出取消确认
         uni.showModal({
             title: '取消报名',
-            content: `确定要取消报名"${activity.value.title}"吗？`,
+            content: `确定要取消报名"${activity.value.activityName}"吗？`,
             success: async (res) => {
                 if (res.confirm) {
                     try {
                         // 调用取消报名接口
                         await cancelEnroll({
-                            activityId: Number(activity.value.id),
+                            activityId: Number(activity.value.activityId),
                             studentId: Number(userInfo.studentId)
                         })
 
-                        // 取消成功，更新状态
-                        activity.value.isSignedUp = false
-                        activity.value.enrollStatus = '3'
-                        activity.value.currentCount -= 1
+                        loadActivityDetail(activity.value.activityId) // 重新加载活动详情
 
                         uni.showToast({
                             title: '取消报名成功',
@@ -388,20 +527,17 @@ const handleSignup = async () => {
         // 执行报名逻辑
         uni.showModal({
             title: '确认报名',
-            content: `确定要报名参加"${activity.value.title}"吗？`,
+            content: `确定要报名参加"${activity.value.activityName}"吗？`,
             success: async (res) => {
                 if (res.confirm) {
                     try {
                         // 调用报名接口
                         await enrollActivity({
-                            activityId: Number(activity.value.id),
+                            activityId: Number(activity.value.activityId),
                             studentId: Number(userInfo.studentId)
                         })
 
-                        // 报名成功，更新状态
-                        activity.value.isSignedUp = true
-                        activity.value.enrollStatus = '0'
-                        activity.value.currentCount += 1
+                        loadActivityDetail(activity.value.activityId) // 重新加载活动详情
 
                         uni.showToast({
                             title: '报名成功',
@@ -420,6 +556,64 @@ const handleSignup = async () => {
     }
 }
 
+// 排序后的人员列表
+const sortedPersonnel = computed(() => {
+    const list = []
+
+    // 1. 负责人
+    if (activity.value.leaders) {
+        activity.value.leaders.forEach(p => {
+            list.push({
+                ...p,
+                roleType: 'leader',
+                roleName: '负责人',
+                sortTime: 0 // 最高优先级
+            })
+        })
+    }
+
+    // 2. 组织者
+    if (activity.value.organizers) {
+        activity.value.organizers.forEach(p => {
+            list.push({
+                ...p,
+                roleType: 'organizer',
+                roleName: '组织者',
+                sortTime: 0
+            })
+        })
+    }
+
+    // 3. 参与人员 (按报名时间倒序)
+    if (activity.value.participants) {
+        const participants = [...activity.value.participants].sort((a, b) => {
+            const timeA = new Date(a.signupTime || 0).getTime()
+            const timeB = new Date(b.signupTime || 0).getTime()
+            return timeB - timeA
+        })
+
+        participants.forEach(p => {
+            list.push({
+                ...p,
+                roleType: 'participant',
+                roleName: '参与者',
+                sortTime: new Date(p.signupTime || 0).getTime()
+            })
+        })
+    }
+
+    return list
+})
+
+const getRoleClass = (type) => {
+    const map = {
+        'leader': 'tag-leader',
+        'organizer': 'tag-organizer',
+        'participant': 'tag-participant'
+    }
+    return map[type] || ''
+}
+
 // 加载活动详情
 const loadActivityDetail = async (id) => {
     try {
@@ -431,46 +625,52 @@ const loadActivityDetail = async (id) => {
 
         // 调用活动详情接口，传递 studentId 参数
         const res = await getActivityDetail(id, studentId ? { studentId: Number(studentId) } : {})
-        console.log('活动详情响应:', res)
 
-        // API返回的数据在 data.activity 中
-        const activityData = res.activity
+        // 后端返回的数据在 res 中（request.js 已经解包了 data）
+        const activityData = res.activity || res
 
-        // 映射API响应数据到activity对象
+        // 更新当前状态、权限和报名状态（使用后端返回的字段）
+        currentStatus.value = Number(res.currentStatus) || 1
+        isLeader.value = res.isLeader || false
+
+        // 根据 enrollStatus 判断是否已报名
+        // enrollStatus: "0"=已报名未签到, "1"=已签到, "2"=已完成, "3"=已取消, null=未报名
+        const enrollStatus = res.enrollStatus
+        isRegistered.value = res.isRegistered || (enrollStatus !== null && enrollStatus !== '3')
+
+        // 直接使用后端返回的字段，不进行映射
         activity.value = {
-            id: activityData.activityId,
-            image: activityData.coverImage || 'https://picsum.photos/800/400?random=30',
-            title: activityData.activityName || '',
-            status: mapActivityStatus(activityData.activityStatus),
-            location: activityData.activityLocation || '',
-            currentCount: activityData.currentParticipants || 0,
-            maxCount: activityData.maxParticipants || 0,
-            organizer: activityData.organizerNames || '',
-            description: formatRichText(activityData.activityDetail) || '', // 处理富文本
-            notice: activityData.remark || '',
-            signupStart: formatDateTime(activityData.registerStartTime) || '',
-            signupEnd: formatDateTime(activityData.registerEndTime) || '',
-            activityStart: activityData.activityStartTime || '',
-            activityEnd: activityData.activityEndTime || '',
-            level: mapActivityLevel(activityData.activityLevel),
-            range: activityData.participateScope || '',
-            allowLeave: activityData.allowLeave === 'Y',
-            credit: activityData.creditValue || 0,
-            points: activityData.scoreValue || 0,
-            tags: parseActivityTags(activityData.activityTags),
+            ...activityData,
+            // 补充一些可能不在 activityData 中的字段
             leaders: res.leaders || [],
             organizers: res.organizers || [],
             participants: res.participants || [],
-            address: activityData.activityLocation || '',
+            enrollStatus: enrollStatus,
+            // 确保一些关键字段有默认值
+            coverImage: activityData.coverImage || 'https://picsum.photos/800/400?random=30',
+            activityName: activityData.activityName || '',
+            activityLocation: activityData.activityLocation || '',
+            currentParticipants: activityData.currentParticipants || 0,
+            maxParticipants: activityData.maxParticipants || 0,
+            organizerNames: activityData.organizerNames || activityData.organizationName || '',
+            activityDetail: activityData.activityDetail || '',
+            remark: activityData.remark || '',
+            registerStartTime: activityData.registerStartTime || '',
+            registerEndTime: activityData.registerEndTime || '',
+            activityStartTime: activityData.activityStartTime || '',
+            activityEndTime: activityData.activityEndTime || '',
+            activityLevel: activityData.activityLevel || '',
+            participateScope: activityData.participateScope || '',
+            allowLeave: activityData.allowLeave || 'N',
+            creditValue: activityData.creditValue || 0,
+            scoreValue: activityData.scoreValue || 0,
+            activityTags: activityData.activityTags,
             latitude: activityData.latitude || 0,
-            longitude: activityData.longitude || 0,
-            isSignedUp: res.isRegistered === true || res.isRegistered === 'Y',
-            // 报名状态: 0=已报名, 1=已签到, 2=已完成, 3=已取消
-            // 如果后端返回了enrollStatus就使用，否则已报名的默认为'0'
-            enrollStatus: res.enrollStatus || (res.isRegistered === true || res.isRegistered === 'Y' ? '0' : null)
+            longitude: activityData.longitude || 0
         }
 
         console.log('活动详情加载成功:', activity.value)
+        console.log('当前状态:', currentStatus.value, '是否负责人:', isLeader.value, '是否已报名:', isRegistered.value)
     } catch (error) {
         console.error('加载活动详情失败:', error)
         uni.showToast({
@@ -480,43 +680,17 @@ const loadActivityDetail = async (id) => {
     }
 }
 
-// 映射活动状态
-const mapActivityStatus = (status) => {
+// 映射currentStatus到显示状态
+const mapCurrentStatusToDisplay = (status) => {
     const statusMap = {
-        '0': 'recruiting',
-        '1': 'ongoing',
-        '2': 'finished'
+        1: 'upcoming',      // 预热中
+        2: 'recruiting',    // 报名中
+        3: 'waiting',       // 等待中
+        4: 'ongoing',       // 进行中
+        5: 'finished',      // 已结束
+        6: 'completed'      // 已完结
     }
     return statusMap[status] || 'recruiting'
-}
-
-// 映射活动级别
-const mapActivityLevel = (level) => {
-    const levelMap = {
-        '1': '院级',
-        '2': '系级',
-        '3': '班级',
-        '4': '校级'
-    }
-    return levelMap[level] || level
-}
-
-// 格式化时间
-const formatDateTime = (dateStr) => {
-    if (!dateStr) return ''
-    // 处理 ISO 格式时间: "2025-10-29T00:00:00.000+08:00"
-    try {
-        const date = new Date(dateStr)
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        const hours = String(date.getHours()).padStart(2, '0')
-        const minutes = String(date.getMinutes()).padStart(2, '0')
-        return `${year}-${month}-${day} ${hours}:${minutes}`
-    } catch (error) {
-        console.error('时间格式化失败:', error)
-        return dateStr
-    }
 }
 
 // 解析活动标签
@@ -537,15 +711,25 @@ const parseActivityTags = (labelStr) => {
 
 onLoad((options) => {
     const id = options.id
-    if (id) {
+    console.log('接收到的活动ID参数:', id, '类型:', typeof id)
+
+    // 验证 ID 是否有效（不为空且不是 'undefined' 字符串）
+    if (id && id !== 'undefined' && id !== 'null') {
         console.log('活动详情ID:', id)
         // 加载活动详情数据
         loadActivityDetail(id)
     } else {
+        console.error('活动ID无效:', id)
         uni.showToast({
             title: '活动ID不存在',
-            icon: 'none'
+            icon: 'none',
+            duration: 2000
         })
+
+        // 2秒后返回上一页
+        setTimeout(() => {
+            uni.navigateBack()
+        }, 2000)
     }
 })
 </script>
@@ -672,7 +856,7 @@ onLoad((options) => {
             transform: translateX(-50%);
             width: 60rpx;
             height: 4rpx;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
             border-radius: 2rpx;
         }
     }
@@ -741,32 +925,66 @@ onLoad((options) => {
     white-space: pre-wrap;
 }
 
-/* 信息网格 */
+/* 信息列表 */
 .info-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24rpx;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     margin-bottom: 30rpx;
+    border-radius: 12rpx;
+    overflow: hidden;
+    border: 1rpx solid #f0f0f0;
 }
 
 .grid-item {
     display: flex;
-    flex-direction: column;
-    gap: 8rpx;
-    padding: 20rpx;
-    background: #f5f5f5;
-    border-radius: 12rpx;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24rpx 30rpx;
+    background: #fff;
+    border-bottom: 1rpx solid #f0f0f0;
+
+    &:last-child {
+        border-bottom: none;
+    }
 }
 
 .item-label {
-    font-size: 24rpx;
-    color: #999;
+    font-size: 28rpx;
+    color: #666;
+    flex-shrink: 0;
+    width: 160rpx;
 }
 
 .item-value {
+    font-size: 0.8rem;
+    color: #333;
+    font-weight: 500;
+    text-align: right;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.time-column {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    flex: 1;
+}
+
+.time-text {
     font-size: 26rpx;
     color: #333;
-    font-weight: bold;
+    font-weight: 500;
+}
+
+.time-separator {
+    font-size: 24rpx;
+    color: #999;
+    margin: 4rpx 0;
 }
 
 /* 标签 */
@@ -825,6 +1043,78 @@ onLoad((options) => {
     color: #666;
 }
 
+.person-list-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 20rpx;
+}
+
+.person-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20rpx;
+    background: #f8f9fa;
+    border-radius: 12rpx;
+}
+
+.person-left {
+    display: flex;
+    align-items: center;
+    gap: 20rpx;
+}
+
+.person-avatar-small {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 50%;
+    border: 2rpx solid #fff;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+}
+
+.person-name-text {
+    font-size: 28rpx;
+    color: #333;
+    font-weight: 500;
+}
+
+.person-right {
+    display: flex;
+    align-items: center;
+}
+
+.role-tag {
+    padding: 6rpx 16rpx;
+    border-radius: 8rpx;
+    font-size: 24rpx;
+    font-weight: 500;
+}
+
+.tag-leader {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ff9800;
+    border: 1rpx solid rgba(255, 193, 7, 0.3);
+}
+
+.tag-organizer {
+    background: rgba(33, 150, 243, 0.15);
+    color: #2196f3;
+    border: 1rpx solid rgba(33, 150, 243, 0.3);
+}
+
+.tag-participant {
+    background: rgba(76, 175, 80, 0.15);
+    color: #4caf50;
+    border: 1rpx solid rgba(76, 175, 80, 0.3);
+}
+
+.empty-person {
+    text-align: center;
+    padding: 40rpx;
+    color: #999;
+    font-size: 28rpx;
+}
+
 /* 地址部分 */
 .location-section {
     display: flex;
@@ -875,18 +1165,70 @@ onLoad((options) => {
     z-index: 100;
 }
 
-.signup-btn {
-    width: 100%;
+.status-tip {
+    text-align: center;
+    padding: 20rpx;
+    font-size: 28rpx;
+    color: #999;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 20rpx;
+}
+
+.signup-btn,
+.checkin-btn,
+.manage-btn {
+    flex: 1;
     height: 90rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #fff;
     font-size: 32rpx;
     font-weight: bold;
     border-radius: 45rpx;
     border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12rpx;
+}
+
+.signup-btn {
+    width: 100%;
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    color: #fff;
 
     &.disabled {
         opacity: 0.5;
     }
+}
+
+.checkin-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+}
+
+.manage-btn {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: #fff;
+}
+
+.manage-btn-small {
+    width: 100%;
+    height: 70rpx;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: #fff;
+    font-size: 28rpx;
+    font-weight: bold;
+    border-radius: 35rpx;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8rpx;
+    margin-top: 10rpx;
+}
+
+.btn-icon {
+    font-size: 36rpx;
 }
 </style>

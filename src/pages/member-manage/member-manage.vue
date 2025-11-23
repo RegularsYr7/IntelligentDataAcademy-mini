@@ -37,24 +37,27 @@
                     </view>
                 </view>
 
-                <view class="action-area">
+                <view class="action-area" v-if="hasPermission(member)">
                     <!-- 展开的按钮 -->
                     <view v-if="member.showActions" class="action-buttons">
-                        <!-- 主席不显示按钮 -->
-                        <template v-if="!member.isPresident">
-                            <!-- 管理员只能取消管理员 -->
-                            <button v-if="member.isAdmin" class="demote-btn" @tap.stop="confirmDemote(member)">
+                        <!-- 目标是管理员 -->
+                        <template v-if="member.isAdmin">
+                            <!-- 只有主席能取消管理员 -->
+                            <button v-if="isCurrentUserPresident" class="demote-btn" @tap.stop="confirmDemote(member)">
                                 取消管理员
                             </button>
-                            <!-- 普通成员可以设为管理员或移除 -->
-                            <template v-else>
-                                <button class="promote-btn" @tap.stop="confirmPromote(member)">
-                                    设为管理员
-                                </button>
-                                <button class="remove-btn" @tap.stop="confirmRemove(member)">
-                                    移除
-                                </button>
-                            </template>
+                        </template>
+                        <!-- 目标是普通成员 -->
+                        <template v-else>
+                            <!-- 只有主席能设为管理员 -->
+                            <button v-if="isCurrentUserPresident" class="promote-btn"
+                                @tap.stop="confirmPromote(member)">
+                                设为管理员
+                            </button>
+                            <!-- 主席或管理员能移除 -->
+                            <button class="remove-btn" @tap.stop="confirmRemove(member)">
+                                移除
+                            </button>
                         </template>
                     </view>
 
@@ -79,9 +82,15 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getOrganizationMembers, removeMember, setAdmin, removeAdmin } from '@/api/organization'
 
 const orgId = ref('')
 const memberList = ref([])
+const currentUserRole = ref('0')
+
+const isCurrentUserPresident = computed(() => currentUserRole.value === '2')
+const isCurrentUserAdmin = computed(() => currentUserRole.value === '1')
+const canManage = computed(() => isCurrentUserPresident.value || isCurrentUserAdmin.value)
 
 // 计算管理员和普通成员数量
 const adminCount = computed(() => {
@@ -97,387 +106,159 @@ onLoad((options) => {
         orgId.value = options.id
         loadMembers(options.id)
     }
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【人员管理页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    // 接口1: 获取成员列表
-    console.log('📍 接口1: 获取组织成员列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/organizations/:id/members')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        id: 1 // 组织ID
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            members: [
-                {
-                    id: 1,
-                    name: '张三',
-                    avatar: 'https://example.com/avatar.png',
-                    position: '会长',
-                    joinDate: '2020-09', // 加入时间,格式: YYYY-MM
-                    isPresident: true, // 是否为主席
-                    isAdmin: false // 是否为管理员
-                }
-            ],
-            statistics: { // 统计信息
-                total: 156, // 总成员数
-                adminCount: 5, // 管理员数(含主席)
-                memberCount: 151 // 普通成员数
-            }
+const loadMembers = async (id) => {
+    try {
+        const res = await getOrganizationMembers(id)
+        // Handle different response structures
+        let list = []
+        if (res && res.members) {
+            list = res.members
+        } else if (res && res.rows) {
+            list = res.rows
+        } else if (Array.isArray(res)) {
+            list = res
+        } else if (res && res.data && Array.isArray(res.data)) {
+            list = res.data
         }
-    }, null, 2))
-    console.log('\n')
 
-    // 接口2: 设为管理员
-    console.log('📍 接口2: 设为管理员')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/organizations/:orgId/members/:memberId/promote')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        orgId: 1, // 组织ID
-        memberId: 3 // 成员ID
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '已设为管理员'
-    }, null, 2))
-    console.log('\n')
+        const userInfo = uni.getStorageSync('userInfo')
+        const currentUserId = userInfo.studentId || userInfo.id
 
-    // 接口3: 取消管理员
-    console.log('📍 接口3: 取消管理员')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/organizations/:orgId/members/:memberId/demote')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        orgId: 1,
-        memberId: 3
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '已取消管理员'
-    }, null, 2))
-    console.log('\n')
+        memberList.value = list.map(m => {
+            const mId = m.studentId || m.memberId || m.id
+            // 识别当前用户角色
+            if (String(m.studentId) === String(currentUserId)) {
+                currentUserRole.value = m.memberRole
+            }
 
-    // 接口4: 移除成员
-    console.log('📍 接口4: 移除成员')
-    console.log('━'.repeat(80))
-    console.log('请求方式: DELETE')
-    console.log('接口路径: /api/organizations/:orgId/members/:memberId')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        orgId: 1,
-        memberId: 5
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '移除成功'
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📝 接口说明')
-    console.log('━'.repeat(80))
-    console.log('1. 权限验证: 只有主席才能执行设为/取消管理员、移除成员操作')
-    console.log('2. 主席不可被移除或取消管理员')
-    console.log('3. 管理员需先取消管理员身份才可移除')
-    console.log('4. 操作日志: 建议记录所有人员变更操作')
-    console.log('5. 成员统计: 每次操作后需更新统计数据')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
+            return {
+                id: mId, // Ensure we have an ID for operations
+                studentId: m.studentId,
+                name: m.studentName || m.name || '未知',
+                avatar: m.avatarUrl || m.avatar || 'https://picsum.photos/100/100',
+                position: m.memberTag || getRoleName(m.memberRole),
+                joinDate: m.joinTime ? m.joinTime.substring(0, 7) : '未知',
+                isPresident: m.memberRole === '2',
+                isAdmin: m.memberRole === '1',
+                showActions: false,
+                memberRole: m.memberRole
+            }
+        })
+    } catch (error) {
+        console.error('加载成员失败:', error)
+        uni.showToast({ title: '加载失败', icon: 'none' })
+    }
 }
 
-// 切换操作按钮显示
-const toggleActions = (member) => {
-    // 主席不显示操作按钮
-    if (member.isPresident) {
-        return
+const getRoleName = (role) => {
+    const map = { '2': '主席', '1': '管理员', '0': '成员' }
+    return map[role] || '成员'
+}
+
+const isSelf = (member) => {
+    const userInfo = uni.getStorageSync('userInfo')
+    const currentUserId = userInfo.studentId || userInfo.id
+    return String(member.studentId) === String(currentUserId)
+}
+
+const hasPermission = (member) => {
+    if (isSelf(member)) return false // 不能操作自己
+    if (member.isPresident) return false // 不能操作主席
+
+    if (isCurrentUserPresident.value) return true // 主席可以操作除自己和主席外的所有人
+
+    if (isCurrentUserAdmin.value) {
+        // 管理员只能操作普通成员
+        return !member.isAdmin && !member.isPresident
     }
 
+    return false
+}
+
+const toggleActions = (member) => {
+    if (!hasPermission(member)) return
+
     const currentState = member.showActions
-
-    // 关闭所有成员的操作按钮
-    memberList.value.forEach(m => {
-        m.showActions = false
-    })
-
-    // 切换当前成员的操作按钮
+    memberList.value.forEach(m => m.showActions = false)
     member.showActions = !currentState
 }
 
-// 加载成员列表
-const loadMembers = (id) => {
-    // TODO: 从服务器加载成员数据
-    // 模拟数据
-    setTimeout(() => {
-        if (id == 1) {
-            memberList.value = [
-                {
-                    id: 1,
-                    name: '张三',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '会长',
-                    joinDate: '2020-09',
-                    isPresident: true,
-                    isAdmin: false,
-                    showActions: false
-                },
-                {
-                    id: 2,
-                    name: '李四',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '副会长',
-                    joinDate: '2020-09',
-                    isAdmin: true,
-                    showActions: false
-                },
-                {
-                    id: 3,
-                    name: '王五',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '技术部长',
-                    joinDate: '2021-03',
-                    isAdmin: false,
-                    showActions: false
-                },
-                {
-                    id: 4,
-                    name: '赵六',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '活动部长',
-                    joinDate: '2021-03',
-                    isAdmin: false,
-                    showActions: false
-                },
-                {
-                    id: 5,
-                    name: '孙七',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '普通成员',
-                    joinDate: '2021-09',
-                    isAdmin: false,
-                    showActions: false
-                },
-                {
-                    id: 6,
-                    name: '周八',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '普通成员',
-                    joinDate: '2022-03',
-                    isAdmin: false,
-                    showActions: false
-                },
-                {
-                    id: 7,
-                    name: '吴九',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '普通成员',
-                    joinDate: '2022-09',
-                    isAdmin: false,
-                    showActions: false
-                },
-                {
-                    id: 8,
-                    name: '郑十',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '普通成员',
-                    joinDate: '2023-03',
-                    isAdmin: false,
-                    showActions: false
-                }
-            ]
-        } else if (id == 4) {
-            memberList.value = [
-                {
-                    id: 11,
-                    name: '陈一',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '主席',
-                    joinDate: '2019-09',
-                    isPresident: true,
-                    isAdmin: false,
-                    showActions: false
-                },
-                {
-                    id: 12,
-                    name: '林二',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '副主席',
-                    joinDate: '2019-09',
-                    isAdmin: true,
-                    showActions: false
-                },
-                {
-                    id: 13,
-                    name: '黄三',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '项目经理',
-                    joinDate: '2020-03',
-                    isAdmin: false,
-                    showActions: false
-                },
-                {
-                    id: 14,
-                    name: '刘四',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '普通成员',
-                    joinDate: '2021-09',
-                    isAdmin: false,
-                    showActions: false
-                },
-                {
-                    id: 15,
-                    name: '何五',
-                    avatar: 'https://via.placeholder.com/100',
-                    position: '普通成员',
-                    joinDate: '2022-03',
-                    isAdmin: false,
-                    showActions: false
-                }
-            ]
-        }
-    }, 300)
-}
-
-// 确认设为管理员
 const confirmPromote = (member) => {
-    member.showActions = false
     uni.showModal({
-        title: '确认设为管理员',
-        content: `确定要将"${member.name}"设为管理员吗?`,
-        confirmText: '确认',
-        confirmColor: '#667eea',
-        cancelText: '取消',
-        success: (res) => {
+        title: '设为管理员',
+        content: `确定要将 ${member.name} 设为管理员吗？`,
+        success: async (res) => {
             if (res.confirm) {
-                promoteToAdmin(member)
+                try {
+                    const userInfo = uni.getStorageSync('userInfo')
+                    const operatorId = userInfo.studentId || userInfo.id
+
+                    await setAdmin({
+                        targetStudentId: member.studentId,
+                        operatorStudentId: operatorId,
+                        organizationId: orgId.value
+                    })
+                    uni.showToast({ title: '操作成功', icon: 'success' })
+                    loadMembers(orgId.value)
+                } catch (e) {
+                    uni.showToast({ title: e.message || '操作失败', icon: 'none' })
+                }
             }
         }
     })
 }
 
-// 设为管理员
-const promoteToAdmin = (member) => {
-    // TODO: 调用服务器API设为管理员
-    uni.showLoading({ title: '处理中...' })
-
-    setTimeout(() => {
-        // 更新成员状态
-        const index = memberList.value.findIndex(m => m.id === member.id)
-        if (index > -1) {
-            memberList.value[index].isAdmin = true
-        }
-
-        uni.hideLoading()
-        uni.showToast({
-            title: '已设为管理员',
-            icon: 'success',
-            duration: 1500
-        })
-    }, 500)
-}
-
-// 确认取消管理员
 const confirmDemote = (member) => {
-    member.showActions = false
     uni.showModal({
-        title: '确认取消管理员',
-        content: `确定要取消"${member.name}"的管理员身份吗?`,
-        confirmText: '确认取消',
-        confirmColor: '#ff9800',
-        cancelText: '取消',
-        success: (res) => {
+        title: '取消管理员',
+        content: `确定要取消 ${member.name} 的管理员身份吗？`,
+        success: async (res) => {
             if (res.confirm) {
-                demoteAdmin(member)
+                try {
+                    const userInfo = uni.getStorageSync('userInfo')
+                    const operatorId = userInfo.studentId || userInfo.id
+
+                    await removeAdmin({
+                        targetStudentId: member.studentId,
+                        operatorStudentId: operatorId,
+                        organizationId: orgId.value
+                    })
+                    uni.showToast({ title: '操作成功', icon: 'success' })
+                    loadMembers(orgId.value)
+                } catch (e) {
+                    uni.showToast({ title: e.message || '操作失败', icon: 'none' })
+                }
             }
         }
     })
 }
 
-// 取消管理员
-const demoteAdmin = (member) => {
-    // TODO: 调用服务器API取消管理员
-    uni.showLoading({ title: '处理中...' })
-
-    setTimeout(() => {
-        // 更新成员状态
-        const index = memberList.value.findIndex(m => m.id === member.id)
-        if (index > -1) {
-            memberList.value[index].isAdmin = false
-        }
-
-        uni.hideLoading()
-        uni.showToast({
-            title: '已取消管理员',
-            icon: 'success',
-            duration: 1500
-        })
-    }, 500)
-}
-
-// 确认移除成员
 const confirmRemove = (member) => {
-    member.showActions = false
     uni.showModal({
-        title: '确认移除',
-        content: `确定要移除成员"${member.name}"吗?此操作不可撤销。`,
-        confirmText: '确认移除',
-        confirmColor: '#ff6b6b',
-        cancelText: '取消',
-        success: (res) => {
+        title: '移除成员',
+        content: `确定要将 ${member.name} 移出组织吗？`,
+        success: async (res) => {
             if (res.confirm) {
-                removeMember(member)
+                try {
+                    const userInfo = uni.getStorageSync('userInfo')
+                    const operatorId = userInfo.studentId || userInfo.id
+
+                    await removeMember({
+                        targetStudentId: member.studentId,
+                        operatorStudentId: operatorId,
+                        organizationId: orgId.value
+                    })
+                    uni.showToast({ title: '操作成功', icon: 'success' })
+                    loadMembers(orgId.value)
+                } catch (e) {
+                    uni.showToast({ title: e.message || '操作失败', icon: 'none' })
+                }
             }
         }
     })
-}
 
-// 移除成员
-const removeMember = (member) => {
-    // TODO: 调用服务器API移除成员
-    uni.showLoading({ title: '处理中...' })
-
-    setTimeout(() => {
-        // 从列表中移除
-        const index = memberList.value.findIndex(m => m.id === member.id)
-        if (index > -1) {
-            memberList.value.splice(index, 1)
-        }
-
-        uni.hideLoading()
-        uni.showToast({
-            title: '移除成功',
-            icon: 'success',
-            duration: 1500
-        })
-    }, 500)
 }
 </script>
 
@@ -489,7 +270,7 @@ const removeMember = (member) => {
 }
 
 .stats-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 20rpx;
     padding: 40rpx;
     display: flex;
@@ -593,7 +374,7 @@ const removeMember = (member) => {
 }
 
 .admin-badge {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     color: #fff;
     font-size: 18rpx;
     padding: 3rpx 10rpx;

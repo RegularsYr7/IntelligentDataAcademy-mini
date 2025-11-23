@@ -56,8 +56,8 @@
                                     @tap="viewCourseDetail(getCourse(dayIndex, timeIndex, week))">
                                     <view class="course-content" v-if="getCourse(dayIndex, timeIndex, week)"
                                         :class="{ highlight: isToday(dayIndex, week) }" :style="{
-                                            background: getCourseColor(getCourse(dayIndex, timeIndex, week).scheduleId).bg,
-                                            borderLeftColor: getCourseColor(getCourse(dayIndex, timeIndex, week).scheduleId).border
+                                            background: getCourseColor(getCourse(dayIndex, timeIndex, week).courseName).bg,
+                                            borderLeftColor: getCourseColor(getCourse(dayIndex, timeIndex, week).courseName).border
                                         }">
                                         <text class="course-name">{{ getCourse(dayIndex, timeIndex, week).courseName
                                         }}</text>
@@ -205,10 +205,22 @@ const courseColors = [
     { bg: 'rgba(139, 92, 246, 0.12)', border: '#8b5cf6' }    // 紫罗兰色
 ]
 
-// 根据课程ID获取颜色
-const getCourseColor = (courseId) => {
-    if (!courseId) return courseColors[0]
-    const index = (courseId - 1) % courseColors.length
+// 字符串哈希
+const stringHash = (str) => {
+    let hash = 0;
+    if (!str) return hash;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash;
+    }
+    return Math.abs(hash);
+}
+
+// 根据课程名称获取颜色
+const getCourseColor = (name) => {
+    if (!name) return courseColors[0]
+    const index = stringHash(name) % courseColors.length
     return courseColors[index]
 }
 
@@ -375,14 +387,21 @@ onLoad(async () => {
 </script>
 
 <style scoped lang="scss">
+.page {
+    height: 100vh;
+    overflow: hidden;
+}
+
 .container {
-    min-height: 100vh;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
     background: #f5f5f5;
 }
 
 /* 日期头部 */
 .date-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 30rpx;
 }
 
@@ -444,14 +463,16 @@ onLoad(async () => {
 
 /* 课表滑动容器 */
 .schedule-swiper {
-    height: calc(100vh - 140rpx);
+    flex: 1;
+    height: 0;
 }
 
 /* 课表主体 */
 .schedule-container {
     padding: 20rpx;
     height: 100%;
-    overflow-y: auto;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .schedule-table {
@@ -542,7 +563,7 @@ onLoad(async () => {
 
     &.active {
         .day-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
             .header-line1,
             .header-line2 {

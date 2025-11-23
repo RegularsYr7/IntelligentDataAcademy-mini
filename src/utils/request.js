@@ -19,14 +19,10 @@ const url = await request.upload('/api/upload', filePath)
 
 // 配置项
 const config = {
-  // 基础URL,根据环境自动切换
-  baseURL:
-    process.env.NODE_ENV === "production"
-      ? "http://intelligentmini.rainyweb.cn"
-      : "http://localhost:8081", // 改为 localhost
+  baseURL: import.meta.env.VITE_APP_BASE_URL || "http://localhost:8081",
 
   // 请求超时时间(ms)
-  timeout: 10000,
+  timeout: 25000,
 
   // 请求头
   header: {
@@ -78,12 +74,6 @@ const responseInterceptor = (response, options) => {
   }
 
   const { statusCode, data } = response;
-
-  // 打印响应日志(开发环境)
-  if (process.env.NODE_ENV === "development") {
-    console.log(`[RESPONSE] ${options.method} ${options.url}`);
-    console.log("[RESPONSE DATA]", data);
-  }
 
   // HTTP状态码处理
   if (statusCode === 200) {
@@ -344,8 +334,21 @@ const upload = (url, filePath, data = {}, options = {}) => {
   const token = uni.getStorageSync("userToken");
 
   return new Promise((resolve, reject) => {
+    const uploadUrl = url.startsWith("http") ? url : config.baseURL + url;
+
+    console.log("[上传] URL:", uploadUrl);
+    console.log("[上传] 文件路径:", filePath);
+    console.log("[上传] 额外数据:", data);
+
+    // 检查文件路径是否有效
+    if (!filePath) {
+      console.error("[上传] 文件路径为空");
+      reject({ errMsg: "文件路径为空" });
+      return;
+    }
+
     uni.uploadFile({
-      url: url.startsWith("http") ? url : config.baseURL + url,
+      url: uploadUrl,
       filePath,
       name: options.name || "file",
       formData: data,
@@ -354,6 +357,9 @@ const upload = (url, filePath, data = {}, options = {}) => {
         ...options.header,
       },
       success: (response) => {
+        console.log("[上传] 响应状态码:", response.statusCode);
+        console.log("[上传] 响应数据:", response.data);
+
         try {
           const data = JSON.parse(response.data);
           if (data.code === 200) {
@@ -372,19 +378,23 @@ const upload = (url, filePath, data = {}, options = {}) => {
               resolve(rest);
             }
           } else {
+            const errorMsg = data.msg || data.message || "上传失败";
+            console.error("[上传] 业务错误:", errorMsg);
             uni.showToast({
-              title: data.msg || data.message || "上传失败",
+              title: errorMsg,
               icon: "none",
             });
             reject(data);
           }
         } catch (error) {
+          console.error("[上传] 解析响应失败:", error);
           reject(error);
         }
       },
       fail: (error) => {
+        console.error("[上传] 上传失败:", error);
         uni.showToast({
-          title: "上传失败",
+          title: error.errMsg || "上传失败",
           icon: "none",
         });
         reject(error);

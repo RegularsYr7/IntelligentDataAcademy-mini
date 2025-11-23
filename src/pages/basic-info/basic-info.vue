@@ -36,10 +36,6 @@
                         <text class="info-value">{{ userInfo.major }}</text>
                     </view>
                     <view class="info-item">
-                        <text class="info-label">年级</text>
-                        <text class="info-value">{{ userInfo.grade }}</text>
-                    </view>
-                    <view class="info-item">
                         <text class="info-label">学制</text>
                         <text class="info-value">{{ userInfo.schoolSystem }}</text>
                     </view>
@@ -117,30 +113,16 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import cityData from '@/utils/city.js'
+import { updateProfile } from '@/api/student'
+import { chooseAndUploadImage } from '@/utils/upload'
+
+// 原始用户信息，用于对比是否修改
+const originalUserInfo = ref(null)
 
 // 用户信息
 const userInfo = ref({
-    name: '张三',
-    avatar: 'https://picsum.photos/200/200?random=user',
-    school: '某某大学',
-    college: '计算机科学学院',
-    educationLevel: '本科',
-    major: '数据科学与大数据技术',
-    grade: '2021级',
-    schoolSystem: '四年制',
-    class: '数据科学21-1班',
-    studentId: '2021001001',
-    idCard: '110101199901011234',
-    enrollmentDate: '2021年9月1日',
-    graduationDate: '2025年6月30日',
-    ethnicity: '汉族',
-    politicalStatus: '共青团员',
-    birthday: '1999-01-01',
-    hometownProvinceId: 1, // 北京的ID
-    hometownCityId: 36, // 北京市的ID
-    bloodType: 'A型'
 })
 
 // 初始化省份列表
@@ -187,17 +169,9 @@ const hometownIndexes = ref([0, 0])
 // 血型选择器
 const bloodTypeOptions = ref(['A型', 'B型', 'O型', 'AB型'])
 
-// 计算家乡文本
+// 计算家乡文本 - 直接显示hometown字段
 const hometownText = computed(() => {
-    const province = provinceList.value.find(p => p.id === userInfo.value.hometownProvinceId)
-    const city = cityList.value.find(c => c.id === userInfo.value.hometownCityId)
-
-    if (province && city) {
-        return `${province.name} ${city.name}`
-    } else if (province) {
-        return province.name
-    }
-    return '未设置'
+    return userInfo.value.hometown || '未设置'
 })
 
 // 加载用户信息
@@ -206,52 +180,40 @@ const loadUserInfo = () => {
     if (cachedUserInfo) {
         console.log('加载缓存的用户信息:', cachedUserInfo)
 
-        // 填充用户信息
+        // 填充用户信息 - 只使用缓存中实际存在的字段
         userInfo.value = {
-            name: cachedUserInfo.studentName || cachedUserInfo.name || '未设置',
-            avatar: cachedUserInfo.avatarUrl || cachedUserInfo.avatar || 'https://picsum.photos/200/200?random=user',
+            name: cachedUserInfo.name || '未设置',
+            avatar: cachedUserInfo.avatar || 'https://picsum.photos/200/200?random=user',
             school: cachedUserInfo.schoolName || '未设置',
             college: cachedUserInfo.collegeName || '未设置',
-            educationLevel: cachedUserInfo.educationLevel || '未设置',
+            educationLevel: cachedUserInfo.trainingLevel || '未设置',
             major: cachedUserInfo.majorName || '未设置',
             grade: cachedUserInfo.grade || '未设置',
-            schoolSystem: cachedUserInfo.schoolingLength ? `${cachedUserInfo.schoolingLength}年制` : '未设置',
+            schoolSystem: cachedUserInfo.educationSystem ? `${cachedUserInfo.educationSystem}年制` : '未设置',
             class: cachedUserInfo.className || '未设置',
-            studentId: cachedUserInfo.studentNo || cachedUserInfo.studentId || '未设置',
+            studentId: cachedUserInfo.studentNo || '未设置',
             idCard: formatIdCard(cachedUserInfo.idCard),
             enrollmentDate: formatDate(cachedUserInfo.enrollmentDate),
             graduationDate: formatDate(cachedUserInfo.graduationDate),
-            ethnicity: cachedUserInfo.nation || '未设置',
+            ethnicity: cachedUserInfo.nationality || '未设置',
             politicalStatus: cachedUserInfo.politicalStatus || '未设置',
-            birthday: formatBirthday(cachedUserInfo.birthday),
-            hometownProvinceId: 1, // 暂时使用默认值，如果后端有省市ID则使用
-            hometownCityId: 36,
+            birthday: cachedUserInfo.birthdate || '',
+            hometown: cachedUserInfo.hometown || '',
+            hometownProvinceId: 0,
+            hometownCityId: 0,
             bloodType: cachedUserInfo.bloodType || '未设置'
         }
 
-        // 如果有家乡字符串，尝试解析
-        if (cachedUserInfo.hometown) {
-            parseHometown(cachedUserInfo.hometown)
-        }
+        // 保存原始数据副本
+        originalUserInfo.value = JSON.parse(JSON.stringify(userInfo.value))
     }
 
-    // 初始化城市列表
-    cityList.value = getCityListByProvinceId(userInfo.value.hometownProvinceId)
+    // 初始化城市列表（用于选择器）
+    cityList.value = getCityListByProvinceId(1)
 
     // 更新家乡选择器的列数据
     hometownColumns.value[0] = provinceList.value.map(p => p.name)
     hometownColumns.value[1] = cityList.value.map(c => c.name)
-
-    // 初始化家乡选择器的索引
-    const provinceIndex = provinceList.value.findIndex(p => p.id === userInfo.value.hometownProvinceId)
-    const cityIndex = cityList.value.findIndex(c => c.id === userInfo.value.hometownCityId)
-
-    if (provinceIndex !== -1) {
-        hometownIndexes.value[0] = provinceIndex
-    }
-    if (cityIndex !== -1) {
-        hometownIndexes.value[1] = cityIndex
-    }
 }
 
 // 格式化身份证号（脱敏处理）
@@ -277,25 +239,30 @@ const formatDate = (dateStr) => {
     }
 }
 
-// 格式化生日
-const formatBirthday = (birthday) => {
-    if (!birthday) return ''
-    try {
-        const date = new Date(birthday)
-        const year = date.getFullYear()
-        const month = String(date.getMonth() + 1).padStart(2, '0')
-        const day = String(date.getDate()).padStart(2, '0')
-        return `${year}-${month}-${day}`
-    } catch (error) {
-        return birthday
-    }
-}
 
-// 解析家乡字符串（如果后端返回的是字符串格式）
-const parseHometown = (hometownStr) => {
-    // 这里可以根据实际情况解析家乡字符串
-    // 暂时保持默认值
-    console.log('家乡信息:', hometownStr)
+
+// 在 onLoad 之前添加保存函数
+const saveUserInfo = async (updates) => {
+    try {
+        // 添加学生ID
+        updates.studentId = uni.getStorageSync('userInfo').studentId
+
+        console.log('保存用户信息:', updates)
+        await updateProfile(updates)
+
+        // 更新本地缓存
+        const cachedUserInfo = uni.getStorageSync('userInfo') || {}
+        const newUserInfo = { ...cachedUserInfo, ...updates }
+        uni.setStorageSync('userInfo', newUserInfo)
+
+        // 设置刷新标志
+        uni.setStorageSync('refreshUserPage', Date.now())
+
+        console.log('用户信息保存成功，已更新缓存')
+    } catch (error) {
+        console.error('保存用户信息失败:', error)
+        throw error
+    }
 }
 
 onLoad(() => {
@@ -310,28 +277,41 @@ onLoad(() => {
 
 
 // 修改头像
-const changeAvatar = () => {
-    uni.chooseImage({
-        count: 1,
-        sizeType: ['compressed'],
-        sourceType: ['album', 'camera'],
-        success: (res) => {
-            userInfo.value.avatar = res.tempFilePaths[0]
-            uni.showToast({
-                title: '头像修改成功',
-                icon: 'success'
-            })
+const changeAvatar = async () => {
+    try {
+        const result = await chooseAndUploadImage({
+            count: 1,
+            sourceType: ['album', 'camera']
+        })
+
+        if (result && result.url) {
+            userInfo.value.avatar = result.url
+
+            // 立即保存到服务器
+            await saveUserInfo({ avatar: result.url })
         }
-    })
+    } catch (error) {
+        console.error('修改头像失败:', error)
+        uni.showToast({
+            title: '修改失败',
+            icon: 'none'
+        })
+    }
 }
 
 // 生日改变
-const onBirthdayChange = (e) => {
+const onBirthdayChange = async (e) => {
     userInfo.value.birthday = e.detail.value
-    uni.showToast({
-        title: '生日修改成功',
-        icon: 'success'
-    })
+
+    // 立即保存
+    try {
+        await saveUserInfo({ birthday: e.detail.value })
+    } catch (error) {
+        uni.showToast({
+            title: '保存失败',
+            icon: 'none'
+        })
+    }
 }
 
 // 家乡列改变
@@ -349,33 +329,56 @@ const onColumnChange = (e) => {
 }
 
 // 家乡改变
-const onHometownChange = (e) => {
+const onHometownChange = async (e) => {
     const indexes = e.detail.value
     const selectedProvince = provinceList.value[indexes[0]]
     const selectedCity = cityList.value[indexes[1]]
 
-    if (selectedProvince) {
+    if (selectedProvince && selectedCity) {
+        // 更新 ID
         userInfo.value.hometownProvinceId = selectedProvince.id
-    }
-    if (selectedCity) {
         userInfo.value.hometownCityId = selectedCity.id
-    }
 
-    hometownIndexes.value = indexes
-    uni.showToast({
-        title: '家乡修改成功',
-        icon: 'success'
-    })
+        // 构建新的家乡文本
+        const newHometown = `${selectedProvince.name} ${selectedCity.name}`
+        userInfo.value.hometown = newHometown
+
+        hometownIndexes.value = indexes
+
+        // 立即保存
+        try {
+            await saveUserInfo({
+                hometownProvinceId: selectedProvince.id,
+                hometownCityId: selectedCity.id,
+                hometown: newHometown
+            })
+        } catch (error) {
+            uni.showToast({
+                title: '保存失败',
+                icon: 'none'
+            })
+        }
+    }
 }
 
 // 血型改变
-const onBloodTypeChange = (e) => {
+const onBloodTypeChange = async (e) => {
     userInfo.value.bloodType = bloodTypeOptions.value[e.detail.value]
-    uni.showToast({
-        title: '血型修改成功',
-        icon: 'success'
-    })
+
+    // 立即保存
+    try {
+        await saveUserInfo({ bloodType: userInfo.value.bloodType })
+    } catch (error) {
+        uni.showToast({
+            title: '保存失败',
+            icon: 'none'
+        })
+    }
 }
+
+onUnload(() => {
+    console.log('基本信息页面卸载')
+})
 </script>
 
 <style scoped lang="scss">
@@ -387,7 +390,7 @@ const onBloodTypeChange = (e) => {
 
 /* 头像和姓名区域 */
 .profile-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 40rpx 30rpx 60rpx;
     display: flex;
     flex-direction: column;

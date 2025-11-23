@@ -83,290 +83,232 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getMyGrowthRecords } from '@/api/student'
 
 const currentFilter = ref('all')
 
 // 筛选选项
-const filters = ref([
-    { label: '全部', value: 'all', icon: '📋', count: 0 },
-    { label: '活动', value: 'activity', icon: '🎯', count: 0 },
-    { label: '证书', value: 'certificate', icon: '🏆', count: 0 },
-    { label: '竞赛', value: 'competition', icon: '🥇', count: 0 },
-    { label: '其他', value: 'other', icon: '✨', count: 0 }
-])
+const filters = ref(
+    [
+        { label: '全部', value: 'all', icon: '📋', count: 0 },
+        { label: '活动', value: 'activity', icon: '🎯', count: 0 },
+        { label: '证书', value: 'certificate', icon: '🏆', count: 0 },
+        { label: '竞赛', value: 'competition', icon: '🥇', count: 0 },
+        { label: '其他', value: 'other', icon: '✨', count: 0 }
+    ])
 
 // 月度趋势数据
-const monthlyTrend = ref([
-    { month: '5月', score: 78 },
-    { month: '6月', score: 82 },
-    { month: '7月', score: 85 },
-    { month: '8月', score: 88 },
-    { month: '9月', score: 92 },
-    { month: '10月', score: 95 }
-])
+const monthlyTrend = ref([])
 
 // 成长记录数据
-const growthRecords = ref([
-    {
-        id: 1,
-        type: 'activity',
-        title: '参加人工智能前沿技术讲座',
-        score: 2,
-        time: '2025-10-28 14:00',
-        day: '28',
-        month: '10月'
-    },
-    {
-        id: 2,
-        type: 'certificate',
-        title: '获得全国计算机等级考试二级证书',
-        score: 5,
-        time: '2025-10-25 10:30',
-        day: '25',
-        month: '10月'
-    },
-    {
-        id: 3,
-        type: 'activity',
-        title: '参加校园运动会志愿者服务',
-        score: 1,
-        time: '2025-10-20 08:00',
-        day: '20',
-        month: '10月'
-    },
-    {
-        id: 4,
-        type: 'competition',
-        title: '编程马拉松大赛获得三等奖',
-        score: 8,
-        time: '2025-10-15 16:30',
-        day: '15',
-        month: '10月'
-    },
-    {
-        id: 5,
-        type: 'activity',
-        title: '参加职业规划讲座',
-        score: 1,
-        time: '2025-10-12 15:00',
-        day: '12',
-        month: '10月'
-    },
-    {
-        id: 6,
-        type: 'certificate',
-        title: '获得CET-6英语六级证书',
-        score: 3,
-        time: '2025-10-08 09:00',
-        day: '08',
-        month: '10月'
-    },
-    {
-        id: 7,
-        type: 'activity',
-        title: '参加社团招新活动',
-        score: 0.5,
-        time: '2025-10-05 14:00',
-        day: '05',
-        month: '10月'
-    },
-    {
-        id: 8,
-        type: 'competition',
-        title: '数学建模竞赛获得二等奖',
-        score: 10,
-        time: '2025-09-28 17:00',
-        day: '28',
-        month: '09月'
-    },
-    {
-        id: 9,
-        type: 'other',
-        title: '发表学术论文一篇',
-        score: 15,
-        time: '2025-09-20 10:00',
-        day: '20',
-        month: '09月'
-    },
-    {
-        id: 10,
-        type: 'activity',
-        title: '参加创新创业分享会',
-        score: 2,
-        time: '2025-09-15 16:00',
-        day: '15',
-        month: '09月'
-    },
-    {
-        id: 11,
-        type: 'certificate',
-        title: '获得Java程序设计认证证书',
-        score: 4,
-        time: '2025-09-10 11:00',
-        day: '10',
-        month: '09月'
-    },
-    {
-        id: 12,
-        type: 'other',
-        title: '完成校级科研项目',
-        score: 12,
-        time: '2025-09-05 09:30',
-        day: '05',
-        month: '09月'
-    }
-])
+const growthRecords = ref([])
 
 // 筛选后的记录列表
 const displayRecords = computed(() => {
-    if (currentFilter.value === 'all') {
-        return growthRecords.value
-    }
-    return growthRecords.value.filter(record => record.type === currentFilter.value)
+    return growthRecords.value
 })
 
 // 统计数据
-const totalScore = computed(() => {
-    return monthlyTrend.value[monthlyTrend.value.length - 1].score
-})
-
-const monthlyGain = computed(() => {
-    const currentMonth = growthRecords.value.filter(r => r.month === '10月')
-    return currentMonth.reduce((sum, record) => sum + record.score, 0)
-})
-
-const recordCount = computed(() => growthRecords.value.length)
+const totalScore = ref(0)
+const monthlyGain = ref(0)
+const recordCount = ref(0)
 
 // 更新筛选项计数
 const updateFilterCounts = () => {
-    filters.value[0].count = growthRecords.value.length
-    filters.value[1].count = growthRecords.value.filter(r => r.type === 'activity').length
-    filters.value[2].count = growthRecords.value.filter(r => r.type === 'certificate').length
-    filters.value[3].count = growthRecords.value.filter(r => r.type === 'competition').length
-    filters.value[4].count = growthRecords.value.filter(r => r.type === 'other').length
+    const current = filters.value.find(f => f.value === currentFilter.value)
+    if (current) {
+        current.count = recordCount.value
+    }
+}
+
+const fetchGrowthData = async () => {
+    const userInfo = uni.getStorageSync('userInfo')
+    if (!userInfo) return
+
+    // 映射前端筛选类型到后端参数
+    // 1=活动，2=证书，3=竞赛，4=其他
+    const typeMap = {
+        'activity': '1',
+        'certificate': '2',
+        'competition': '3',
+        'other': '4'
+    }
+
+    try {
+        const res = await getMyGrowthRecords({
+            studentId: userInfo.studentId,
+            recordType: typeMap[currentFilter.value]
+        })
+        console.log('Growth records response:', res)
+
+        if (res) {
+            totalScore.value = res.currentQuantitativeScore || 0
+            monthlyGain.value = res.currentMonthScore || 0
+            recordCount.value = res.recordCount || 0
+
+            // 映射趋势数据
+            let trendData = []
+            if (res.growthTrend && res.growthTrend.length > 0) {
+                // 1. 解析后端数据
+                trendData = res.growthTrend.map(item => {
+                    let year, month
+                    if (item.month && item.month.includes('-')) {
+                        const parts = item.month.split('-')
+                        year = parseInt(parts[0])
+                        month = parseInt(parts[1])
+                    } else {
+                        // 尝试直接解析，或者默认为当前年
+                        const now = new Date()
+                        year = now.getFullYear()
+                        month = parseInt(item.month) || (now.getMonth() + 1)
+                    }
+                    return {
+                        year,
+                        month,
+                        score: item.score || 0
+                    }
+                })
+
+                // 按时间排序
+                trendData.sort((a, b) => {
+                    if (a.year !== b.year) return a.year - b.year
+                    return a.month - b.month
+                })
+            }
+
+            // 2. 补齐数据到6条
+            const neededCount = 6
+            if (trendData.length < neededCount) {
+                // 如果没有数据，从当前月开始往前推
+                if (trendData.length === 0) {
+                    const now = new Date()
+                    let y = now.getFullYear()
+                    let m = now.getMonth() + 1
+
+                    for (let i = 0; i < neededCount; i++) {
+                        trendData.unshift({
+                            year: y,
+                            month: m,
+                            score: 0
+                        })
+                        // 往前推一个月
+                        if (m === 1) {
+                            m = 12
+                            y--
+                        } else {
+                            m--
+                        }
+                    }
+                } else {
+                    // 有数据，从最早的数据往前补
+                    let y = trendData[0].year
+                    let m = trendData[0].month
+                    const missingCount = neededCount - trendData.length
+
+                    for (let i = 0; i < missingCount; i++) {
+                        // 往前推一个月
+                        if (m === 1) {
+                            m = 12
+                            y--
+                        } else {
+                            m--
+                        }
+
+                        trendData.unshift({
+                            year: y,
+                            month: m,
+                            score: 0
+                        })
+                    }
+                }
+            } else if (trendData.length > neededCount) {
+                // 如果超过6条，取最近的6条
+                trendData = trendData.slice(trendData.length - neededCount)
+            }
+
+            // 3. 格式化输出
+            monthlyTrend.value = trendData.map(item => ({
+                month: item.month + '月',
+                score: item.score
+            }))
+
+            // 映射记录列表
+            growthRecords.value = (res.recordList || []).map(item => {
+                let day = ''
+                let month = ''
+
+                if (item.recordTime) {
+                    // 兼容处理日期字符串
+                    const dateStr = item.recordTime.replace(/-/g, '/')
+                    const date = new Date(dateStr)
+                    if (!isNaN(date.getTime())) {
+                        month = (date.getMonth() + 1) + '月'
+                        day = date.getDate().toString().padStart(2, '0')
+                    }
+                }
+
+                // 映射类型
+                const typeReverseMap = {
+                    '1': 'activity',
+                    '2': 'certificate',
+                    '3': 'competition',
+                    '4': 'other'
+                }
+
+                return {
+                    id: item.recordId,
+                    type: typeReverseMap[item.recordType] || 'other',
+                    title: item.sourceName || '未命名记录',
+                    score: item.score,
+                    time: item.recordTime,
+                    day: day,
+                    month: month
+                }
+            })
+
+            updateFilterCounts()
+        } else {
+            // 如果没有返回数据，生成默认趋势
+            monthlyTrend.value = generateDefaultMonthlyTrend()
+        }
+    } catch (e) {
+        console.error(e)
+        // 出错时也生成默认趋势
+        monthlyTrend.value = generateDefaultMonthlyTrend()
+    }
+}
+
+// 生成默认的月度趋势数据（最近6个月，全为0）
+const generateDefaultMonthlyTrend = () => {
+    const months = []
+    const now = new Date()
+    let year = now.getFullYear()
+    let month = now.getMonth() + 1
+
+    for (let i = 0; i < 6; i++) {
+        months.unshift({
+            month: month + '月',
+            score: 0
+        })
+
+        // 往前推一个月
+        if (month === 1) {
+            month = 12
+            year--
+        } else {
+            month--
+        }
+    }
+
+    return months
 }
 
 onLoad(() => {
     console.log('成长记录页面加载')
+    fetchGrowthData()
     updateFilterCounts()
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【成长记录页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取成长记录列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/growth-records')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        type: 'all', // all | activity | organization | competition | sign_in | post
-        startDate: '2024-01-01',
-        endDate: '2024-12-31',
-        page: 1,
-        pageSize: 20
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    type: 'activity',
-                    title: '参加数据分析讲座',
-                    description: '完成活动签到并参与互动',
-                    score: 10, // 量化分数
-                    date: '2024-11-01',
-                    relatedId: 1,
-                    relatedType: 'activity',
-                    tags: ['学习', '数据分析']
-                }
-            ],
-            total: 156,
-            statistics: {
-                totalScore: 850,
-                activityCount: 45,
-                organizationCount: 3,
-                competitionCount: 2,
-                signInCount: 98,
-                postCount: 8
-            },
-            typeCounts: {
-                all: 156,
-                activity: 45,
-                organization: 3,
-                competition: 2,
-                sign_in: 98,
-                post: 8
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📍 接口2: 获取成长统计数据')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/growth-records/statistics')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        months: 6 // 最近几个月
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            monthlyData: [
-                {
-                    month: '2024-06',
-                    score: 120,
-                    count: 15
-                }
-            ],
-            typeDistribution: {
-                activity: 45,
-                organization: 3,
-                competition: 2,
-                sign_in: 98,
-                post: 8
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📚 数据字典')
-    console.log('━'.repeat(80))
-    console.log('type类型:')
-    console.log('  - activity: 活动记录')
-    console.log('  - organization: 组织记录')
-    console.log('  - competition: 竞赛记录')
-    console.log('  - sign_in: 签到记录')
-    console.log('  - post: 发帖记录')
-    console.log('\n量化分数规则:')
-    console.log('  - 参加活动: 10分/次')
-    console.log('  - 加入组织: 20分/个')
-    console.log('  - 参加竞赛: 50分/次')
-    console.log('  - 课堂签到: 5分/次')
-    console.log('  - 发布帖子: 5分/篇')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 // 获取类型图标
 const getTypeIcon = (type) => {
@@ -399,6 +341,7 @@ const getCurrentFilterText = () => {
 // 切换筛选
 const switchFilter = (value) => {
     currentFilter.value = value
+    fetchGrowthData()
 }
 </script>
 
@@ -411,7 +354,7 @@ const switchFilter = (value) => {
 
 /* 统计头部 */
 .stats-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 40rpx 30rpx;
     display: flex;
     justify-content: space-around;
@@ -547,7 +490,7 @@ const switchFilter = (value) => {
     transition: all 0.3s;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
         .tab-text {
             color: #fff;

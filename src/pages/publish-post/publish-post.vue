@@ -94,10 +94,13 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { uploadImage } from '@/utils/upload'
+import { submitPost } from '@/api/community'
 
 const title = ref('')
 const content = ref('')
-const imageList = ref([])
+const imageList = ref([]) // 临时图片路径
+const uploadedImages = ref([]) // 已上传的图片URL
 const selectedTopics = ref([])
 const location = ref('')
 const showTopicModal = ref(false)
@@ -127,71 +130,8 @@ const canPublish = computed(() => {
 onLoad(() => {
     console.log('发布帖子页面加载')
 
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【发布帖子页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 上传图片')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/upload/image')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数: FormData')
-    console.log(JSON.stringify({
-        file: 'Binary file data',
-        type: 'post' // 上传类型标识
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            url: 'https://example.com/uploads/post/xxxxx.jpg'
-        }
-    }, null, 2))
-    console.log('📝 图片限制: 最多9张,每张最大5MB,支持jpg/png格式')
-    console.log('\n')
-
-    console.log('📍 接口2: 发布帖子')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/posts')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        content: '帖子内容',
-        images: [
-            'https://example.com/img1.jpg',
-            'https://example.com/img2.jpg'
-        ],
-        tags: ['数据分析', '学习'], // 可选
-        location: '图书馆' // 可选
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '发布成功',
-        data: {
-            id: 1,
-            createTime: '2024-11-01 15:30'
-        }
-    }, null, 2))
-    console.log('📝 内容不能为空,至少10个字符')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 // 返回
 const goBack = () => {
@@ -211,21 +151,126 @@ const goBack = () => {
 }
 
 // 选择图片
-const chooseImage = () => {
+const chooseImage = async () => {
+    // 检查是否已达到上限
+    if (imageList.value.length >= 9) {
+        uni.showToast({
+            title: '最多上传9张图片',
+            icon: 'none'
+        })
+        return
+    }
+
     const count = 9 - imageList.value.length
     uni.chooseImage({
         count: count,
         sizeType: ['compressed'],
         sourceType: ['album', 'camera'],
-        success: (res) => {
-            imageList.value = imageList.value.concat(res.tempFilePaths)
+        success: async (res) => {
+            console.log('选择图片成功:', res)
+
+            // 提取文件路径
+            let tempPaths = []
+            if (res.tempFiles && res.tempFiles.length > 0) {
+                // 优先使用 tempFiles
+                tempPaths = res.tempFiles.map(file => file.path || file.tempFilePath || '')
+            } else {
+                // 降级使用 tempFilePaths
+                tempPaths = res.tempFilePaths || []
+            }
+
+            console.log('待上传的图片路径:', tempPaths)
+
+            // 显示上传进度
+            uni.showLoading({
+                title: `上传中 0/${tempPaths.length}`,
+                mask: true
+            })
+
+            try {
+                // 逐个上传图片
+                for (let i = 0; i < tempPaths.length; i++) {
+                    const tempPath = tempPaths[i]
+
+                    if (!tempPath) {
+                        console.warn(`第${i + 1}张图片路径为空，跳过`)
+                        continue
+                    }
+
+                    // 更新进度提示
+                    uni.showLoading({
+                        title: `上传中 ${i + 1}/${tempPaths.length}`,
+                        mask: true
+                    })
+
+                    try {
+                        console.log(`开始上传第${i + 1}张图片:`, tempPath)
+
+                        // 调用上传接口
+                        const result = await uploadImage(tempPath)
+                        console.log(`第${i + 1}张图片上传结果:`, result)
+
+                        // 兼容不同的返回格式
+                        let imageUrl = ''
+                        if (typeof result === 'string') {
+                            imageUrl = result
+                        } else if (result.url) {
+                            imageUrl = result.url
+                        } else if (result.fileName) {
+                            imageUrl = result.fileName
+                        }
+
+                        if (!imageUrl) {
+                            throw new Error('上传成功但未返回图片URL')
+                        }
+
+                        // 添加到预览列表（使用服务器URL）
+                        imageList.value.push(imageUrl)
+                        // 添加到已上传URL列表
+                        uploadedImages.value.push(imageUrl)
+
+                        console.log(`第${i + 1}张图片上传成功:`, imageUrl)
+                    } catch (error) {
+                        console.error(`第${i + 1}张图片上传失败:`, error)
+                        uni.showToast({
+                            title: `第${i + 1}张上传失败`,
+                            icon: 'none',
+                            duration: 1500
+                        })
+                        // 继续上传下一张
+                    }
+                }
+
+                uni.hideLoading()
+
+                if (uploadedImages.value.length > 0) {
+                    uni.showToast({
+                        title: `成功上传${uploadedImages.value.length}张`,
+                        icon: 'success',
+                        duration: 1500
+                    })
+                }
+            } catch (error) {
+                uni.hideLoading()
+                console.error('上传过程出错:', error)
+                uni.showToast({
+                    title: '上传失败',
+                    icon: 'none'
+                })
+            }
+        },
+        fail: (error) => {
+            console.error('选择图片失败:', error)
+            uni.showToast({
+                title: '选择图片失败',
+                icon: 'none'
+            })
         }
     })
-}
-
-// 删除图片
+}// 删除图片
 const deleteImage = (index) => {
     imageList.value.splice(index, 1)
+    uploadedImages.value.splice(index, 1)
 }
 
 // 添加话题
@@ -291,7 +336,7 @@ const showMore = () => {
 }
 
 // 发布
-const publish = () => {
+const publish = async () => {
     if (!canPublish.value) {
         uni.showToast({
             title: '请输入内容或添加图片',
@@ -300,23 +345,71 @@ const publish = () => {
         return
     }
 
+    // 获取用户信息
+    const userInfo = uni.getStorageSync('userInfo')
+    if (!userInfo || !userInfo.studentId) {
+        uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+        })
+        setTimeout(() => {
+            uni.navigateTo({
+                url: '/pages/login/login'
+            })
+        }, 1500)
+        return
+    }
+
     uni.showLoading({
-        title: '发布中...'
+        title: '发布中...',
+        mask: true
     })
 
-    // 模拟发布请求
-    setTimeout(() => {
+    try {
+        // 构建发布数据
+        const postData = {
+            studentId: userInfo.studentId,
+            postType: '1', // 默认为普通帖子
+            title: title.value.trim() || '',
+            content: content.value.trim(),
+            images: uploadedImages.value.join(','), // 多张图片用逗号分隔
+            tags: selectedTopics.value.join(','), // 多个标签用逗号分隔
+            location: location.value || '',
+            studentName: userInfo.name || userInfo.studentName || '',
+            studentAvatar: userInfo.avatar || ''
+        }
+
+        console.log('发布帖子数据:', postData)
+
+        // 调用发布接口
+        const result = await submitPost(postData)
+
         uni.hideLoading()
+
         uni.showToast({
             title: '发布成功',
             icon: 'success',
             duration: 2000
         })
 
+        // 设置刷新标志，通知上一页刷新
+        uni.setStorageSync('refreshQaList', true)
+
         setTimeout(() => {
-            uni.navigateBack()
+            // 返回上一页并刷新
+            uni.navigateBack({
+                delta: 1
+            })
         }, 2000)
-    }, 1500)
+    } catch (error) {
+        uni.hideLoading()
+        console.error('发布失败:', error)
+        uni.showToast({
+            title: error.message || '发布失败，请重试',
+            icon: 'none',
+            duration: 2000
+        })
+    }
 }
 </script>
 
@@ -378,16 +471,13 @@ const publish = () => {
 .grid-item {
     position: relative;
     width: 100%;
-    padding-bottom: 100%;
+    aspect-ratio: 1;
     border-radius: 12rpx;
     overflow: hidden;
     background-color: #f5f5f5;
 }
 
 .grid-image {
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 100%;
     height: 100%;
 }
@@ -543,7 +633,7 @@ const publish = () => {
 
 .publish-btn {
     padding: 14rpx 40rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 32rpx;
     transition: all 0.3s;
 
@@ -647,7 +737,7 @@ const publish = () => {
     box-sizing: border-box;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
         border-color: transparent;
 
         .option-text {

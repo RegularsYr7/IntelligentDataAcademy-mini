@@ -18,9 +18,10 @@ export const getOrganizationList = (params) => {
 /**
  * 获取组织详情
  * @param {string} id - 组织ID
+ * @param {Object} params - 查询参数 (如 studentId)
  */
-export const getOrganizationDetail = (id) => {
-  return request.get(`/edu/organization/detail/${id}`);
+export const getOrganizationDetail = (id, params) => {
+  return request.get(`/edu/organization/detail/${id}`, params);
 };
 
 /**
@@ -45,8 +46,10 @@ export const applyOrganization = (data) => {
 /**
  * 审批申请
  * @param {Object} data - 审批信息
- * @param {string} data.applicationId - 申请ID
- * @param {string} data.status - 审批状态(approved/rejected)
+ * @param {number} data.operatorStudentId - 操作者ID（验证权限）
+ * @param {number} data.targetStudentId - 申请人ID
+ * @param {number} data.organizationId - 组织ID
+ * @param {boolean} data.approved - 是否通过（true=通过 false=拒绝）
  */
 export const approveApplication = (data) => {
   return request.post("/edu/organization/approveApplication", data);

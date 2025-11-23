@@ -1,68 +1,73 @@
 <template>
     <view class="page">
         <view class="activity-container">
-            <!-- 搜索框 -->
-            <view class="search-section">
-                <view class="search-box">
-                    <text class="search-icon">🔍</text>
-                    <input class="search-input" v-model="searchKeyword" placeholder="搜索活动名称" @confirm="onSearch" />
-                    <text class="clear-icon" v-if="searchKeyword" @tap="onClear">×</text>
-                </view>
-            </view>
+            <RefreshLoadList ref="listRef" :api="getActivityList" :params="requestParams" :dataMapping="mapActivityData"
+                :pageSize="20" emptyIcon="📭" emptyText="暂无活动">
 
-            <!-- 活动分类 -->
-            <view class="category-section">
-                <scroll-view class="category-scroll" scroll-x>
-                    <view class="category-list">
-                        <view class="category-item" v-for="(item, index) in categoryList" :key="index"
-                            :class="{ active: currentCategory === index }" @tap="onCategoryChange(index)">
-                            <text class="category-text">{{ item.name }}</text>
+                <template #header>
+                    <!-- 搜索框 -->
+                    <view class="search-section">
+                        <view class="search-box">
+                            <text class="search-icon">🔍</text>
+                            <input class="search-input" v-model="searchKeyword" placeholder="搜索活动名称"
+                                @confirm="onSearch" />
+                            <text class="clear-icon" v-if="searchKeyword" @tap="onClear">×</text>
                         </view>
                     </view>
-                </scroll-view>
-            </view>
 
-            <!-- 使用通用列表组件 -->
-            <view class="list-wrapper">
-                <RefreshLoadList ref="listRef" :api="getActivityList" :params="requestParams"
-                    :dataMapping="mapActivityData" :pageSize="20" emptyIcon="📭" emptyText="暂无活动">
-
-                    <!-- 自定义列表项样式 (两列网格布局) -->
-                    <template #default="{ items }">
-                        <view class="activity-grid">
-                            <view class="activity-card" v-for="item in items" :key="item.id" @tap="viewActivity(item)">
-                                <view class="card-image-wrapper">
-                                    <image class="card-image" :src="item.image" mode="aspectFill"></image>
-                                    <!-- 积分和状态标签 -->
-                                    <view class="overlay-badges">
-                                        <view class="points-badge">
-                                            <text class="points-icon">⭐</text>
-                                            <text class="points-text">{{ item.points }}</text>
-                                        </view>
-                                        <view class="status-badge" :class="'status-' + item.status">
-                                            {{ getStatusText(item.status) }}
-                                        </view>
-                                    </view>
+                    <!-- 活动分类 -->
+                    <view class="category-section">
+                        <scroll-view class="category-scroll" scroll-x>
+                            <view class="category-list">
+                                <view class="category-item" v-for="(item, index) in categoryList" :key="index"
+                                    :class="{ active: currentCategory === index }" @tap="onCategoryChange(index)">
+                                    <text class="category-text">{{ item.name }}</text>
                                 </view>
-                                <view class="card-content">
-                                    <view class="card-header">
-                                        <text class="activity-name">{{ item.title }}</text>
+                            </view>
+                        </scroll-view>
+                    </view>
+                </template>
+
+                <!-- 自定义列表项样式 (两列网格布局) -->
+                <template #default="{ items }">
+                    <view class="activity-grid">
+                        <view class="activity-card" v-for="item in items" :key="item.activityId"
+                            @tap="viewActivity(item)">
+                            <view class="card-image-wrapper">
+                                <image class="card-image"
+                                    :src="item.coverImage || 'https://picsum.photos/300/200?random=' + item.activityId"
+                                    mode="aspectFill"></image>
+                                <!-- 积分和状态标签 -->
+                                <view class="overlay-badges">
+                                    <view class="status-badge"
+                                        :class="'status-' + getActivityStatusByCode(item.currentStatus)">
+                                        {{ getStatusText(getActivityStatusByCode(item.currentStatus)) }}
                                     </view>
-                                    <view class="activity-time-range">
-                                        <text class="time-icon">🕒</text>
-                                        <text class="time-text">{{ item.startTime }} - {{ item.endTime }}</text>
+                                    <view class="points-badge">
+                                        <text class="points-text">{{ item.creditValue }} 量化分</text>
                                     </view>
-                                    <view class="card-tags">
-                                        <view class="tag type-tag" :class="'type-' + item.type">
-                                            {{ getTypeText(item.type) }}
-                                        </view>
+
+                                </view>
+                            </view>
+                            <view class="card-content">
+                                <view class="card-header">
+                                    <text class="activity-name">{{ item.activityName }}</text>
+                                </view>
+                                <view class="activity-time-range">
+                                    <text class="time-icon">🕒</text>
+                                    <text class="time-text">{{ formatDateTime(item.activityStartTime) }} - {{
+                                        formatDateTime(item.activityEndTime) }}</text>
+                                </view>
+                                <view class="card-tags">
+                                    <view class="tag type-tag" :class="'type-' + item.activityType">
+                                        {{ getTypeText(item.activityType) }}
                                     </view>
                                 </view>
                             </view>
                         </view>
-                    </template>
-                </RefreshLoadList>
-            </view>
+                    </view>
+                </template>
+            </RefreshLoadList>
         </view>
     </view>
 </template>
@@ -107,41 +112,35 @@ const requestParams = computed(() => {
 
 // 数据映射函数(后端 -> 前端)
 const mapActivityData = (item) => {
-    return {
-        id: item.activityId,
-        title: item.activityName,
-        image: item.coverImage || 'https://picsum.photos/300/200?random=' + item.activityId,
-        type: item.activityType,
-        status: getActivityStatusByCode(item.activityStatus),
-        startTime: formatDateTime(item.activityStartTime),
-        endTime: formatDateTime(item.activityEndTime),
-        points: item.points || item.favoriteCount || 10,
-        category: item.activityType,
-        location: item.location || item.activityLocation,
-        organization: item.organizationName || '',
-        participants: item.enrolledCount || item.participantCount || 0,
-        maxParticipants: item.maxParticipants || 100,
-        description: item.description || item.activityDescription || '',
-        isTop: item.isTop === 'Y'
-    }
+    return item
 }
 
 // 加载活动分类
 const loadActivityTypes = async () => {
     try {
-        const data = await getActivityTypesMap()
+        const res = await getActivityTypesMap()
+        console.log('活动类型映射原始数据:', res)
 
-        if (data && Array.isArray(data)) {
-            // data 是数组格式 [{label: "学术讲座", value: "1"}, ...]
-            const types = data.map(item => ({
+        // 接口直接返回数组(与competition、showcase一样)
+        const dataArray = Array.isArray(res) ? res : (res.data || [])
+        console.log('数据数组:', dataArray)
+
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+            const types = dataArray.map(item => ({
                 id: item.value,
                 name: item.label
             }))
+
+            console.log('转换后的分类:', types)
 
             categoryList.value = [
                 { id: '', name: '全部' },
                 ...types
             ]
+
+            console.log('最终的分类数据:', categoryList.value)
+        } else {
+            console.log('数据格式不正确或数据为空')
         }
     } catch (error) {
         console.error('加载活动类型失败:', error)
@@ -172,9 +171,12 @@ const formatDateTime = (dateTimeStr) => {
 // 根据状态码获取活动状态
 const getActivityStatusByCode = (statusCode) => {
     const statusMap = {
-        '0': 'recruiting',  // 报名中
-        '1': 'ongoing',     // 进行中
-        '2': 'finished'     // 已结束
+        1: 'upcoming',
+        2: 'recruiting',
+        3: 'waiting',
+        4: 'ongoing',
+        5: 'finished',
+        6: 'completed'
     }
     return statusMap[statusCode] || 'recruiting'
 }
@@ -201,23 +203,24 @@ const getTypeText = (type) => {
 // 获取状态文本
 const getStatusText = (status) => {
     const statusMap = {
+        'upcoming': '预热中',
         'recruiting': '报名中',
+        'waiting': '等待中',
         'ongoing': '进行中',
-        'finished': '已结束'
+        'finished': '已结束',
+        'completed': '已完结'
     }
     return statusMap[status] || ''
 }
 
 // 搜索
 const onSearch = () => {
-    // 触发参数变化,组件会自动重新加载
-    listRef.value?.reload()
+    // requestParams 变化会自动触发组件重新加载
 }
 
 // 清空搜索
 const onClear = () => {
     searchKeyword.value = ''
-    listRef.value?.reload()
 }
 
 // 切换分类
@@ -228,8 +231,19 @@ const onCategoryChange = (index) => {
 
 // 查看活动详情
 const viewActivity = (activity) => {
+    console.log('点击查看活动:', activity)
+
+    if (!activity.activityId) {
+        console.error('活动ID无效，活动对象:', activity)
+        uni.showToast({
+            title: '活动数据异常',
+            icon: 'none'
+        })
+        return
+    }
+
     uni.navigateTo({
-        url: `/pages/activity-detail/activity-detail?id=${activity.id}`
+        url: `/pages/activity-detail/activity-detail?id=${activity.activityId}`
     })
 }
 
@@ -251,27 +265,22 @@ onShow(() => {
 .page {
     height: 100vh;
     overflow: hidden;
+
 }
 
 .activity-container {
     height: 100%;
-    display: flex;
-    flex-direction: column;
     background-color: #f5f5f5;
 }
 
 /* 搜索框 */
 .search-section {
-    flex-shrink: 0;
     background: #fff;
     padding: 20rpx;
 }
 
 /* 列表容器 */
-.list-wrapper {
-    flex: 1;
-    overflow: hidden;
-}
+/* .list-wrapper removed */
 
 .search-box {
     display: flex;
@@ -303,7 +312,6 @@ onShow(() => {
 
 /* 分类标签 */
 .category-section {
-    flex-shrink: 0;
     background: #fff;
     padding: 0 20rpx 20rpx;
     margin-bottom: 20rpx;
@@ -326,7 +334,7 @@ onShow(() => {
     transition: all 0.3s;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
         .category-text {
             color: #fff;
@@ -372,7 +380,7 @@ onShow(() => {
     top: 12rpx;
     left: 12rpx;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
     gap: 8rpx;
 }
 
@@ -380,7 +388,7 @@ onShow(() => {
     display: flex;
     align-items: center;
     gap: 4rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 6rpx 12rpx;
     border-radius: 12rpx;
 }
@@ -403,17 +411,32 @@ onShow(() => {
     text-align: center;
 
     &.status-recruiting {
-        background: rgba(82, 196, 26, 0.9);
+        background: rgba(33, 150, 243, 0.9);
+        color: #fff;
+    }
+
+    &.status-upcoming {
+        background: rgba(255, 152, 0, 0.9);
+        color: #fff;
+    }
+
+    &.status-waiting {
+        background: rgba(156, 39, 176, 0.9);
         color: #fff;
     }
 
     &.status-ongoing {
-        background: rgba(102, 126, 234, 0.9);
+        background: rgba(76, 175, 80, 0.9);
         color: #fff;
     }
 
     &.status-finished {
-        background: rgba(153, 153, 153, 0.9);
+        background: rgba(158, 158, 158, 0.9);
+        color: #fff;
+    }
+
+    &.status-completed {
+        background: rgba(96, 125, 139, 0.9);
         color: #fff;
     }
 }

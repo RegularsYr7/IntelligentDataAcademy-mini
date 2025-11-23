@@ -108,10 +108,20 @@ const accountLogin = async (formData) => {
     loading.value = true
 
     try {
+        // 获取微信登录 code
+        const loginRes = await new Promise((resolve, reject) => {
+            uni.login({
+                provider: 'weixin',
+                success: resolve,
+                fail: reject
+            })
+        })
+
         // 调用登录接口
         const response = await login({
             studentNo: formData.username,
-            password: formData.password
+            password: formData.password,
+            wxCode: loginRes.code
         })
 
         console.log('登录响应数据:', response)
@@ -154,8 +164,10 @@ const accountLogin = async (formData) => {
             // ========== 个人信息 ==========
             nationality: data.nationality,
             politicalStatus: data.politicalStatus,
-            birthdate: data.birthdate,
+            birthday: data.birthday, // 修正字段名 birthdate -> birthday
             hometown: data.hometown,
+            hometownProvinceId: data.hometownProvinceId, // 新增省份ID
+            hometownCityId: data.hometownCityId, // 新增城市ID
             bloodType: data.bloodType,
 
             // ========== 活动信息 ==========
@@ -312,9 +324,9 @@ const getPhoneNumber = async (e) => {
 
     if (e.detail.errMsg === 'getPhoneNumber:ok') {
         // 直接从 detail 中获取 code
-        const { code } = e.detail
+        const { code: phoneCode } = e.detail
 
-        if (!code) {
+        if (!phoneCode) {
             uni.showToast({
                 title: '获取手机号授权码失败',
                 icon: 'none'
@@ -325,9 +337,21 @@ const getPhoneNumber = async (e) => {
         loading.value = true
 
         try {
-            console.log('调用微信登录接口，code:', code)
+            console.log('调用微信登录接口，phoneCode:', phoneCode)
 
-            const response = await loginByWechat(code)
+            // 获取微信登录 code
+            const loginRes = await new Promise((resolve, reject) => {
+                uni.login({
+                    provider: 'weixin',
+                    success: resolve,
+                    fail: reject
+                })
+            })
+
+            const response = await loginByWechat({
+                phoneCode: phoneCode,
+                wxCode: loginRes.code
+            })
 
             console.log('微信登录响应数据:', response)
 
@@ -508,7 +532,7 @@ const goBack = () => {
 <style scoped lang="scss">
 .container {
     min-height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     position: relative;
     overflow: hidden;
 }

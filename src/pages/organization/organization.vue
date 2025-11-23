@@ -1,67 +1,71 @@
 <template>
     <view class="page">
         <view class="container">
-            <!-- 搜索栏 -->
-            <view class="search-bar">
-                <view class="search-box">
-                    <text class="search-icon">🔍</text>
-                    <input class="search-input" placeholder="搜索组织名称..." v-model="searchKeyword" @input="onSearch"
-                        @confirm="onSearchConfirm" />
-                    <text class="clear-icon" v-if="searchKeyword" @tap="clearSearch">✕</text>
-                </view>
-            </view>
-
-            <!-- 组织轮播图 -->
-            <view class="swiper-container">
-                <swiper class="organization-swiper" :indicator-dots="true" :autoplay="true" :interval="3000"
-                    :duration="500" indicator-color="rgba(255, 255, 255, 0.5)" indicator-active-color="#fff">
-                    <swiper-item v-for="(banner, index) in banners" :key="index">
-                        <image class="swiper-image" :src="banner.image" mode="aspectFill" @tap="goToBanner(banner)">
-                        </image>
-                        <view class="swiper-overlay">
-                            <text class="swiper-title">{{ banner.title }}</text>
-                            <text class="swiper-desc">{{ banner.desc }}</text>
+            <RefreshLoadList ref="listRef" :api="getOrganizationList" :params="listParams"
+                :dataMapping="mapOrganizationData" :pageSize="10" emptyIcon="📭" emptyText="暂无相关组织">
+                <template #header>
+                    <!-- 搜索栏 -->
+                    <view class="search-bar">
+                        <view class="search-box">
+                            <text class="search-icon">🔍</text>
+                            <input class="search-input" placeholder="搜索组织名称..." v-model="searchKeyword"
+                                @input="onSearch" @confirm="onSearchConfirm" />
+                            <text class="clear-icon" v-if="searchKeyword" @tap="clearSearch">✕</text>
                         </view>
-                    </swiper-item>
-                </swiper>
-            </view>
-
-            <!-- 组织筛选 -->
-            <view class="filter-section">
-                <scroll-view class="filter-tabs" scroll-x>
-                    <view class="filter-tab" v-for="(filter, index) in filters" :key="index"
-                        :class="{ active: currentFilter === filter.value }" @tap="switchFilter(filter.value)">
-                        <text class="tab-text">{{ filter.icon }} {{ filter.label }}</text>
                     </view>
-                </scroll-view>
-            </view>
 
-            <!-- 组织列表 -->
-            <view class="organization-list">
-                <view class="organization-item" v-for="(org, index) in displayOrganizations" :key="index"
-                    @tap="goToDetail(org)">
-                    <image class="org-logo" :src="org.logo" mode="aspectFill"></image>
-                    <view class="org-info">
-                        <view class="org-header">
-                            <text class="org-name">{{ org.name }}</text>
-                            <view class="org-level" :class="'level-' + org.level">
-                                <text class="level-text">{{ getLevelText(org.level) }}</text>
+                    <!-- 组织轮播图 -->
+                    <view class="swiper-container">
+                        <swiper class="organization-swiper" :indicator-dots="true" :autoplay="true" :interval="3000"
+                            :duration="500" indicator-color="rgba(255, 255, 255, 0.5)" indicator-active-color="#fff">
+                            <swiper-item v-for="(banner, index) in banners" :key="index">
+                                <view class="swiper-item-wrapper">
+                                    <image class="swiper-image" :src="banner.image" mode="aspectFill"
+                                        @tap="goToBanner(banner)">
+                                    </image>
+                                    <view class="swiper-overlay">
+                                        <text class="swiper-title">{{ banner.title }}</text>
+                                        <text class="swiper-desc">{{ banner.desc }}</text>
+                                    </view>
+                                </view>
+                            </swiper-item>
+                        </swiper>
+                    </view>
+
+                    <!-- 组织筛选 -->
+                    <view class="filter-section">
+                        <scroll-view class="filter-tabs" scroll-x>
+                            <view class="filter-tab" v-for="(filter, index) in filters" :key="index"
+                                :class="{ active: currentFilter === filter.value }" @tap="switchFilter(filter.value)">
+                                <text class="tab-text">{{ filter.icon }} {{ filter.label }}</text>
+                            </view>
+                        </scroll-view>
+                    </view>
+                </template>
+
+                <template #default="{ items }">
+                    <!-- 组织列表 -->
+                    <view class="organization-list">
+                        <view class="organization-item" v-for="(org, index) in items" :key="index"
+                            @tap="goToDetail(org)">
+                            <image class="org-logo" :src="org.logo" mode="aspectFill"></image>
+                            <view class="org-info">
+                                <view class="org-header">
+                                    <text class="org-name">{{ org.name }}</text>
+                                    <view class="org-level" :class="'level-' + org.level">
+                                        <text class="level-text">{{ getLevelText(org.level) }}</text>
+                                    </view>
+                                </view>
+                                <text class="org-intro">{{ org.intro }}</text>
+                                <view class="org-meta">
+                                    <text class="meta-item">👥 {{ org.memberCount }}人</text>
+                                    <text class="meta-item">📅 成立于{{ org.foundedYear }}</text>
+                                </view>
                             </view>
                         </view>
-                        <text class="org-intro">{{ org.intro }}</text>
-                        <view class="org-meta">
-                            <text class="meta-item">👥 {{ org.memberCount }}人</text>
-                            <text class="meta-item">📅 成立于{{ org.foundedYear }}</text>
-                        </view>
                     </view>
-                </view>
-
-                <!-- 空状态 -->
-                <view class="empty-state" v-if="displayOrganizations.length === 0">
-                    <text class="empty-icon">📭</text>
-                    <text class="empty-text">暂无相关组织</text>
-                </view>
-            </view>
+                </template>
+            </RefreshLoadList>
         </view>
     </view>
 </template>
@@ -69,8 +73,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getOrganizationList, getCarouselOrganizations } from '@/api/organization'
+import RefreshLoadList from '@/components/RefreshLoadList/RefreshLoadList.vue'
+import { getOrganizationList, getCarouselOrganizations, getOrganizationLevelsMap } from '@/api/organization'
 
+const listRef = ref(null)
 const searchKeyword = ref('')
 const currentFilter = ref('all')
 
@@ -79,34 +85,80 @@ const banners = ref([])
 
 // 筛选选项
 const filters = ref([
-    { label: '全部', value: 'all', icon: '📍' },
-    { label: '校级', value: '1', icon: '🏫' },
-    { label: '院级', value: '2', icon: '🎓' },
-    { label: '班级', value: '3', icon: '👥' }
+    { label: '全部', value: 'all', icon: '📍' }
 ])
 
-// 组织数据
-const organizations = ref([])
+// 加载组织级别映射
+const loadOrganizationLevels = async () => {
+    try {
+        const res = await getOrganizationLevelsMap()
+        console.log('组织级别映射原始数据:', res)
 
-// 搜索过滤
-const filteredBySearch = computed(() => {
-    if (!searchKeyword.value) return organizations.value
-    const keyword = searchKeyword.value.toLowerCase()
-    return organizations.value.filter(org =>
-        org.name.toLowerCase().includes(keyword) ||
-        (org.intro && org.intro.toLowerCase().includes(keyword)) ||
-        (org.introduction && org.introduction.toLowerCase().includes(keyword))
-    )
-})
+        // 接口直接返回数组(与其他map接口一样)
+        const dataArray = Array.isArray(res) ? res : (res.data || [])
+        console.log('数据数组:', dataArray)
 
-// 显示的组织列表
-const displayOrganizations = computed(() => {
-    let result = filteredBySearch.value
-    if (currentFilter.value !== 'all') {
-        result = result.filter(org => org.level === currentFilter.value)
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+            const levels = dataArray.map(item => ({
+                label: item.label,
+                value: item.value,
+                icon: getIconByLevel(item.value)
+            }))
+
+            console.log('转换后的级别:', levels)
+
+            // 保留"全部"选项,添加接口返回的级别
+            filters.value = [
+                { label: '全部', value: 'all', icon: '📍' },
+                ...levels
+            ]
+
+            console.log('最终的筛选数据:', filters.value)
+        } else {
+            console.log('数据格式不正确或数据为空')
+        }
+    } catch (error) {
+        console.error('加载组织级别失败:', error)
     }
-    return result
+}
+
+// 根据级别获取图标
+const getIconByLevel = (level) => {
+    const iconMap = {
+        '1': '🏫',  // 校级
+        '2': '🎓',  // 院级
+        '3': '👥'   // 班级
+    }
+    return iconMap[level] || '📍'
+}
+
+
+
+// 列表请求参数
+const listParams = computed(() => {
+    const params = {}
+    if (searchKeyword.value) {
+        params.search = searchKeyword.value
+    }
+    if (currentFilter.value !== 'all') {
+        params.level = currentFilter.value
+    }
+    return params
 })
+
+// 数据映射函数
+const mapOrganizationData = (org) => {
+    return {
+        id: org.organizationId,
+        name: org.organizationName,
+        logo: org.organizationLogo || 'https://picsum.photos/200/200?random=' + org.organizationId,
+        intro: org.displayText || org.introduction || '暂无简介',
+        introduction: org.introduction || org.displayText || '暂无简介',
+        level: org.organizationLevel,
+        memberCount: org.memberCount || 0,
+        foundedYear: org.establishYear || '未知'
+    }
+}
 
 // 加载轮播图数据
 const loadCarouselOrganizations = async () => {
@@ -115,83 +167,36 @@ const loadCarouselOrganizations = async () => {
         const res = await getCarouselOrganizations()
         console.log('轮播组织响应:', res)
 
-        // 后端返回的是数组，直接使用
-        if (res && Array.isArray(res)) {
-            banners.value = res.map(org => ({
-                id: org.organizationId,
-                image: org.recommendImage || org.organizationLogo || 'https://picsum.photos/800/400?random=' + org.organizationId,
-                title: org.organizationName,
-                desc: org.displayText || org.introduction || '欢迎加入我们'
-            }))
+        // request.js 已经自动解析了 data.data，所以 res 直接就是数组
+        const list = Array.isArray(res) ? res : []
+        console.log('轮播组织列表:', list)
+
+        if (list.length > 0) {
+            banners.value = list.map(org => {
+                const banner = {
+                    id: org.organizationId,
+                    image: org.recommendImage,
+                    title: org.organizationName,
+                    desc: org.displayText || org.introduction || '欢迎加入我们'
+                }
+                console.log('轮播图项:', banner)
+                return banner
+            })
+            console.log('最终轮播图数据:', banners.value)
         }
     } catch (error) {
         console.error('加载轮播组织失败:', error)
-        // 失败时使用默认轮播图
-        banners.value = [
-            {
-                id: 1,
-                image: 'https://picsum.photos/800/400?random=1',
-                title: '精彩组织',
-                desc: '探索更多精彩'
-            }
-        ]
-    }
-}
-
-// 加载组织列表
-const loadOrganizationList = async () => {
-    try {
-        console.log('加载组织列表')
-        console.log('搜索关键词:', searchKeyword.value)
-        console.log('筛选级别:', currentFilter.value)
-
-        const params = {
-            pageNum: 1,
-            pageSize: 100
-        }
-
-        // 添加搜索关键词
-        if (searchKeyword.value) {
-            params.organizationName = searchKeyword.value
-        }
-
-        // 添加级别筛选
-        if (currentFilter.value !== 'all') {
-            params.level = currentFilter.value
-        }
-
-        const res = await getOrganizationList(params)
-        console.log('组织列表响应:', res)
-
-        if (res && res.rows) {
-            organizations.value = res.rows.map(org => ({
-                id: org.organizationId,
-                name: org.organizationName,
-                logo: org.organizationLogo || 'https://picsum.photos/200/200?random=' + org.organizationId,
-                intro: org.displayText || org.introduction || '暂无简介',
-                introduction: org.introduction || org.displayText || '暂无简介',
-                level: org.organizationLevel,
-                memberCount: org.memberCount || 0,
-                foundedYear: org.establishYear || '未知'
-            }))
-            console.log('组织列表加载成功, 数量:', organizations.value.length)
-        }
-    } catch (error) {
-        console.error('加载组织列表失败:', error)
-        uni.showToast({
-            title: error.message || '加载失败',
-            icon: 'none'
-        })
     }
 }
 
 onLoad(() => {
     console.log('组织页面加载')
+    // 加载组织级别映射
+    loadOrganizationLevels()
     // 加载轮播图
     loadCarouselOrganizations()
-    // 加载组织列表
-    loadOrganizationList()
 })
+
 
 
 // 获取级别文本
@@ -199,36 +204,29 @@ const getLevelText = (level) => {
     const levelMap = {
         '1': '校级',
         '2': '院级',
-        '3': '班级',
-        'school': '校级',
-        'college': '院级',
-        'class': '班级'
+        '3': '班级'
     }
     return levelMap[level] || '未知'
 }
 
 // 搜索输入
 const onSearch = () => {
-    // 实时搜索 - 重新加载列表
-    loadOrganizationList()
+    // 实时搜索 - RefreshLoadList 会自动监听 params 变化
 }
 
 // 搜索确认
 const onSearchConfirm = () => {
-    // 搜索确认 - 重新加载列表
-    loadOrganizationList()
+    // 搜索确认 - RefreshLoadList 会自动监听 params 变化
 }
 
 // 清除搜索
 const clearSearch = () => {
     searchKeyword.value = ''
-    loadOrganizationList()
 }
 
 // 切换筛选
 const switchFilter = (value) => {
     currentFilter.value = value
-    loadOrganizationList()
 }
 
 // 跳转轮播图详情
@@ -252,9 +250,9 @@ const goToDetail = (org) => {
 
 <style scoped lang="scss">
 .container {
-    min-height: 100vh;
+    height: 100vh;
     background: #f5f5f5;
-    padding-bottom: 20rpx;
+    overflow: hidden;
 }
 
 /* 搜索栏 */
@@ -300,12 +298,20 @@ const goToDetail = (org) => {
 }
 
 .organization-swiper {
+    width: 100%;
     height: 400rpx;
+}
+
+.swiper-item-wrapper {
+    width: 100%;
+    height: 100%;
+    position: relative;
 }
 
 .swiper-image {
     width: 100%;
     height: 100%;
+    display: block;
 }
 
 .swiper-overlay {
@@ -358,7 +364,7 @@ const goToDetail = (org) => {
     transition: all 0.3s;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
         .tab-text {
             color: #fff;
@@ -435,7 +441,7 @@ const goToDetail = (org) => {
 
     &.level-1,
     &.level-school {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     }
 
     &.level-2,

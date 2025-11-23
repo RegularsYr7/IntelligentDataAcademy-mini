@@ -251,7 +251,7 @@ const markers = computed(() => {
             borderRadius: 8,
             bgColor: '#ffffff',
             padding: 10,
-            display: 'BYCLICK',
+            display: 'ALWAYS',  // 默认显示地点名称
             textAlign: 'center'
         },
         // 添加标注点击提示
@@ -722,7 +722,7 @@ const shareLocation = (location) => {
 
 .panel-content .result-nav-btn {
     padding: 8rpx 20rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 16rpx;
     flex-shrink: 0;
 }
@@ -887,7 +887,7 @@ const shareLocation = (location) => {
     transition: all 0.3s;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
         .tab-text {
             color: #fff;
@@ -972,7 +972,7 @@ const shareLocation = (location) => {
 
 .nav-btn {
     padding: 12rpx 24rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 20rpx;
     flex-shrink: 0;
 }
@@ -1119,7 +1119,7 @@ const shareLocation = (location) => {
 }
 
 .primary-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
     .btn-icon,
     .btn-text {

@@ -344,7 +344,7 @@ onShow(() => {
 
 /* 统计卡片 */
 .stats-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 50rpx 30rpx;
     display: flex;
     justify-content: space-around;
@@ -398,7 +398,7 @@ onShow(() => {
     transition: all 0.3s;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
         color: #fff;
         font-weight: bold;
     }
@@ -543,7 +543,7 @@ onShow(() => {
 }
 
 .add-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     color: #fff;
     font-size: 28rpx;
     font-weight: bold;

@@ -15,11 +15,14 @@
                         <text class="username">{{ post.studentName || '匿名用户' }}</text>
                         <text class="time">{{ formatTime(post.createTime) }}</text>
                     </view>
-                    <view class="follow-btn" v-if="!isFollowed && post.studentId !== currentUserId" @tap="followUser">
+                    <view class="follow-btn" v-if="!isFollowed && post.studentId !== currentUserId" @tap="toggleFollow">
                         <text class="follow-text">+ 关注</text>
                     </view>
-                    <view class="followed-btn" v-else-if="isFollowed">
+                    <view class="followed-btn" v-else-if="isFollowed" @tap="toggleFollow">
                         <text class="followed-text">✓ 已关注</text>
+                    </view>
+                    <view class="delete-btn" v-if="post.studentId === currentUserId" @tap="deletePost">
+                        <text class="delete-text">🗑️</text>
                     </view>
                 </view>
 
@@ -27,7 +30,7 @@
                 <text class="post-title" v-if="post.title">{{ post.title }}</text>
 
                 <!-- 帖子内容 -->
-                <text class="post-content">{{ post.content }}</text>
+                <rich-text class="post-content" :nodes="formattedContent"></rich-text>
 
                 <!-- 图片 -->
                 <view class="images-grid" v-if="postImages.length > 0" :class="'grid-' + postImages.length">
@@ -54,10 +57,7 @@
                         <text class="icon" :class="{ active: isCollected }">{{ isCollected ? '⭐' : '☆' }}</text>
                         <text class="text" :class="{ active: isCollected }">{{ post.collectCount || 0 }}</text>
                     </view>
-                    <view class="action-item" @tap="share">
-                        <text class="icon">📤</text>
-                        <text class="text">分享</text>
-                    </view>
+
                 </view>
             </view>
 
@@ -89,18 +89,30 @@
                                         <text class="action-icon">💬</text>
                                         <text class="action-text">回复</text>
                                     </view>
+                                    <view class="comment-action" v-if="comment.studentId === currentUserId"
+                                        @tap="deleteComment(comment)">
+                                        <text class="action-icon">🗑️</text>
+                                        <text class="action-text">删除</text>
+                                    </view>
                                 </view>
                             </view>
 
                             <!-- 二级回复列表 -->
                             <view class="reply-list" v-if="getReplies(comment.commentId).length > 0">
-                                <view class="reply-item" v-for="reply in getReplies(comment.commentId)"
-                                    :key="reply.commentId" @tap="replyToReply(reply, comment)">
-                                    <text class="reply-user">{{ reply.studentName }}</text>
-                                    <text class="reply-arrow" v-if="reply.replyToName"> 回复 </text>
-                                    <text class="reply-target" v-if="reply.replyToName">{{ reply.replyToName }}</text>
-                                    <text class="reply-content">{{ reply.replyToName ? ': ' : '' }}{{ reply.content
-                                    }}</text>
+                                <view class="reply-item-wrapper" v-for="reply in getReplies(comment.commentId)"
+                                    :key="reply.commentId">
+                                    <view class="reply-item" @tap="replyToReply(reply, comment)">
+                                        <text class="reply-user">{{ reply.studentName }}</text>
+                                        <text class="reply-arrow" v-if="reply.replyToName"> 回复 </text>
+                                        <text class="reply-target" v-if="reply.replyToName">{{ reply.replyToName
+                                        }}</text>
+                                        <text class="reply-content">{{ reply.replyToName ? ': ' : '' }}{{ reply.content
+                                        }}</text>
+                                    </view>
+                                    <view class="reply-delete" v-if="reply.studentId === currentUserId"
+                                        @tap.stop="deleteComment(reply)">
+                                        <text class="delete-icon">🗑️</text>
+                                    </view>
                                 </view>
                             </view>
                         </view>
@@ -144,12 +156,15 @@ import {
     collectPost as collectPostApi,
     uncollectPost,
     followUser as followUserApi,
-    unfollowUser
+    unfollowUser,
+    deleteOwnPost,
+    deleteOwnComment
 } from '@/api/community'
 import {
     commentPost,
     replyComment as replyCommentApi
 } from '@/api/community'
+import { formatRichText } from '@/utils/richtext'
 
 const postId = ref(null)
 const loading = ref(true)
@@ -165,6 +180,12 @@ const currentUserId = ref(null)
 const isFollowed = ref(false)
 const isLiked = ref(false)
 const isCollected = ref(false)
+
+// 格式化富文本内容
+const formattedContent = computed(() => {
+    if (!post.value || !post.value.content) return ''
+    return formatRichText(post.value.content)
+})
 
 // 解析图片
 const postImages = computed(() => {
@@ -266,8 +287,8 @@ const formatTime = (dateTimeStr) => {
     }
 }
 
-// 关注用户
-const followUser = async () => {
+// 切换关注状态
+const toggleFollow = async () => {
     try {
         const userInfo = uni.getStorageSync('userInfo')
         if (!userInfo || !userInfo.studentId) {
@@ -278,24 +299,45 @@ const followUser = async () => {
             return
         }
 
-        await followUserApi({
-            followerId: userInfo.studentId,
-            followeeId: post.value.studentId,
-            followerName: userInfo.name,
-            followerAvatar: userInfo.avatar || '',
-            followeeName: post.value.studentName,
-            followeeAvatar: post.value.studentAvatar || ''
-        })
+        if (post.value.studentId === userInfo.studentId) {
+            uni.showToast({
+                title: '不能关注自己',
+                icon: 'none'
+            })
+            return
+        }
 
-        isFollowed.value = true
+        const isFollowing = !isFollowed.value
+
+        if (isFollowing) {
+            // 关注
+            await followUserApi({
+                followerId: userInfo.studentId,
+                followeeId: post.value.studentId,
+                followerName: userInfo.name,
+                followerAvatar: userInfo.avatar || '',
+                followeeName: post.value.studentName,
+                followeeAvatar: post.value.studentAvatar || '',
+                studentId: userInfo.studentId
+            })
+        } else {
+            // 取消关注
+            await unfollowUser({
+                followerId: userInfo.studentId,
+                followeeId: post.value.studentId,
+                studentId: userInfo.studentId
+            })
+        }
+
+        isFollowed.value = isFollowing
         uni.showToast({
-            title: '已关注',
+            title: isFollowing ? '已关注' : '已取消关注',
             icon: 'success'
         })
     } catch (error) {
-        console.error('关注失败:', error)
+        console.error('关注操作失败:', error)
         uni.showToast({
-            title: '关注失败',
+            title: '操作失败',
             icon: 'none'
         })
     }
@@ -308,6 +350,14 @@ const toggleLike = async () => {
         if (!userInfo || !userInfo.studentId) {
             uni.showToast({
                 title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
+        if (post.value.studentId === userInfo.studentId) {
+            uni.showToast({
+                title: '不能给自己点赞',
                 icon: 'none'
             })
             return
@@ -354,6 +404,14 @@ const toggleCollect = async () => {
         if (!userInfo || !userInfo.studentId) {
             uni.showToast({
                 title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
+        if (post.value.studentId === userInfo.studentId) {
+            uni.showToast({
+                title: '不能收藏自己的帖子',
                 icon: 'none'
             })
             return
@@ -509,6 +567,98 @@ const likeComment = (comment) => {
         icon: 'none'
     })
 }
+
+// 删除帖子
+const deletePost = async () => {
+    try {
+        const result = await uni.showModal({
+            title: '确认删除',
+            content: '确定要删除这条帖子吗？删除后无法恢复',
+            confirmText: '删除',
+            confirmColor: '#ff4444'
+        })
+
+        if (!result.confirm) {
+            return
+        }
+
+        uni.showLoading({
+            title: '删除中...'
+        })
+
+        const userInfo = uni.getStorageSync('userInfo')
+        await deleteOwnPost({
+            postId: post.value.postId,
+            studentId: userInfo.studentId
+        })
+
+        uni.hideLoading()
+        uni.showToast({
+            title: '删除成功',
+            icon: 'success'
+        })
+
+        // 延迟返回上一页,并传递刷新标识
+        setTimeout(() => {
+            uni.navigateBack({
+                delta: 1,
+                success: () => {
+                    // 通过事件总线通知上一页刷新
+                    uni.$emit('refreshPostList')
+                }
+            })
+        }, 1500)
+    } catch (error) {
+        uni.hideLoading()
+        console.error('删除帖子失败:', error)
+        uni.showToast({
+            title: error.message || '删除失败',
+            icon: 'none'
+        })
+    }
+}
+
+// 删除评论
+const deleteComment = async (comment) => {
+    try {
+        const result = await uni.showModal({
+            title: '确认删除',
+            content: '确定要删除这条评论吗？删除后无法恢复',
+            confirmText: '删除',
+            confirmColor: '#ff4444'
+        })
+
+        if (!result.confirm) {
+            return
+        }
+
+        uni.showLoading({
+            title: '删除中...'
+        })
+
+        const userInfo = uni.getStorageSync('userInfo')
+        await deleteOwnComment({
+            commentId: comment.commentId,
+            studentId: userInfo.studentId
+        })
+
+        uni.hideLoading()
+        uni.showToast({
+            title: '删除成功',
+            icon: 'success'
+        })
+
+        // 重新加载帖子详情（包含评论）
+        loadPostDetail()
+    } catch (error) {
+        uni.hideLoading()
+        console.error('删除评论失败:', error)
+        uni.showToast({
+            title: error.message || '删除失败',
+            icon: 'none'
+        })
+    }
+}
 </script>
 
 <style scoped lang="scss">
@@ -573,7 +723,7 @@ const likeComment = (comment) => {
 }
 
 .follow-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
     .follow-text {
         color: #fff;
@@ -614,10 +764,13 @@ const likeComment = (comment) => {
     margin-bottom: 24rpx;
 
     &.grid-1 {
-        grid-template-columns: 1fr;
+        grid-template-columns: 2fr 1fr;
 
         .post-image {
-            height: 400rpx;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
+            border-radius: 12rpx;
         }
     }
 
@@ -626,7 +779,10 @@ const likeComment = (comment) => {
         grid-template-columns: 1fr 1fr;
 
         .post-image {
-            height: 300rpx;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
+            border-radius: 12rpx;
         }
     }
 
@@ -639,14 +795,16 @@ const likeComment = (comment) => {
         grid-template-columns: 1fr 1fr 1fr;
 
         .post-image {
-            height: 200rpx;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1;
+            border-radius: 12rpx;
         }
     }
 }
 
 .post-image {
     width: 100%;
-    border-radius: 12rpx;
     object-fit: cover;
 }
 
@@ -906,7 +1064,7 @@ const likeComment = (comment) => {
     transition: all 0.3s;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
         .send-text {
             color: #fff;

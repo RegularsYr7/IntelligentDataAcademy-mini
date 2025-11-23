@@ -16,7 +16,7 @@ export function formatRichText(content, options = {}) {
   const defaultStyles = {
     h2: "font-size: 32rpx; font-weight: bold; color: #333; margin: 30rpx 0 20rpx 0;",
     h3: "font-size: 30rpx; font-weight: bold; color: #333; margin: 25rpx 0 15rpx 0;",
-    p: "margin-bottom: 20rpx; text-indent: 2em; line-height: 1.8; color: #666;",
+    p: "margin-bottom: 20rpx; line-height: 1.8; color: #666;",
     ul: "margin: 20rpx 0; padding-left: 40rpx;",
     li: "margin-bottom: 15rpx; line-height: 1.6; color: #666;",
     div: "line-height: 1.8; color: #666;",

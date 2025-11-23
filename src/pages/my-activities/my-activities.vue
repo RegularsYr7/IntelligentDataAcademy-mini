@@ -1,39 +1,42 @@
 <template>
     <view class="page">
         <view class="container">
-            <!-- 页面头部统计 -->
-            <view class="stats-header">
-                <view class="stat-item">
-                    <text class="stat-value">{{ totalActivities }}</text>
-                    <text class="stat-label">参与活动</text>
-                </view>
-                <view class="stat-divider"></view>
-                <view class="stat-item">
-                    <text class="stat-value">{{ totalCredits }}</text>
-                    <text class="stat-label">获得学分</text>
-                </view>
-                <view class="stat-divider"></view>
-                <view class="stat-item">
-                    <text class="stat-value">{{ totalPoints }}</text>
-                    <text class="stat-label">活动积分</text>
-                </view>
-            </view>
-
-            <!-- 状态筛选 -->
-            <view class="filter-section">
-                <scroll-view class="filter-tabs" scroll-x>
-                    <view class="filter-tab" v-for="(filter, index) in filters" :key="index"
-                        :class="{ active: currentFilter === filter.value }" @tap="switchFilter(filter.value)">
-                        <text class="tab-text">{{ filter.icon }} {{ filter.label }}</text>
-                        <view class="tab-count" v-if="filter.count > 0">{{ filter.count }}</view>
-                    </view>
-                </scroll-view>
-            </view>
-
             <!-- 活动列表 - 使用组件 -->
             <RefreshLoadList ref="listRef" :api="getMyActivities" :params="listParams" :dataMapping="mapActivityData"
                 :pageSize="10" emptyIcon="📅" :emptyText="'暂无' + getCurrentFilterText() + '活动'"
                 @load-success="onLoadSuccess" :customDataExtractor="extractActivityList">
+
+                <template #header>
+                    <!-- 页面头部统计 -->
+                    <view class="stats-header">
+                        <view class="stat-item">
+                            <text class="stat-value">{{ totalActivities }}</text>
+                            <text class="stat-label">参与活动</text>
+                        </view>
+                        <view class="stat-divider"></view>
+                        <view class="stat-item">
+                            <text class="stat-value">{{ totalCredits }}</text>
+                            <text class="stat-label">获得学分</text>
+                        </view>
+                        <view class="stat-divider"></view>
+                        <view class="stat-item">
+                            <text class="stat-value">{{ totalPoints }}</text>
+                            <text class="stat-label">活动积分</text>
+                        </view>
+                    </view>
+
+                    <!-- 状态筛选 -->
+                    <view class="filter-section">
+                        <scroll-view class="filter-tabs" scroll-x>
+                            <view class="filter-tab" v-for="(filter, index) in filters" :key="index"
+                                :class="{ active: currentFilter === filter.value }" @tap="switchFilter(filter.value)">
+                                <text class="tab-text">{{ filter.icon }} {{ filter.label }}</text>
+                                <view class="tab-count" v-if="filter.count > 0">{{ filter.count }}</view>
+                            </view>
+                        </scroll-view>
+                    </view>
+                </template>
+
                 <template #default="{ items }">
                     <view class="activity-list">
                         <view class="activity-item" v-for="activity in items" :key="activity.id"
@@ -90,9 +93,12 @@ const currentFilter = ref('all')
 // 筛选选项
 const filters = ref([
     { label: '全部', value: 'all', icon: '📋', count: 0 },
-    { label: '未开始', value: '0', icon: '⏰', count: 0 },
-    { label: '进行中', value: '1', icon: '🔥', count: 0 },
-    { label: '已结束', value: '2', icon: '✅', count: 0 }
+    { label: '预热中', value: '1', icon: '⏰', count: 0 },
+    { label: '报名中', value: '2', icon: '📝', count: 0 },
+    { label: '待开始', value: '3', icon: '⏳', count: 0 },
+    { label: '进行中', value: '4', icon: '🔥', count: 0 },
+    { label: '已结束', value: '5', icon: '✅', count: 0 },
+    { label: '已完结', value: '6', icon: '🏁', count: 0 }
 ])
 
 // 统计数据
@@ -107,9 +113,9 @@ const listParams = computed(() => {
         studentId: userInfo?.studentId ? Number(userInfo.studentId) : null
     }
 
-    // 添加状态筛选 - 只有非 'all' 时才传递 activityStatus
+    // 添加状态筛选 - 只有非 'all' 时才传递 currentStatus
     if (currentFilter.value !== 'all') {
-        params.activityStatus = currentFilter.value  // "0"=未开始, "1"=进行中, "2"=已结束
+        params.currentStatus = Number(currentFilter.value)
     }
 
     return params
@@ -142,7 +148,7 @@ const mapActivityData = (item) => {
         image: item.coverImage || item.activityImage || 'https://picsum.photos/400/300?random=' + item.activityId,
         date: formatDateTime(item.activityStartTime || item.startTime || item.date),
         location: item.activityLocation || item.location || '未知地点',
-        status: mapActivityStatus(item.activityStatus || item.status),
+        status: mapActivityStatus(item.currentStatus),
         credit: item.creditValue || item.credit || 0,
         points: item.scoreValue || item.points || 0,
         organizer: item.organizerNames || item.organizer
@@ -152,26 +158,40 @@ const mapActivityData = (item) => {
 // 映射活动状态 - 后端状态码转前端显示状态
 const mapActivityStatus = (status) => {
     const statusMap = {
-        '0': 'upcoming',    // 未开始
-        '1': 'ongoing',     // 进行中
-        '2': 'completed'    // 已结束
+        1: 'upcoming',      // 预热中
+        2: 'recruiting',    // 报名中
+        3: 'waiting',       // 等待中
+        4: 'ongoing',       // 进行中
+        5: 'finished',      // 已结束
+        6: 'completed'      // 已完结
     }
-    return statusMap[status] || status
+    return statusMap[status] || 'recruiting'
 }
 
 // 自定义数据提取函数 - 从后端响应中提取活动列表和统计数据
 const extractActivityList = (response) => {
     console.log('后端响应数据:', response)
 
-    // 更新统计数据
-    if (response.totalCredits !== undefined) {
-        totalCredits.value = response.totalCredits
+    // 仅在“全部”筛选下更新顶部统计数据
+    if (currentFilter.value === 'all') {
+        if (response.totalCredits !== undefined) {
+            totalCredits.value = response.totalCredits
+        }
+        if (response.totalPoints !== undefined) {
+            totalPoints.value = response.totalPoints
+        }
+        if (response.participantCount !== undefined) {
+            totalActivities.value = response.participantCount
+        }
     }
-    if (response.totalPoints !== undefined) {
-        totalPoints.value = response.totalPoints
-    }
+
+    // 更新当前选中标签的计数 (如果后端返回了总数)
+    // 注意：这里假设 participantCount 是当前查询的总数
     if (response.participantCount !== undefined) {
-        totalActivities.value = response.participantCount
+        const filter = filters.value.find(f => f.value === currentFilter.value)
+        if (filter) {
+            filter.count = response.participantCount
+        }
     }
 
     // 返回活动列表
@@ -181,20 +201,6 @@ const extractActivityList = (response) => {
 // 数据加载成功回调
 const onLoadSuccess = (result) => {
     console.log('活动列表加载成功:', result)
-    updateFilterCounts()
-}
-
-// 更新筛选项计数
-const updateFilterCounts = () => {
-    if (listRef.value && listRef.value.listData) {
-        const activities = listRef.value.listData
-        filters.value[0].count = activities.length  // 全部
-        filters.value[1].count = activities.filter(a => a.status === 'upcoming').length  // 未开始
-        filters.value[2].count = activities.filter(a => a.status === 'ongoing').length   // 进行中
-        filters.value[3].count = activities.filter(a => a.status === 'completed').length // 已结束
-
-        // 统计数据已在 extractActivityList 中更新,这里不再重复计算
-    }
 }
 
 onLoad(() => {
@@ -209,9 +215,12 @@ const switchFilter = (value) => {
 // 获取状态文本
 const getStatusText = (status) => {
     const statusMap = {
-        upcoming: '未开始',
+        upcoming: '预热中',
+        recruiting: '报名中',
+        waiting: '等待中',
         ongoing: '进行中',
-        completed: '已结束'
+        finished: '已结束',
+        completed: '已完结'
     }
     return statusMap[status] || ''
 }
@@ -239,19 +248,19 @@ const goToActivityList = () => {
 
 <style scoped lang="scss">
 .container {
-    min-height: 100vh;
+    height: 100vh;
     background: #f5f5f5;
-    padding-bottom: 20rpx;
+    overflow: hidden;
 }
 
 /* 统计头部 */
 .stats-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     padding: 40rpx 30rpx;
     display: flex;
     justify-content: space-around;
     align-items: center;
-    margin-bottom: 20rpx;
+    color: #fff;
 }
 
 .stat-item {
@@ -308,7 +317,7 @@ const goToActivityList = () => {
     position: relative;
 
     &.active {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 
         .tab-text {
             color: #fff;
@@ -390,6 +399,7 @@ const goToActivityList = () => {
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     line-height: 1.4;
     min-height: 78rpx;
@@ -404,11 +414,23 @@ const goToActivityList = () => {
     justify-content: center;
 
     &.status-ongoing {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     }
 
     &.status-upcoming {
         background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    &.status-recruiting {
+        background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+    }
+
+    &.status-waiting {
+        background: linear-gradient(135deg, #faad14 0%, #d48806 100%);
+    }
+
+    &.status-finished {
+        background: linear-gradient(135deg, #999 0%, #666 100%);
     }
 
     &.status-completed {
@@ -514,7 +536,7 @@ const goToActivityList = () => {
 
 .empty-action {
     padding: 16rpx 40rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 40rpx;
     display: flex;
     align-items: center;

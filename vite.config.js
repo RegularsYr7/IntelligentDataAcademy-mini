@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   server: {
-    port: 8080,
+    port: 8081,
     host: "0.0.0.0",
     open: true,
     hmr: true, // 启用热模块替换
@@ -27,10 +27,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // esbuild: {
+  //   drop: ["console", "debugger"],
+  // },
   build: {
     watch: {
       // 监听文件变化
       include: "src/**",
     },
+    minify: "terser",
   },
 });

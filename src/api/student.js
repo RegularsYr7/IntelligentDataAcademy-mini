@@ -16,15 +16,15 @@ export const login = (data) => {
 
 /**
  * 微信登录
- * @param {string} code - 微信授权码
+ * @param {Object} data - 登录参数
+ * @param {string} data.wxCode - 微信登录code
+ * @param {string} data.phoneCode - 手机号授权code
  * @returns {Promise} 返回完整响应（包含 token）
  */
-export const loginByWechat = (code) => {
-  return request.post(
-    `/edu/student/loginByWechat`,
-    { code },
-    { rawResponse: true }
-  );
+export const loginByWechat = (data) => {
+  return request.post(`/edu/student/loginByWechat`, data, {
+    rawResponse: true,
+  });
 };
 
 /**

@@ -12,8 +12,8 @@
 
             <!-- 消息列表 -->
             <scroll-view class="message-list" scroll-y>
-                <view class="message-item" v-for="(msg, index) in filteredMessages" :key="index"
-                    @tap="viewMessage(msg)">
+                <view class="message-item" v-for="(msg, index) in filteredMessages" :key="index" @tap="viewMessage(msg)"
+                    @longpress="onLongPress(msg)">
                     <image class="avatar" :src="msg.avatar" mode="aspectFill"></image>
                     <view class="message-content">
                         <view class="message-header">
@@ -38,230 +38,242 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { ref, computed, watch } from 'vue'
+import { onLoad, onShow } from '@dcloudio/uni-app'
+import {
+    getUnreadCount,
+    getLikeMessages,
+    getReplyMessages,
+    getFollowMessages,
+    getSystemMessages,
+    markMessageRead,
+    deleteMessage
+} from '@/api/community'
 
 const currentTab = ref('all')
 
 // 标签页
 const tabs = ref([
-    { label: '全部', value: 'all', unread: 3 },
-    { label: '回复', value: 'reply', unread: 2 },
-    { label: '点赞', value: 'like', unread: 1 },
+    { label: '全部', value: 'all', unread: 0 },
+    { label: '回复', value: 'reply', unread: 0 },
+    { label: '点赞', value: 'like', unread: 0 },
     { label: '关注', value: 'follow', unread: 0 },
     { label: '系统', value: 'system', unread: 0 }
 ])
 
 // 消息列表
-const messages = ref([
-    {
-        id: 1,
-        type: 'reply',
-        avatar: 'https://picsum.photos/100/100?random=61',
-        senderName: '大一萌新',
-        preview: '回复了你: 太有用了！正好明天考高数，感谢学长的整理！',
-        time: '5分钟前',
-        isRead: false,
-        unreadCount: 1,
-        content: '太有用了！正好明天考高数，感谢学长的整理！',
-        postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-    },
-    {
-        id: 2,
-        type: 'like',
-        avatar: 'https://picsum.photos/100/100?random=62',
-        senderName: '数学苦手',
-        preview: '赞了你的帖子《高数期末复习重点整理》',
-        time: '10分钟前',
-        isRead: false,
-        unreadCount: 1,
-        postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-    },
-    {
-        id: 3,
-        type: 'reply',
-        avatar: 'https://picsum.photos/100/100?random=63',
-        senderName: '路过的学霸',
-        preview: '回复了你: 微分方程要多做题，掌握解题套路就好了',
-        time: '1小时前',
-        isRead: false,
-        unreadCount: 1,
-        content: '微分方程要多做题，掌握解题套路就好了',
-        postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-    },
-    {
-        id: 4,
-        type: 'follow',
-        avatar: 'https://picsum.photos/100/100?random=64',
-        senderName: '学习打卡',
-        preview: '关注了你',
-        time: '2小时前',
-        isRead: true
-    },
-    {
-        id: 5,
-        type: 'like',
-        avatar: 'https://picsum.photos/100/100?random=65',
-        senderName: '考研人',
-        preview: '赞了你的评论',
-        time: '3小时前',
-        isRead: true,
-        content: '加油！相信你一定能考好的~',
-        postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-    },
-    {
-        id: 6,
-        type: 'system',
-        avatar: 'https://picsum.photos/100/100?random=100',
-        senderName: '系统消息',
-        preview: '你的帖子《Python爬虫实战教程》已通过审核',
-        time: '1天前',
-        isRead: true
-    },
-    {
-        id: 7,
-        type: 'reply',
-        avatar: 'https://picsum.photos/100/100?random=66',
-        senderName: '代码诗人',
-        preview: '回复了你: 可以的，我待会整理一份详细的笔记发给你',
-        time: '1天前',
-        isRead: true,
-        content: '可以的，我待会整理一份详细的笔记发给你',
-        postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-    },
-    {
-        id: 8,
-        type: 'like',
-        avatar: 'https://picsum.photos/100/100?random=67',
-        senderName: '美食探索家',
-        preview: '收藏了你的帖子《高数期末复习重点整理》',
-        time: '2天前',
-        isRead: true,
-        postTitle: '高数期末复习重点整理，学弟学妹们快来看!'
-    }
-])
+const messages = ref([])
 
 // 过滤消息
 const filteredMessages = computed(() => {
-    if (currentTab.value === 'all') {
-        return messages.value
-    }
-    return messages.value.filter(msg => msg.type === currentTab.value)
+    return messages.value
 })
 
 onLoad(() => {
-    console.log('消息中心加载')
-
-    // 打印接口需求文档
-    printAPIRequirements()
+    loadMessages()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【消息中心页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
+onShow(() => {
+    loadUnreadCounts()
+})
 
-    console.log('📍 接口1: 获取消息列表')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/messages')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        type: 'all', // all | system | activity | social | other
-        isRead: null, // null(全部) | true(已读) | false(未读)
-        page: 1,
-        pageSize: 20
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    type: 'system',
-                    title: '系统通知',
-                    content: '您的账号已完成实名认证',
-                    isRead: false,
-                    createTime: '2024-11-01 15:30',
-                    relatedId: null, // 关联对象ID(如活动ID)
-                    relatedType: null // 关联类型(activity/organization等)
+// 获取当前用户ID
+const getStudentId = () => {
+    const userInfo = uni.getStorageSync('userInfo')
+    return userInfo ? (userInfo.studentId || userInfo.id) : null
+}
+
+// 加载未读数量
+const loadUnreadCounts = async () => {
+    const studentId = getStudentId()
+    if (!studentId) return
+
+    try {
+        const res = await getUnreadCount({ studentId })
+        if (res && res.data) {
+            const data = res.data
+            tabs.value.forEach(tab => {
+                if (tab.value === 'all') {
+                    tab.unread = data.totalUnread || 0
+                } else if (tab.value === 'reply') {
+                    tab.unread = data.replyUnread || 0
+                } else if (tab.value === 'like') {
+                    tab.unread = data.likeUnread || 0
+                } else if (tab.value === 'follow') {
+                    tab.unread = data.followUnread || 0
+                } else if (tab.value === 'system') {
+                    tab.unread = data.systemUnread || 0
                 }
-            ],
-            total: 45,
-            unreadCount: 12,
-            typeCounts: {
-                all: 45,
-                system: 10,
-                activity: 20,
-                social: 10,
-                other: 5
+            })
+        }
+    } catch (e) {
+        console.error('获取未读数量失败', e)
+    }
+}
+
+// 加载消息列表
+const loadMessages = async () => {
+    const studentId = getStudentId()
+    if (!studentId) return
+
+    uni.showLoading({ title: '加载中' })
+    try {
+        let res = []
+        const params = { pageNum: 1, pageSize: 20, studentId }
+
+        if (currentTab.value === 'all') {
+            // 并行获取所有类型消息并合并排序
+            const [likes, replies, follows, systems] = await Promise.all([
+                getLikeMessages(params),
+                getReplyMessages(params),
+                getFollowMessages(params),
+                getSystemMessages(params)
+            ])
+
+            const formatList = (list, type) => (list?.rows || list || []).map(item => ({ ...item, type }))
+
+            res = [
+                ...formatList(likes, 'like'),
+                ...formatList(replies, 'reply'),
+                ...formatList(follows, 'follow'),
+                ...formatList(systems, 'system')
+            ]
+
+            // 按时间倒序
+            res.sort((a, b) => new Date(b.createTime) - new Date(a.createTime))
+
+        } else {
+            let apiFunc
+            switch (currentTab.value) {
+                case 'like': apiFunc = getLikeMessages; break;
+                case 'reply': apiFunc = getReplyMessages; break;
+                case 'follow': apiFunc = getFollowMessages; break;
+                case 'system': apiFunc = getSystemMessages; break;
+            }
+
+            if (apiFunc) {
+                const data = await apiFunc(params)
+                res = (data?.rows || data || []).map(item => ({ ...item, type: currentTab.value }))
             }
         }
-    }, null, 2))
-    console.log('\n')
 
-    console.log('📍 接口2: 标记消息为已读')
-    console.log('━'.repeat(80))
-    console.log('请求方式: PUT')
-    console.log('接口路径: /api/messages/:id/read 或 /api/messages/read-all')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('📝 read-all标记全部已读')
-    console.log('\n')
+        // 数据映射适配视图
+        messages.value = res.map(item => ({
+            id: item.messageId,
+            messageId: item.messageId,
+            type: item.type,
+            messageType: item.messageType,
+            avatar: item.senderAvatar || 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusXjg/0',
+            senderName: item.senderName || '系统消息',
+            senderId: item.senderId,
+            receiverId: item.receiverId,
+            preview: getPreviewText(item),
+            time: formatTime(item.createTime),
+            createTime: item.createTime,
+            isRead: item.isRead === '1', // '1' 是已读，'0' 是未读
+            content: item.content,
+            relatedType: item.relatedType,
+            relatedId: item.relatedId,
+            readTime: item.readTime,
+            remark: item.remark
+        }))
 
-    console.log('📍 接口3: 删除消息')
-    console.log('━'.repeat(80))
-    console.log('请求方式: DELETE')
-    console.log('接口路径: /api/messages/:id 或 /api/messages/delete-all')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('\n')
+    } catch (e) {
+        console.error('加载消息失败', e)
+        uni.showToast({ title: '加载失败', icon: 'none' })
+    } finally {
+        uni.hideLoading()
+    }
+}
 
-    console.log('📚 数据字典')
-    console.log('━'.repeat(80))
-    console.log('type类型:')
-    console.log('  - system: 系统通知')
-    console.log('  - activity: 活动通知')
-    console.log('  - social: 社交消息(点赞、评论等)')
-    console.log('  - other: 其他')
-    console.log('\n')
+const getPreviewText = (item) => {
+    // messageType: 1=评论, 2=回复, 3=点赞帖子, 4=点赞评论, 5=关注, 6=系统消息
+    const type = item.messageType || item.type
+    if (type === '3' || type === '4' || item.type === 'like') {
+        return item.content || '赞了你'
+    }
+    if (type === '1' || type === '2' || item.type === 'reply') {
+        return item.content ? `回复了你: ${item.content}` : '回复了你'
+    }
+    if (type === '5' || item.type === 'follow') {
+        return '关注了你'
+    }
+    if (type === '6' || item.type === 'system') {
+        return item.content || '系统通知'
+    }
+    return item.content || '新消息'
+}
 
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
+// 格式化时间
+const formatTime = (timeStr) => {
+    if (!timeStr) return ''
+
+    const time = new Date(timeStr)
+    const now = new Date()
+    const diff = now - time
+
+    const minutes = Math.floor(diff / 60000)
+    const hours = Math.floor(diff / 3600000)
+    const days = Math.floor(diff / 86400000)
+
+    if (minutes < 1) return '刚刚'
+    if (minutes < 60) return `${minutes}分钟前`
+    if (hours < 24) return `${hours}小时前`
+    if (days < 7) return `${days}天前`
+
+    return timeStr.substring(0, 16) // 返回 "2025-11-21 10:00"
 }
 
 // 切换标签
 const switchTab = (tabValue) => {
+    if (currentTab.value === tabValue) return
     currentTab.value = tabValue
+    loadMessages()
 }
 
 // 查看消息详情
-const viewMessage = (msg) => {
+const viewMessage = async (msg) => {
     // 标记为已读
-    msg.isRead = true
+    if (!msg.isRead) {
+        try {
+            await markMessageRead({ messageId: msg.id })
+            msg.isRead = true
+            loadUnreadCounts() // 更新未读数
+        } catch (e) {
+            console.error('标记已读失败', e)
+        }
+    }
 
-    // 更新未读数
-    updateUnreadCount()
-
-    // 跳转到消息详情页
+    // 跳转到消息详情页，传递消息对象
     uni.navigateTo({
-        url: `/pages/message-detail/message-detail?id=${msg.id}`
+        url: `/pages/message-detail/message-detail?id=${msg.id}`,
+        success: (res) => {
+            // 通过事件通道传递数据
+            res.eventChannel.emit('acceptMessageData', { data: msg })
+        }
     })
 }
 
-// 更新未读数
-const updateUnreadCount = () => {
-    tabs.value.forEach(tab => {
-        if (tab.value === 'all') {
-            tab.unread = messages.value.filter(msg => !msg.isRead).length
-        } else {
-            tab.unread = messages.value.filter(msg => msg.type === tab.value && !msg.isRead).length
+// 长按删除消息
+const onLongPress = (msg) => {
+    uni.showActionSheet({
+        itemList: ['删除消息'],
+        itemColor: '#ff4d4f',
+        success: async (res) => {
+            if (res.tapIndex === 0) {
+                try {
+                    await deleteMessage(msg.id)
+                    uni.showToast({ title: '删除成功', icon: 'success' })
+                    // 从本地列表中移除
+                    const index = messages.value.findIndex(m => m.id === msg.id)
+                    if (index > -1) {
+                        messages.value.splice(index, 1)
+                    }
+                } catch (e) {
+                    console.error('删除失败', e)
+                    uni.showToast({ title: '删除失败', icon: 'none' })
+                }
+            }
         }
     })
 }
@@ -310,7 +322,7 @@ const updateUnreadCount = () => {
             transform: translateX(-50%);
             width: 40rpx;
             height: 4rpx;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
             border-radius: 2rpx;
         }
     }
@@ -407,7 +419,7 @@ const updateUnreadCount = () => {
 
 .unread-badge {
     padding: 2rpx 12rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     color: #fff;
     font-size: 20rpx;
     border-radius: 8rpx;

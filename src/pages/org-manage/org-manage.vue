@@ -87,7 +87,20 @@
                     <text class="section-text">人员管理</text>
                 </view>
                 <view class="section-right">
-                    <text class="member-count">{{ orgData.memberCount || 0 }}人</text>
+                    <text class="member-count">{{ orgData.peopleCount || 0 }}人</text>
+                    <text class="arrow">›</text>
+                </view>
+            </view>
+        </view>
+
+        <!-- 待审核列表入口 -->
+        <view class="member-section" @tap="goToPendingReviews" v-if="isAdmin">
+            <view class="section-content">
+                <view class="section-left">
+                    <text class="section-icon">📝</text>
+                    <text class="section-text">待审核列表</text>
+                </view>
+                <view class="section-right">
                     <text class="arrow">›</text>
                 </view>
             </view>
@@ -105,12 +118,17 @@
 <script setup>
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { getOrganizationDetail, updateOrganizationInfo } from '@/api/organization'
 
 const orgId = ref('')
 const levelIndex = ref(0)
-const levelOptions = ['校级', '院级', '系级', '其他']
+const levelOptions = ['校级', '院级', '班级', '其他']
+const levelValues = ['1', '2', '3', '0']
+const isAdmin = ref(false)
+const peopleCount = ref(0)
 
 const orgData = ref({
+    organizationId: null,
     logo: '',
     name: '',
     level: '',
@@ -127,213 +145,140 @@ onLoad((options) => {
         orgId.value = options.id
         loadOrgData(options.id)
     }
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【组织管理页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    // 接口1: 获取组织信息(用于编辑)
-    console.log('📍 接口1: 获取组织信息')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/organizations/:id/edit')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        id: 1 // 组织ID
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            logo: 'https://example.com/logo.png',
-            name: '数据科学与人工智能社团',
-            level: '校级', // 校级、院级、系级、其他
-            college: '计算机科学与技术学院',
-            foundedYear: '2020',
-            intro: '组织简介...',
-            location: '科技楼A301',
-            contact: 'ai-club@example.com',
-            memberCount: 156
+const loadOrgData = async (id) => {
+    try {
+        const userInfo = uni.getStorageSync('userInfo')
+        const params = {}
+        if (userInfo && (userInfo.studentId || userInfo.id)) {
+            params.studentId = userInfo.studentId || userInfo.id
         }
-    }, null, 2))
-    console.log('\n')
 
-    // 接口2: 上传组织logo
-    console.log('📍 接口2: 上传组织Logo')
-    console.log('━'.repeat(80))
-    console.log('请求方式: POST')
-    console.log('接口路径: /api/upload/image')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数: FormData')
-    console.log(JSON.stringify({
-        file: 'File对象', // 图片文件
-        type: 'org_logo' // 上传类型
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            url: 'https://example.com/uploads/logo.png' // 图片URL
+        const res = await getOrganizationDetail(id, params)
+        if (res && res.organization) {
+            const org = res.organization
+            orgData.value = {
+                organizationId: org.organizationId,
+                logo: org.organizationLogo || org.recommendImage,
+                name: org.organizationName,
+                level: getLevelText(org.organizationLevel),
+                college: org.collegeId,
+                foundedYear: org.establishYear,
+                intro: org.introduction || org.displayText,
+                location: org.officeLocation,
+                contact: org.contactPhone,
+                memberCount: org.memberCount
+            }
+
+            // Set level index
+            const idx = levelValues.indexOf(org.organizationLevel)
+            if (idx !== -1) {
+                levelIndex.value = idx
+            }
+
+            // Check admin permission
+            if (res.isMember) {
+                // memberRole: "2"=主席, "1"=管理员, "0"=普通成员
+                isAdmin.value = res.memberRole === '2' || res.memberRole === '1'
+            }
+
+            if (res.totalMemberCount !== undefined) {
+                orgData.value.peopleCount = res.totalMemberCount
+            }
         }
-    }, null, 2))
-    console.log('\n')
-
-    // 接口3: 保存组织信息
-    console.log('📍 接口3: 保存组织信息')
-    console.log('━'.repeat(80))
-    console.log('请求方式: PUT')
-    console.log('接口路径: /api/organizations/:id')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        id: 1,
-        logo: 'https://example.com/logo.png',
-        name: '数据科学与人工智能社团',
-        level: '校级',
-        college: '计算机科学与技术学院',
-        foundedYear: '2020',
-        intro: '组织简介...',
-        location: '科技楼A301',
-        contact: 'ai-club@example.com'
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: '保存成功'
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📝 接口说明')
-    console.log('━'.repeat(80))
-    console.log('1. 权限验证: 需要验证用户是否为该组织的管理员')
-    console.log('2. 必填字段: name, intro')
-    console.log('3. Logo上传: 建议限制大小2MB以内,格式jpg/png')
-    console.log('4. 成立年份: 选择器返回格式如"2020"')
-    console.log('5. 简介字数: 前端限制500字')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
+    } catch (error) {
+        console.error('加载组织信息失败:', error)
+        uni.showToast({ title: '加载失败', icon: 'none' })
+    }
 }
 
-// 加载组织数据
-const loadOrgData = (id) => {
-    // TODO: 从服务器加载组织数据
-    // 模拟数据
-    setTimeout(() => {
-        if (id == 1) {
-            orgData.value = {
-                logo: 'https://via.placeholder.com/100',
-                name: '数据科学与人工智能社团',
-                level: '校级',
-                college: '计算机科学与技术学院',
-                foundedYear: '2020',
-                intro: '数据科学与人工智能社团致力于推广数据科学和人工智能技术,为同学们提供学习交流的平台。我们定期举办技术讲座、项目实践、竞赛培训等活动,帮助成员提升专业技能。',
-                location: '科技楼A301',
-                contact: 'ai-club@example.com',
-                memberCount: 156
-            }
-            levelIndex.value = levelOptions.indexOf(orgData.value.level)
-        } else if (id == 4) {
-            orgData.value = {
-                logo: 'https://via.placeholder.com/100',
-                name: '创新创业俱乐部',
-                level: '院级',
-                college: '经济管理学院',
-                foundedYear: '2019',
-                intro: '创新创业俱乐部为有创业梦想的同学提供资源和指导,组织创业大赛、项目路演、企业参观等活动。',
-                location: '创业孵化基地',
-                contact: 'startup@example.com',
-                memberCount: 89
-            }
-            levelIndex.value = levelOptions.indexOf(orgData.value.level)
-        }
-    }, 300)
+const getLevelText = (level) => {
+    const map = { '1': '校级', '2': '院级', '3': '班级', '0': '其他' }
+    return map[level] || '未知'
 }
 
-// 上传logo
+const onLevelChange = (e) => {
+    levelIndex.value = e.detail.value
+    orgData.value.level = levelOptions[levelIndex.value]
+}
+
+const onYearChange = (e) => {
+    orgData.value.foundedYear = e.detail.value
+}
+
 const uploadLogo = () => {
     uni.chooseImage({
         count: 1,
-        sizeType: ['compressed'],
-        sourceType: ['album', 'camera'],
-        success: (res) => {
-            // TODO: 上传到服务器
-            orgData.value.logo = res.tempFilePaths[0]
-            uni.showToast({
-                title: 'Logo已选择',
-                icon: 'success'
+        success: (chooseImageRes) => {
+            const tempFilePaths = chooseImageRes.tempFilePaths
+            uni.uploadFile({
+                url: 'http://intelligentmini.rainyweb.cn/common/upload',
+                filePath: tempFilePaths[0],
+                name: 'file',
+                header: {
+                    Authorization: 'Bearer ' + uni.getStorageSync('userToken')
+                },
+                success: (uploadFileRes) => {
+                    const data = JSON.parse(uploadFileRes.data)
+                    if (data.code === 200) {
+                        orgData.value.logo = data.url
+                        uni.showToast({ title: '上传成功', icon: 'success' })
+                    } else {
+                        uni.showToast({ title: data.msg || '上传失败', icon: 'none' })
+                    }
+                }
             })
         }
     })
 }
 
-// 选择组织级别
-const onLevelChange = (e) => {
-    levelIndex.value = e.detail.value
-    orgData.value.level = levelOptions[e.detail.value]
+const saveOrgInfo = async () => {
+    if (!orgData.value.name) {
+        uni.showToast({ title: '请输入组织名称', icon: 'none' })
+        return
+    }
+    if (!orgData.value.intro) {
+        uni.showToast({ title: '请输入组织简介', icon: 'none' })
+        return
+    }
+
+    try {
+        const userInfo = uni.getStorageSync('userInfo')
+        const payload = {
+            organizationId: orgData.value.organizationId,
+            studentId: userInfo.studentId || userInfo.id,
+            organizationName: orgData.value.name,
+            organizationLevel: levelValues[levelIndex.value],
+            introduction: orgData.value.intro,
+            officeLocation: orgData.value.location,
+            contactPhone: orgData.value.contact,
+            establishYear: orgData.value.foundedYear,
+            organizationLogo: orgData.value.logo,
+            collegeId: orgData.value.college
+        }
+
+        const res = await updateOrganizationInfo(payload)
+        uni.showToast({ title: '保存成功', icon: 'success' })
+        setTimeout(() => {
+            uni.navigateBack()
+        }, 1500)
+    } catch (error) {
+        console.error('保存失败:', error)
+        uni.showToast({ title: error.message || '保存失败', icon: 'none' })
+    }
 }
 
-// 选择成立年份
-const onYearChange = (e) => {
-    orgData.value.foundedYear = e.detail.value
-}
-
-// 前往人员管理
 const goToMemberManage = () => {
     uni.navigateTo({
         url: `/pages/member-manage/member-manage?id=${orgId.value}`
     })
 }
 
-// 保存组织信息
-const saveOrgInfo = () => {
-    // 验证必填项
-    if (!orgData.value.name) {
-        uni.showToast({
-            title: '请输入组织名称',
-            icon: 'none'
-        })
-        return
-    }
-
-    if (!orgData.value.intro) {
-        uni.showToast({
-            title: '请输入组织简介',
-            icon: 'none'
-        })
-        return
-    }
-
-    // TODO: 提交到服务器
-    uni.showLoading({ title: '保存中...' })
-
-    setTimeout(() => {
-        uni.hideLoading()
-        uni.showToast({
-            title: '保存成功',
-            icon: 'success',
-            duration: 2000
-        })
-
-        // 延迟返回上一页
-        setTimeout(() => {
-            uni.navigateBack()
-        }, 2000)
-    }, 1000)
+const goToPendingReviews = () => {
+    uni.navigateTo({
+        url: `/pages/pending-reviews/pending-reviews?orgId=${orgId.value}`
+    })
 }
 </script>
 
@@ -555,7 +500,7 @@ const saveOrgInfo = () => {
 .save-btn {
     width: 100%;
     height: 90rpx;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
     border-radius: 45rpx;
     display: flex;
     align-items: center;
