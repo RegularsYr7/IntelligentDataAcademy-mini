@@ -23,6 +23,13 @@ export const getCurrentWeek = (params) => {
 };
 
 /**
+ * 获取时间段配置
+ */
+export const getTimeSlots = () => {
+  return request.get("/edu/schedule/timeSlots");
+};
+
+/**
  * 获取下一节课
  * @param {Object} params - 查询参数
  * @param {number} params.classId - 班级ID(必填)

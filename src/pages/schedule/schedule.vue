@@ -80,7 +80,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { getSchedule, getCurrentWeek } from '@/api/schedule'
+import { getSchedule, getCurrentWeek, getTimeSlots } from '@/api/schedule'
 import { getCurrentSemester } from '@/api/semester'
 
 // 获取用户信息
@@ -130,39 +130,90 @@ const currentDayText = computed(() => {
     return days[currentWeekDay.value]
 })
 
-// 时间段配置
-const timeSlots = [
-    {
-        period: '1',
-        range: ['08:25', '09:10'],
-        period2: '2',
-        range2: ['09:15', '10:00']
-    },
-    {
-        period: '3',
-        range: ['10:20', '11:05'],
-        period2: '4',
-        range2: ['11:10', '11:55']
-    },
-    {
-        period: '5',
-        range: ['14:00', '14:45'],
-        period2: '6',
-        range2: ['14:50', '15:35']
-    },
-    {
-        period: '7',
-        range: ['15:55', '16:40'],
-        period2: '8',
-        range2: ['16:45', '17:30']
-    },
-    {
-        period: '9',
-        range: ['19:00', '19:45'],
-        period2: '10',
-        range2: ['19:50', '20:35']
+// 时间段配置（从后端加载）
+const timeSlots = ref([])
+
+// 解析时间段数据
+const parseTimeSlot = (dictLabel) => {
+    // dictLabel 格式: "第1节 (08:25-09:10)"
+    const match = dictLabel.match(/第(\d+)节\s*\((\d{2}:\d{2})-(\d{2}:\d{2})\)/)
+    if (match) {
+        return {
+            period: match[1],
+            startTime: match[2],
+            endTime: match[3]
+        }
     }
-]
+    return null
+}
+
+// 加载时间段配置
+const loadTimeSlots = async () => {
+    try {
+        console.log('=== 开始加载时间段配置 ===')
+        const res = await getTimeSlots()
+        console.log('时间段配置API响应:', res)
+
+        if (res && Array.isArray(res)) {
+            // 按 dictSort 排序
+            const sortedSlots = res.sort((a, b) => a.dictSort - b.dictSort)
+
+            // 每两个时间段组合成一行
+            const formattedSlots = []
+            for (let i = 0; i < sortedSlots.length; i += 2) {
+                const slot1 = parseTimeSlot(sortedSlots[i].dictLabel)
+                const slot2 = i + 1 < sortedSlots.length ? parseTimeSlot(sortedSlots[i + 1].dictLabel) : null
+
+                if (slot1) {
+                    formattedSlots.push({
+                        period: slot1.period,
+                        range: [slot1.startTime, slot1.endTime],
+                        period2: slot2 ? slot2.period : '',
+                        range2: slot2 ? [slot2.startTime, slot2.endTime] : ['', '']
+                    })
+                }
+            }
+
+            timeSlots.value = formattedSlots
+            console.log('格式化后的时间段:', timeSlots.value)
+        }
+    } catch (error) {
+        console.error('加载时间段配置失败:', error)
+        // 使用默认配置
+        timeSlots.value = [
+            {
+                period: '1',
+                range: ['08:25', '09:10'],
+                period2: '2',
+                range2: ['09:15', '10:00']
+            },
+            {
+                period: '3',
+                range: ['10:15', '11:00'],
+                period2: '4',
+                range2: ['11:05', '11:50']
+            },
+            {
+                period: '5',
+                range: ['13:40', '14:25'],
+                period2: '6',
+                range2: ['14:30', '15:15']
+            },
+            {
+                period: '7',
+                range: ['15:30', '16:15'],
+                period2: '8',
+                range2: ['16:20', '17:05'],
+            },
+            {
+                period: '9',
+                range: ['18:45', '19:30'],
+                period2: '10',
+                range2: ['19:35', '20:20']
+            }
+        ]
+    }
+}
 
 // 获取指定周的周几数据
 const getWeekDays = (week) => {
@@ -373,13 +424,16 @@ const viewCourseDetail = (course) => {
 onLoad(async () => {
     console.log('=== 课表页面加载 ===')
 
-    // 1. 加载当前学期
+    // 1. 加载时间段配置
+    await loadTimeSlots()
+
+    // 2. 加载当前学期
     await loadCurrentSemester()
 
-    // 2. 加载当前周次
+    // 3. 加载当前周次
     await loadCurrentWeek()
 
-    // 3. 一次性加载所有周次课程表,不需要二次请求
+    // 4. 一次性加载所有周次课程表,不需要二次请求
     await loadSchedule()
 
     console.log('=== 页面初始化完成 ===')

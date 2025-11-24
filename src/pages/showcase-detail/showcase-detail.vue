@@ -1,9 +1,15 @@
 <template>
     <view class="page">
         <view class="container">
-            <!-- 封面图片 -->
+            <!-- 封面图片轮播 -->
             <view class="cover-section">
-                <image class="cover-image" :src="showcase.coverImage" mode="aspectFill"></image>
+                <swiper class="cover-swiper" :indicator-dots="coverImages.length > 1" :autoplay="true" :circular="true"
+                    :interval="3000" :duration="500" indicator-color="rgba(255, 255, 255, 0.5)"
+                    indicator-active-color="#fff">
+                    <swiper-item v-for="(image, index) in coverImages" :key="index">
+                        <image class="cover-image" :src="image" mode="aspectFill"></image>
+                    </swiper-item>
+                </swiper>
             </view>
 
             <!-- 标题区域 -->
@@ -87,7 +93,20 @@ const showcase = ref({
     introduction: '',
     publishTime: '',
     views: 0,
-    content: ''
+    content: '',
+    imageUrls: [] // 初始化为空数组
+})
+
+// 轮播图片列表
+const coverImages = computed(() => {
+    // 优先使用 imageUrls，如果没有则使用 coverImage
+    if (showcase.value.imageUrls && showcase.value.imageUrls.length > 0) {
+        return showcase.value.imageUrls
+    } else if (showcase.value.coverImage) {
+        return [showcase.value.coverImage]
+    } else {
+        return ['https://picsum.photos/750/500?random=' + showcase.value.id]
+    }
 })
 
 // 加载详情数据
@@ -103,16 +122,8 @@ const loadDetail = async (id) => {
     try {
         loading.value = true
 
-        console.log('正在加载风采详情, ID:', id)
         const res = await getShowcaseDetail(id)
 
-        console.log('='.repeat(80))
-        console.log('【风采详情接口返回数据】')
-        console.log('='.repeat(80))
-        console.log(JSON.stringify(res, null, 2))
-        console.log('='.repeat(80))
-
-        // 数据适配 (后端 -> 前端)
         if (res) {
             showcase.value = {
                 id: res.showcaseId,
@@ -667,11 +678,16 @@ onLoad((options) => {
     padding-bottom: 120rpx;
 }
 
-/* 封面图片 */
+/* 封面轮播 */
 .cover-section {
     width: 100%;
     height: 500rpx;
     position: relative;
+}
+
+.cover-swiper {
+    width: 100%;
+    height: 100%;
 }
 
 .cover-image {

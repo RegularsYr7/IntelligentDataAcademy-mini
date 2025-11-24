@@ -42,7 +42,7 @@
                                 </view>
                             </view>
                             <view class="item-footer">
-                                <text class="category-tag">{{ getCategoryName(item.categoryId) }}</text>
+                                <text class="category-tag">{{ item.category }}</text>
                                 <text class="view-detail">查看详情 ></text>
                             </view>
                         </view>
@@ -70,13 +70,13 @@ const categories = ref([
 // 当前选中分类
 const currentCategory = ref('all')
 
-// 竞赛分类映射: 后端类型 -> 前端分类
+// 竞赛分类映射: 后端类型 -> 中文名称
 const competitionCategoryMap = {
-    '1': 'academic',    // 学科竞赛
-    '2': 'skills',      // 技能竞赛
-    '3': 'innovation',  // 创新创业
-    '4': 'culture',     // 文化艺术
-    '5': 'sports'       // 体育竞技
+    '1': '学科竞赛',
+    '2': '技能竞赛',
+    '3': '创新创业',
+    '4': '文化艺术',
+    '5': '体育竞技'
 }
 
 // 竞赛状态映射: 后端状态 -> 前端文本
@@ -101,10 +101,13 @@ const requestParams = computed(() => {
 
 // 数据映射函数(后端 -> 前端)
 const mapCompetitionData = (item) => {
+    const mappedCategory = competitionCategoryMap[item.competitionCategory] || '其他'
+
     return {
         id: item.competitionId,
         title: item.competitionName,
-        categoryId: competitionCategoryMap[item.competitionCategory] || 'skills',
+        category: mappedCategory,
+        categoryId: item.competitionCategory, // 保留原始ID用于筛选
         status: competitionStatusMap[item.competitionStatus] || '未知',
         registrationTime: formatTimeRange(item.registrationStartTime, item.registrationEndTime),
         competitionTime: formatDateTime(item.competitionStartTime),
@@ -162,19 +165,12 @@ const goToDetail = (id) => {
 const fetchCategoriesMap = async () => {
     try {
         const res = await getCompetitionCategoriesMap()
-        console.log('竞赛分类映射原始数据:', res)
-
-        // 接口直接返回数组,不是包含在res.data中
         const dataArray = Array.isArray(res) ? res : (res.data || [])
-        console.log('数据数组:', dataArray)
-
         if (Array.isArray(dataArray) && dataArray.length > 0) {
-            // 去重处理
             const uniqueCategories = []
             const valueSet = new Set()
 
             dataArray.forEach(item => {
-                console.log('处理项:', item)
                 if (!valueSet.has(item.value)) {
                     valueSet.add(item.value)
                     uniqueCategories.push({
@@ -184,15 +180,11 @@ const fetchCategoriesMap = async () => {
                 }
             })
 
-            console.log('去重后的分类:', uniqueCategories)
 
-            // 保留"全部"选项,添加接口返回的分类
             categories.value = [
                 { id: 'all', name: '全部' },
                 ...uniqueCategories
             ]
-
-            console.log('最终的分类数据:', categories.value)
         } else {
             console.log('数据格式不正确或数据为空')
         }

@@ -16,10 +16,10 @@ export function formatRichText(content, options = {}) {
   const defaultStyles = {
     h2: "font-size: 32rpx; font-weight: bold; color: #333; margin: 30rpx 0 20rpx 0;",
     h3: "font-size: 30rpx; font-weight: bold; color: #333; margin: 25rpx 0 15rpx 0;",
-    p: "margin-bottom: 20rpx; line-height: 1.8; color: #666;",
+    p: "margin-bottom: 20rpx; line-height: 1.8; color: #666; white-space: pre-wrap;",
     ul: "margin: 20rpx 0; padding-left: 40rpx;",
     li: "margin-bottom: 15rpx; line-height: 1.6; color: #666;",
-    div: "line-height: 1.8; color: #666;",
+    div: "line-height: 1.8; color: #666; white-space: pre-wrap;",
     img: "max-width: 100%; height: auto; display: block; margin: 20rpx 0;",
     strong: "font-weight: bold; color: #333;",
     em: "font-style: italic; color: #666;",
@@ -52,13 +52,15 @@ export function formatRichText(content, options = {}) {
 export function cleanRichText(content) {
   if (!content) return "";
 
-  return content
-    .replace(/<[^>]+>/g, "") // 移除所有HTML标签
-    .replace(/&nbsp;/g, " ") // 替换空格实体
-    .replace(/&lt;/g, "<") // 替换小于号
-    .replace(/&gt;/g, ">") // 替换大于号
-    .replace(/&amp;/g, "&") // 替换与号
-    .trim();
+  return (
+    content
+      .replace(/<[^>]+>/g, "") // 移除所有HTML标签
+      // .replace(/&nbsp;/g, " ") // 替换空格实体
+      .replace(/&lt;/g, "<") // 替换小于号
+      .replace(/&gt;/g, ">") // 替换大于号
+      .replace(/&amp;/g, "&")
+  ); // 替换与号
+  // .trim();
 }
 
 /**
