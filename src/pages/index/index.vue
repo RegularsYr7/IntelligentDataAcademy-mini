@@ -37,8 +37,16 @@
 						<text class="class-status">{{ classStatus }}</text>
 						<text class="class-name">{{ currentClass.name }}</text>
 						<view class="class-info">
-							<text class="class-time">{{ currentClass.weekDay }} {{ currentClass.time }}</text>
-							<text class="class-location">📍 {{ currentClass.location }}</text>
+							<view class="class-time">
+								<text class="time-line">{{ currentClass.weekDay }}</text>
+								<text class="time-line">{{ currentClass.time }}</text>
+							</view>
+							<view class="class-location">
+								<view class="loc-lines">
+									<text class="loc-line" v-for="(part, idx) in currentClass.location.split('-')"
+										:key="idx">{{ part.trim() }}</text>
+								</view>
+							</view>
 						</view>
 					</view>
 					<view class="no-class" v-else>
@@ -291,7 +299,7 @@ const goToFeedback = () => {
 	background: #fff;
 	border-radius: 16rpx;
 	overflow: hidden;
-	aspect-ratio: 16/9;
+	aspect-ratio: 16/10;
 	display: flex;
 	flex-direction: column;
 }
@@ -346,13 +354,54 @@ const goToFeedback = () => {
 .class-info {
 	display: flex;
 	justify-content: center;
-	gap: 40rpx;
+	gap: 80rpx;
+	align-items: center;
 }
 
-.class-time,
-.class-location {
+.class-time {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	min-width: 120rpx;
+	/* give a min width so time won't wrap oddly */
+}
+
+.class-time .time-line {
+	display: block;
 	font-size: 26rpx;
 	color: #666;
+	line-height: 36rpx;
+}
+
+.class-location {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	font-size: 26rpx;
+	color: #666;
+	max-width: 240rpx;
+	word-break: break-word;
+	gap: 8rpx;
+}
+
+.class-location .loc-icon {
+	font-size: 22rpx;
+	margin-bottom: 4rpx;
+	color: #666;
+}
+
+.class-location .loc-lines {
+	display: flex;
+	flex-direction: column;
+	gap: 4rpx;
+}
+
+.class-location .loc-line {
+	font-size: 26rpx;
+	color: #666;
+	line-height: 32rpx;
 }
 
 .no-class {

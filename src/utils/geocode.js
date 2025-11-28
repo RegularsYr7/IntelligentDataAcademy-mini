@@ -1,19 +1,7 @@
-/**
- * 地理编码工具 - 经纬度与地址互转
- * 使用腾讯位置服务(微信官方推荐)
- *
- * 申请步骤:
- * 1. 注册账号: https://lbs.qq.com/
- * 2. 控制台 → 应用管理 → 我的应用 → 创建应用
- * 3. 添加Key → 选择 WebServiceAPI
- * 4. 将Key填入下方
- *
- * ⚠️ 微信小程序需要配置request合法域名: https://apis.map.qq.com
- */
+
 
 // 腾讯地图WebService API Key
-const TENCENT_MAP_KEY = "2H7BZ-W3DK4-QX6U4-K6UCB-DQDUQ-64BOD"; // ⚠️ 请替换为你的Key
-
+const TENCENT_MAP_KEY = "2H7BZ-W3DK4-QX6U4-K6UCB-DQDUQ-64BOD"; 
 /**
  * 逆地理编码 - 将经纬度转换为地址
  * @param {number} latitude - 纬度
