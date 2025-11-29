@@ -12,7 +12,7 @@
                 <view class="user-header">
                     <image class="avatar" :src="post.studentAvatar || defaultAvatar" mode="aspectFill"></image>
                     <view class="user-info">
-                        <text class="username">{{ post.studentCommunityName || post.studentName || '匿名用户' }}</text>
+                        <text class="username">{{ post.studentCommunityName || '匿名用户' }}</text>
                         <text class="time">{{ formatTime(post.createTime) }}</text>
                     </view>
                     <view class="follow-btn" v-if="!isFollowed && post.studentId !== currentUserId" @tap="toggleFollow">
@@ -131,7 +131,7 @@
         <view class="comment-input-container">
             <!-- 回复提示条 -->
             <view class="reply-hint" v-if="replyTarget">
-                <text class="reply-hint-text">回复 @{{ replyTarget.userName }}</text>
+                <text class="reply-hint-text">回复 @{{ replyTarget.studentCommunityName }}</text>
                 <text class="cancel-reply" @tap="cancelReply">✕</text>
             </view>
 
@@ -471,6 +471,7 @@ const replyComment = (comment) => {
         type: 'comment',
         commentId: comment.commentId,
         userName: comment.studentName,
+        studentCommunityName: comment.studentCommunityName || '匿名用户',
         parentCommentId: comment.commentId,
         replyToId: comment.studentId
     }
@@ -482,6 +483,7 @@ const replyToReply = (reply, parentComment) => {
         type: 'reply',
         commentId: reply.commentId,
         userName: reply.studentName,
+        studentCommunityName: reply.studentCommunityName || reply.studentName || '匿名用户',
         parentCommentId: parentComment.commentId,
         replyToId: reply.studentId
     }
