@@ -20,6 +20,7 @@ const url = await request.upload('/api/upload', filePath)
 // 配置项
 const config = {
   baseURL: import.meta.env.VITE_APP_BASE_URL || "http://localhost:8081",
+  // baseURL: import.meta.env.VITE_APP_BASE_URL,
 
   // 请求超时时间(ms)
   timeout: 25000,

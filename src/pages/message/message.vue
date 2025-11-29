@@ -71,9 +71,17 @@ const filteredMessages = computed(() => {
 
 onLoad(() => {
     loadMessages()
+
+    // 监听消息列表刷新事件
+    uni.$on('refreshMessageList', () => {
+        loadMessages()
+        loadUnreadCounts()
+    })
 })
 
 onShow(() => {
+    // 每次显示页面时刷新消息和未读数
+    loadMessages()
     loadUnreadCounts()
 })
 
@@ -175,7 +183,8 @@ const loadMessages = async () => {
             relatedType: item.relatedType,
             relatedId: item.relatedId,
             readTime: item.readTime,
-            remark: item.remark
+            remark: item.remark,
+            isFollowed: item.isFollowed || false // 是否已关注对方(仅关注消息有此字段)
         }))
 
     } catch (e) {
@@ -236,22 +245,36 @@ const viewMessage = async (msg) => {
     // 标记为已读
     if (!msg.isRead) {
         try {
-            await markMessageRead({ messageId: msg.id })
+            await markMessageRead({ messageIds: msg.id.toString() })
             msg.isRead = true
             loadUnreadCounts() // 更新未读数
+
+            // 通知其他页面(如qa页面)更新未读数
+            uni.$emit('messageUnreadUpdate')
         } catch (e) {
             console.error('标记已读失败', e)
         }
     }
 
-    // 跳转到消息详情页，传递消息对象
-    uni.navigateTo({
-        url: `/pages/message-detail/message-detail?id=${msg.id}`,
-        success: (res) => {
-            // 通过事件通道传递数据
-            res.eventChannel.emit('acceptMessageData', { data: msg })
-        }
-    })
+    // 根据消息类型决定跳转目标
+    // messageType: 1=评论, 2=回复, 3=点赞帖子, 4=点赞评论, 5=关注, 6=系统消息
+    const messageType = msg.messageType
+
+    // 评论、回复、点赞类型的消息直接跳转到帖子详情
+    if (['1', '2', '3', '4'].includes(messageType) && msg.relatedId) {
+        uni.navigateTo({
+            url: `/pages/post-detail/post-detail?id=${msg.relatedId}`
+        })
+    } else {
+        // 关注、系统消息等跳转到消息详情页
+        uni.navigateTo({
+            url: `/pages/message-detail/message-detail?id=${msg.id}`,
+            success: (res) => {
+                // 通过事件通道传递数据
+                res.eventChannel.emit('acceptMessageData', { data: msg })
+            }
+        })
+    }
 }
 
 // 长按删除消息
@@ -269,6 +292,12 @@ const onLongPress = (msg) => {
                     if (index > -1) {
                         messages.value.splice(index, 1)
                     }
+
+                    // 刷新未读数
+                    loadUnreadCounts()
+
+                    // 通知其他页面(如qa页面)更新未读数
+                    uni.$emit('messageUnreadUpdate')
                 } catch (e) {
                     console.error('删除失败', e)
                     uni.showToast({ title: '删除失败', icon: 'none' })

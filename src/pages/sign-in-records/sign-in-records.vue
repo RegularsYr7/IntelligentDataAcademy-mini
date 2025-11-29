@@ -101,21 +101,36 @@ const loadRecords = async () => {
         })
 
         // 适配后端返回的数据结构
-        records.value = (res.rows || []).map(item => ({
-            id: item.recordId,              // 记录ID
-            taskId: item.taskId,            // 任务ID
-            time: item.createTime,          // 签到时间 "2025-11-19 22:01:14"
-            photo: item.photoUrl,           // 照片URL
-            status: item.checkinStatus,     // 签到状态 (1=正常 2=迟到 3=缺勤)
-            location: {
-                latitude: item.latitude,
-                longitude: item.longitude,
-                address: item.address
-            },
-            remark: item.remark,            // 备注
-            studentName: item.studentName,  // 学生姓名
-            studentNo: item.studentNo       // 学号
-        }))
+        records.value = (res.rows || []).map(item => {
+            // 处理图片URL - 将localhost替换为实际服务器地址
+            let photoUrl = item.photoUrl || ''
+            if (photoUrl) {
+                // 如果是localhost地址,替换为实际服务器地址
+                if (photoUrl.includes('localhost')) {
+                    photoUrl = photoUrl.replace('http://localhost:8081', 'https://intelligentmini.rainyweb.cn')
+                }
+                // 如果只是相对路径,添加服务器前缀
+                else if (photoUrl.startsWith('/profile')) {
+                    photoUrl = 'https://intelligentmini.rainyweb.cn' + photoUrl
+                }
+            }
+
+            return {
+                id: item.recordId,              // 记录ID
+                taskId: item.taskId,            // 任务ID
+                time: item.createTime,          // 签到时间 "2025-11-19 22:01:14"
+                photo: photoUrl,                // 处理后的照片URL
+                status: item.checkinStatus,     // 签到状态 (1=正常 2=迟到 3=缺勤)
+                location: {
+                    latitude: item.latitude,
+                    longitude: item.longitude,
+                    address: item.address
+                },
+                remark: item.remark,            // 备注
+                studentName: item.studentName,  // 学生姓名
+                studentNo: item.studentNo       // 学号
+            }
+        })
 
         console.log('签到记录加载成功:', records.value)
 

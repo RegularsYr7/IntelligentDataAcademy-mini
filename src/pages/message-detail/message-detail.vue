@@ -22,16 +22,14 @@
                     <text class="content-text">{{ message.content }}</text>
                 </view>
 
-                <!-- 点赞类型 -->
-                <view class="like-content" v-if="message.type === 'like'">
-                    <text class="like-text">{{ message.preview }}</text>
-                </view>
-
                 <!-- 关注类型 -->
                 <view class="follow-content" v-if="message.type === 'follow'">
                     <text class="follow-text">{{ message.senderName }} 关注了你</text>
-                    <view class="follow-btn" @tap="followBack">
+                    <view v-if="!message.isFollowed" class="follow-btn" @tap="followBack">
                         <text class="btn-text">回关</text>
+                    </view>
+                    <view v-else class="followed-btn">
+                        <text class="btn-text">已关注</text>
                     </view>
                 </view>
 
@@ -41,44 +39,18 @@
                 </view>
 
                 <!-- 关联帖子 -->
-                <view class="related-post" v-if="message.postTitle" @tap="viewPost">
+                <view class="related-post" v-if="hasRelatedContent" @tap="viewPost">
                     <view class="post-label">
-                        <text class="label-text">相关帖子</text>
-                    </view>
-                    <view class="post-card">
-                        <text class="post-title">{{ message.postTitle }}</text>
-                        <text class="view-arrow">查看详情 →</text>
+                        <text class="label-text">{{ relatedLabel }}</text>
                     </view>
                 </view>
             </view>
 
-            <!-- 操作按钮 -->
-            <view class="action-bar" v-if="message.type === 'reply'">
+            <!-- 操作按钮 - 只有回复按钮 -->
+            <view class="action-bar" v-if="message.type === 'reply' && hasRelatedContent">
                 <view class="action-btn reply-btn" @tap="replyMessage">
                     <text class="btn-icon">💬</text>
                     <text class="btn-text">回复</text>
-                </view>
-                <view class="action-btn like-btn" @tap="likeMessage">
-                    <text class="btn-icon">❤️</text>
-                    <text class="btn-text">点赞</text>
-                </view>
-            </view>
-
-            <!-- 更多相关消息 -->
-            <view class="more-messages" v-if="relatedMessages.length > 0">
-                <view class="section-title">
-                    <text class="title-text">相关消息</text>
-                </view>
-                <view class="related-list">
-                    <view class="related-item" v-for="(msg, index) in relatedMessages" :key="index"
-                        @tap="viewRelatedMessage(msg)">
-                        <image class="related-avatar" :src="msg.avatar" mode="aspectFill"></image>
-                        <view class="related-content">
-                            <text class="related-name">{{ msg.senderName }}</text>
-                            <text class="related-preview">{{ msg.preview }}</text>
-                        </view>
-                        <text class="related-time">{{ msg.time }}</text>
-                    </view>
                 </view>
             </view>
 
@@ -93,11 +65,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { deleteMessage, followUser } from '@/api/community'
+import { deleteMessage, followUser as followUserApi } from '@/api/community'
 
 const messageId = ref(null)
 const message = ref({})
-const relatedMessages = ref([])
 
 // 消息类型标签
 const typeLabel = computed(() => {
@@ -110,6 +81,21 @@ const typeLabel = computed(() => {
     return typeMap[message.value.type] || '消息'
 })
 
+// 是否有关联内容
+const hasRelatedContent = computed(() => {
+    return message.value.relatedType && message.value.relatedId
+})
+
+// 关联内容标签
+const relatedLabel = computed(() => {
+    if (message.value.relatedType === '1') {
+        return '相关帖子'
+    } else if (message.value.relatedType === '2') {
+        return '相关评论'
+    }
+    return '相关内容'
+})
+
 onLoad((options) => {
     messageId.value = options.id
 
@@ -120,82 +106,75 @@ onLoad((options) => {
     eventChannel.on('acceptMessageData', (data) => {
         console.log('接收到消息数据:', data)
         if (data && data.data) {
-            message.value = {
-                ...data.data,
-                postTitle: getPostTitle(data.data)
-            }
+            message.value = data.data
         }
-        relatedMessages.value = []
     })
 })
 
-// 根据消息类型和关联信息生成帖子标题
-const getPostTitle = (msg) => {
-    // 如果是评论/回复/点赞，显示相关帖子
-    if (msg.relatedType === '1' && msg.relatedId) {
-        return '相关帖子' // 可以根据relatedId去获取帖子标题
-    }
-    if (msg.relatedType === '2' && msg.relatedId) {
-        return '相关评论'
-    }
-    return null
-}
-
-// 查看帖子
+// 查看帖子/评论
 const viewPost = () => {
-    // relatedType: 1=帖子, 2=评论
-    if (message.value.relatedType === '1' && message.value.relatedId) {
+    // relatedType: 1=帖子
+    // relatedId: 存储的是帖子ID
+    if (message.value.relatedId) {
         uni.navigateTo({
             url: `/pages/post-detail/post-detail?id=${message.value.relatedId}`
-        })
-    } else if (message.value.relatedType === '2' && message.value.relatedId) {
-        // 如果是评论，也跳转到帖子详情（需要通过评论ID获取帖子ID，或者直接跳转）
-        uni.navigateTo({
-            url: `/pages/post-detail/post-detail?commentId=${message.value.relatedId}`
         })
     }
 }
 
 // 回复消息
 const replyMessage = () => {
-    if (message.value.relatedType === '1' && message.value.relatedId) {
+    if (message.value.relatedId) {
         uni.navigateTo({
             url: `/pages/post-detail/post-detail?id=${message.value.relatedId}&replyTo=${message.value.senderId}`
         })
     }
 }
 
-// 点赞消息
-const likeMessage = () => {
-    uni.showToast({
-        title: '已点赞',
-        icon: 'success'
-    })
-}
-
 // 回关
 const followBack = async () => {
-    if (!message.value.senderId) return
+    if (!message.value.senderId) {
+        uni.showToast({
+            title: '发送者信息缺失',
+            icon: 'none'
+        })
+        return
+    }
 
     try {
-        // 调用关注接口 - 需要从community.js导入followUser
-        // await followUser({ followedId: message.value.senderId })
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
+        await followUserApi({
+            followerId: userInfo.studentId,
+            followeeId: message.value.senderId,
+            followerName: userInfo.name,
+            followerAvatar: userInfo.avatar || '',
+            followeeName: message.value.senderName,
+            followeeAvatar: message.value.avatar || '',
+            studentId: userInfo.studentId
+        })
+
+        // 更新状态
+        message.value.isFollowed = true
+
         uni.showToast({
-            title: '已关注 ' + message.value.senderName,
+            title: '已关注',
             icon: 'success'
         })
     } catch (e) {
         console.error('关注失败', e)
         uni.showToast({
-            title: '关注失败',
+            title: e.message || '关注失败',
             icon: 'none'
         })
     }
-}
-
-// 查看相关消息
-const viewRelatedMessage = (msg) => {
-    // 逻辑同上，可能需要重新加载或跳转
 }
 
 // 删除消息
@@ -203,17 +182,26 @@ const handleDelete = () => {
     uni.showModal({
         title: '提示',
         content: '确定要删除这条消息吗？',
+        confirmColor: '#ff4d4f',
         success: async (res) => {
             if (res.confirm) {
                 try {
+                    uni.showLoading({ title: '删除中...' })
                     await deleteMessage(messageId.value)
+                    uni.hideLoading()
                     uni.showToast({ title: '删除成功', icon: 'success' })
                     setTimeout(() => {
-                        uni.navigateBack()
+                        uni.navigateBack({
+                            success: () => {
+                                // 通知消息列表页刷新
+                                uni.$emit('refreshMessageList')
+                            }
+                        })
                     }, 1500)
                 } catch (e) {
+                    uni.hideLoading()
                     console.error('删除失败', e)
-                    uni.showToast({ title: '删除失败', icon: 'none' })
+                    uni.showToast({ title: e.message || '删除失败', icon: 'none' })
                 }
             }
         }
@@ -316,11 +304,23 @@ const handleDelete = () => {
         opacity: 0.8;
         transform: scale(0.95);
     }
+
+    .btn-text {
+        font-size: 28rpx;
+        color: #fff;
+    }
 }
 
-.follow-btn .btn-text {
-    font-size: 28rpx;
-    color: #fff;
+.followed-btn {
+    padding: 12rpx 32rpx;
+    background: #f5f7fa;
+    border: 1rpx solid #e4e7ed;
+    border-radius: 24rpx;
+
+    .btn-text {
+        font-size: 28rpx;
+        color: #909399;
+    }
 }
 
 /* 关联帖子 */
@@ -378,15 +378,12 @@ const handleDelete = () => {
 
 /* 操作按钮 */
 .action-bar {
-    display: flex;
-    gap: 16rpx;
     padding: 24rpx;
     background-color: #fff;
     margin-bottom: 12rpx;
 }
 
 .action-btn {
-    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -409,20 +406,6 @@ const handleDelete = () => {
     }
 }
 
-.like-btn {
-    background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
-    border: 2rpx solid #d4e0ff;
-
-    .btn-icon {
-        font-size: 32rpx;
-    }
-
-    .btn-text {
-        color: #667eea;
-        font-weight: 500;
-    }
-}
-
 .btn-icon {
     font-size: 32rpx;
 }
@@ -430,80 +413,6 @@ const handleDelete = () => {
 .btn-text {
     font-size: 28rpx;
     font-weight: 500;
-}
-
-/* 相关消息 */
-.more-messages {
-    background-color: #fff;
-    padding: 24rpx;
-}
-
-.section-title {
-    margin-bottom: 20rpx;
-    padding-bottom: 12rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-}
-
-.title-text {
-    font-size: 30rpx;
-    font-weight: bold;
-    color: #333;
-}
-
-.related-list {
-    display: flex;
-    flex-direction: column;
-    gap: 20rpx;
-}
-
-.related-item {
-    display: flex;
-    align-items: center;
-    padding: 16rpx;
-    background-color: #f8f8f8;
-    border-radius: 12rpx;
-    transition: all 0.3s;
-
-    &:active {
-        background-color: #f0f0f0;
-    }
-}
-
-.related-avatar {
-    width: 64rpx;
-    height: 64rpx;
-    border-radius: 50%;
-    margin-right: 16rpx;
-    flex-shrink: 0;
-}
-
-.related-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 6rpx;
-    overflow: hidden;
-}
-
-.related-name {
-    font-size: 26rpx;
-    font-weight: bold;
-    color: #333;
-}
-
-.related-preview {
-    font-size: 24rpx;
-    color: #666;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.related-time {
-    font-size: 22rpx;
-    color: #999;
-    flex-shrink: 0;
-    margin-left: 12rpx;
 }
 
 /* 底部操作栏 */

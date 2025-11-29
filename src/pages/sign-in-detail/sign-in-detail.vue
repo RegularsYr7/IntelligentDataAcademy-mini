@@ -130,12 +130,25 @@ const loadRecordDetail = async (id) => {
 
         console.log('签到详情返回:', res)
 
+        // 处理图片URL - 将localhost替换为实际服务器地址
+        let photoUrl = res.photoUrl || ''
+        if (photoUrl) {
+            // 如果是localhost地址,替换为实际服务器地址
+            if (photoUrl.includes('localhost')) {
+                photoUrl = photoUrl.replace('http://localhost:8081', 'https://intelligentmini.rainyweb.cn')
+            }
+            // 如果只是相对路径,添加服务器前缀
+            else if (photoUrl.startsWith('/profile')) {
+                photoUrl = 'https://intelligentmini.rainyweb.cn' + photoUrl
+            }
+        }
+
         // 适配后端返回的数据结构
         record.value = {
             id: res.recordId,
             taskId: res.taskId,
             time: res.createTime,          // 使用 createTime 作为签到时间 "2025-11-19 22:01:14"
-            photo: res.photoUrl,
+            photo: photoUrl,
             location: {
                 latitude: res.latitude,
                 longitude: res.longitude,
@@ -148,6 +161,7 @@ const loadRecordDetail = async (id) => {
         }
 
         console.log('签到详情加载成功:', record.value)
+        console.log('处理后的图片URL:', photoUrl)
     } catch (error) {
         console.error('获取签到详情失败:', error)
         uni.showToast({
@@ -215,100 +229,8 @@ onLoad((options) => {
     if (id) {
         loadRecordDetail(id)
     }
-    console.log('签到详情页加载', id)
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【签到详情页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取签到任务详情')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/sign-in/tasks/:id')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({ id: 1 }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            id: 1,
-            title: '数据库原理课',
-            location: '教学楼A301',
-            startTime: '2024-11-05 14:00',
-            endTime: '2024-11-05 14:30',
-            status: 'ongoing',
-            signedCount: 45,
-            totalCount: 50,
-            signRate: 90, // 签到率百分比
-            creator: {
-                id: 1,
-                name: '李老师',
-                avatar: 'https://example.com/avatar.jpg'
-            },
-            mySignInfo: {
-                isSigned: true,
-                signTime: '2024-11-05 14:05',
-                isOnTime: true,
-                location: '教学楼A301'
-            },
-            createTime: '2024-11-05 13:50'
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📍 接口2: 获取签到名单')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/sign-in/tasks/:id/records')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        status: 'all', // all | signed | unsigned
-        page: 1,
-        pageSize: 20
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    student: {
-                        id: 1,
-                        name: '张三',
-                        avatar: 'https://example.com/avatar.jpg',
-                        studentId: '2021001'
-                    },
-                    signTime: '2024-11-05 14:05',
-                    isOnTime: true,
-                    location: '教学楼A301'
-                }
-            ],
-            total: 50,
-            signedCount: 45,
-            unsignedCount: 5
-        }
-    }, null, 2))
-    console.log('📝 只有创建者可以查看完整签到名单')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 </script>
 
 <style scoped lang="scss">

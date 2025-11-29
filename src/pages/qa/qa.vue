@@ -83,7 +83,7 @@
                                     <view class="footer-item" @tap.stop="toggleLike(item)">
                                         <text class="icon" :class="{ liked: item.isLiked }">{{ item.isLiked ? '❤️' :
                                             '🤍'
-                                        }}</text>
+                                            }}</text>
                                         <text class="count" :class="{ liked: item.isLiked }">{{ item.likes }}</text>
                                     </view>
                                     <view class="footer-item" @tap.stop="viewComments(item)">
@@ -259,12 +259,15 @@ onLoad(() => {
             listRef.value.reload()
         }
     })
+
+    // 监听消息未读数更新事件
+    uni.$on('messageUnreadUpdate', () => {
+        console.log('收到消息未读数更新事件')
+        loadUnreadCount()
+    })
 })
 
-onUnload(() => {
-    // 页面卸载时移除事件监听
-    uni.$off('refreshPostList')
-})
+
 
 onShow(() => {
     // 每次显示页面时刷新未读数
@@ -282,6 +285,12 @@ onShow(() => {
             }
         }, 100)
     }
+})
+
+onUnload(() => {
+    // 页面卸载时移除事件监听
+    uni.$off('refreshPostList')
+    uni.$off('messageUnreadUpdate')
 })
 
 // 加载未读消息数量

@@ -105,13 +105,13 @@
                                     <view class="reply-item" @tap="replyToReply(reply, comment)"
                                         @longpress="onReplyLongPress(reply)">
                                         <text class="reply-user">{{ reply.studentCommunityName || reply.studentName
-                                        }}</text>
+                                            }}</text>
                                         <text class="reply-arrow" v-if="reply.replyToName"> 回复 </text>
                                         <text class="reply-target" v-if="reply.replyToName">{{
                                             reply.replyToCommunityName || reply.replyToName
-                                        }}</text>
+                                            }}</text>
                                         <text class="reply-content">{{ reply.replyToName ? ': ' : '' }}{{ reply.content
-                                        }}</text>
+                                            }}</text>
                                     </view>
                                 </view>
                             </view>
@@ -128,7 +128,7 @@
         </view>
 
         <!-- 底部评论输入框 -->
-        <view class="comment-input-container">
+        <view class="comment-input-container" :style="{ bottom: inputBottom + 'px' }">
             <!-- 回复提示条 -->
             <view class="reply-hint" v-if="replyTarget">
                 <text class="reply-hint-text">回复 @{{ replyTarget.studentCommunityName }}</text>
@@ -137,7 +137,7 @@
 
             <view class="comment-input-bar">
                 <input class="comment-input" :placeholder="replyTarget ? '说点什么...' : '说点什么...'" v-model="commentText"
-                    @focus="onInputFocus" />
+                    :adjust-position="false" @focus="onInputFocus" @blur="onInputBlur" />
                 <view class="send-btn" @tap="sendComment" :class="{ active: commentText.trim() }">
                     <text class="send-text">发送</text>
                 </view>
@@ -172,6 +172,7 @@ const post = ref(null)
 const comments = ref([])
 const commentText = ref('')
 const replyTarget = ref(null) // { type: 'comment' | 'reply', commentId, userName, parentCommentId, replyToId }
+const inputBottom = ref(0)
 
 const defaultAvatar = 'https://picsum.photos/100/100?random=user'
 const currentUserId = ref(null)
@@ -495,8 +496,15 @@ const cancelReply = () => {
 }
 
 // 输入框获取焦点
-const onInputFocus = () => {
-    // 可以在这里处理焦点事件
+const onInputFocus = (e) => {
+    if (e.detail.height) {
+        inputBottom.value = e.detail.height
+    }
+}
+
+// 输入框失去焦点
+const onInputBlur = () => {
+    inputBottom.value = 0
 }
 
 // 发送评论

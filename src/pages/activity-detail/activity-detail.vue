@@ -426,13 +426,9 @@ const handleCheckinSubmit = async (qrData) => {
                 icon: 'success'
             })
 
-            // 重新加载活动详情
-            loadActivityDetail(activity.value.activityId)
-        } else {
-            uni.showToast({
-                title: res.message || '签到失败',
-                icon: 'none'
-            })
+            setTimeout(() => {
+                loadActivityDetail(activity.value.activityId)
+            }, 1000)
         }
     } catch (error) {
         console.error('签到失败:', error)

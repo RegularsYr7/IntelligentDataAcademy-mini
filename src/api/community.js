@@ -314,10 +314,11 @@ export const getSystemMessages = (params) => {
 /**
  * 标记消息为已读
  * @param {Object} data - 消息信息
- * @param {string} data.messageId - 消息ID
+ * @param {string} data.messageIds - 消息ID (单个或多个用逗号分隔)
  */
 export const markMessageRead = (data) => {
-  return request.post("/edu/communityMessage/markRead", data);
+  const messageIds = data.messageIds || data.messageId;
+  return request.post(`/edu/communityMessage/markRead?messageIds=${messageIds}`);
 };
 
 /**
