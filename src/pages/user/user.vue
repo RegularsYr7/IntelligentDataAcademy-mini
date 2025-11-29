@@ -137,7 +137,8 @@ const loadMyActivities = async (studentId) => {
 
         // 后端返回格式: { totalCredits, participantCount, totalPoints, activityList }
         if (res && res.activityList && Array.isArray(res.activityList)) {
-            myActivities.value = res.activityList.map(activity => ({
+            // 只展示前3个活动
+            myActivities.value = res.activityList.slice(0, 3).map(activity => ({
                 id: activity.activityId,
                 name: activity.activityName || activity.name,
                 time: formatActivityTime(activity.activityStartTime || activity.time),
@@ -163,15 +164,18 @@ const loadMyOrganizations = async (studentId) => {
         if (res) {
             const list = res.organizationList || res.rows || []
 
-            myOrganizations.value = list.map(org => ({
+            const allOrgs = list.map(org => ({
                 id: org.organizationId,
                 name: org.organizationName || org.name,
                 role: org.myMemberTag || getRoleName(org.myMemberRole) || org.role || org.memberRole || '成员',
                 logo: org.organizationLogo || org.logo || 'https://picsum.photos/100/100?random=' + org.organizationId
             }))
 
-            // 提取职位信息
-            userInfo.value.positions = myOrganizations.value.map(org => org.role).filter(role => role && role !== '成员')
+            // 提取职位信息 (从所有组织中提取)
+            userInfo.value.positions = allOrgs.map(org => org.role).filter(role => role && role !== '成员')
+
+            // 只展示前3个组织
+            myOrganizations.value = allOrgs.slice(0, 3)
         }
     } catch (error) {
         console.error('加载我的组织失败:', error)

@@ -8,9 +8,9 @@ import request from "@/utils/request";
  * @param {Object} params - 查询参数
  * @param {number} params.pageNum - 页码
  * @param {number} params.pageSize - 每页数量
- * @param {string} params.activityName - 活动名称(可选)
- * @param {string} params.activityType - 活动类型(可选)
- * @param {string} params.status - 状态(可选)
+ * @param {string} params.type - 活动类型(可选)
+ * @param {number} params.organizationId - 组织ID(可选)
+ * @param {string} params.search - 搜索关键词(可选)
  */
 export const getActivityList = (params) => {
   return request.get("/edu/activity/miniprogram", params);

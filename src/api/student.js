@@ -97,6 +97,15 @@ export const getStudentDetail = (studentId) => {
 };
 
 /**
+ * 获取学生信息（小程序专用）
+ * @param {number} studentId - 学生ID
+ * @returns {Promise} 学生完整信息
+ */
+export const getStudentInfo = (studentId) => {
+  return request.get("/edu/student/getStudentInfo", { studentId });
+};
+
+/**
  * 获取学生列表
  * @param {Object} params - 查询参数
  */

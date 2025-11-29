@@ -293,13 +293,13 @@ const goToFeedback = () => {
 	color: rgba(255, 255, 255, 0.8);
 }
 
-/* 课表组件 (4:3比例) */
+/* 课表组件 */
 .schedule-card {
 	margin: 0 20rpx 20rpx;
 	background: #fff;
 	border-radius: 16rpx;
 	overflow: hidden;
-	aspect-ratio: 16/10;
+	min-height: 440rpx;
 	display: flex;
 	flex-direction: column;
 }

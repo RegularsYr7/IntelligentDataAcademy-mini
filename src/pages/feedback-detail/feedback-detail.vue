@@ -4,51 +4,63 @@
             <!-- 反馈信息卡片 -->
             <view class="feedback-card">
                 <view class="card-header">
-                    <view class="type-badge" :class="'type-' + feedback.type">
-                        <text>{{ getTypeText(feedback.type) }}</text>
+                    <view class="header-left">
+                        <view class="type-badge" :class="'type-' + feedback.type">
+                            <text>{{ getTypeText(feedback.type) }}</text>
+                        </view>
                     </view>
                     <view class="status-badge" :class="'status-' + feedback.status">
                         <text>{{ getStatusText(feedback.status) }}</text>
                     </view>
                 </view>
-                <text class="feedback-title">{{ feedback.title }}</text>
-                <text class="feedback-desc">{{ feedback.description }}</text>
+
+                <view class="feedback-content">
+                    <text class="feedback-title">{{ feedback.title }}</text>
+                    <text class="feedback-desc">{{ feedback.description }}</text>
+                </view>
 
                 <!-- 图片列表 -->
-                <view class="photo-list" v-if="feedback.photos && feedback.photos.length > 0">
+                <view class="photo-list" v-if="feedback.photos && feedback.photos.length > 0" :class="gridClass">
                     <image class="photo-item" v-for="(photo, index) in feedback.photos" :key="index" :src="photo"
                         mode="aspectFill" @tap="previewPhoto(index)"></image>
                 </view>
 
-                <view class="feedback-time">
-                    <text class="time-icon">🕒</text>
-                    {{ formatDateTime(feedback.createTime) }}
+                <view class="feedback-footer">
+                    <view class="time-info">
+                        <text class="time-icon">🕒</text>
+                        <text>{{ formatDateTime(feedback.createTime) }}</text>
+                    </view>
                 </view>
             </view>
 
             <!-- 回复列表 -->
             <view class="reply-section" v-if="feedback.replies && feedback.replies.length > 0">
-                <view class="section-title">
-                    <text class="title-icon">💬</text>
-                    <text class="title-text">回复记录</text>
+                <view class="section-header">
+                    <text class="header-icon">💬</text>
+                    <text class="header-title">回复记录</text>
                 </view>
                 <view class="reply-list">
                     <view class="reply-item" v-for="(reply, index) in feedback.replies" :key="index"
                         :class="{ admin: reply.isAdmin }">
-                        <view class="reply-header">
-                            <text class="reply-role">{{ reply.isAdmin ? '管理员' : '我' }}</text>
-                            <text class="reply-time">{{ formatReplyTime(reply.time) }}</text>
+                        <view class="reply-avatar">
+                            <text>{{ reply.isAdmin ? '👨‍💼' : '👤' }}</text>
                         </view>
-                        <text class="reply-content">{{ reply.content }}</text>
+                        <view class="reply-bubble">
+                            <view class="reply-meta">
+                                <text class="reply-role">{{ reply.isAdmin ? '管理员' : '我' }}</text>
+                                <text class="reply-time">{{ formatReplyTime(reply.time) }}</text>
+                            </view>
+                            <text class="reply-content">{{ reply.content }}</text>
+                        </view>
                     </view>
                 </view>
             </view>
 
             <!-- 追加反馈 -->
             <view class="append-section" v-if="feedback.status !== 'resolved'">
-                <view class="section-title">
-                    <text class="title-icon">✏️</text>
-                    <text class="title-text">追加说明</text>
+                <view class="section-header">
+                    <text class="header-icon">✏️</text>
+                    <text class="header-title">追加说明</text>
                 </view>
                 <view class="append-input-wrapper">
                     <textarea class="append-input" v-model="appendContent" placeholder="可以在此追加更多信息或回复管理员..."
@@ -57,22 +69,22 @@
                 <view class="append-footer">
                     <text class="char-count">{{ appendContent.length }}/300</text>
                     <button class="append-btn" @tap="submitAppend" :disabled="!appendContent.trim()">
-                        提交
+                        提交回复
                     </button>
                 </view>
             </view>
 
             <!-- 已解决提示 -->
             <view class="resolved-tip" v-else>
-                <text class="tip-icon">✅</text>
-                <text class="tip-text">该反馈已解决</text>
+                <text class="tip-icon">🎉</text>
+                <text class="tip-text">该反馈已完美解决</text>
             </view>
         </view>
     </view>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getFeedbackDetail, appendFeedback } from '@/api/feedback'
 
@@ -87,6 +99,14 @@ const feedback = ref({
     status: 'pending',
     createTime: '',
     replies: []
+})
+
+// 图片网格样式
+const gridClass = computed(() => {
+    const len = feedback.value.photos ? feedback.value.photos.length : 0
+    if (len === 1) return 'grid-1'
+    if (len === 2 || len === 4) return 'grid-2'
+    return 'grid-3'
 })
 
 // 追加内容
@@ -350,248 +370,379 @@ const printAPIRequirements = () => {
 </script>
 
 <style scoped lang="scss">
-.container {
+.page {
     min-height: 100vh;
-    background: #f5f5f5;
-    padding: 20rpx;
-    padding-bottom: 20rpx;
+    background-color: #f5f7fa;
+    padding-bottom: 40rpx;
 }
 
-/* 反馈卡片 */
-.feedback-card {
+.container {
+    padding: 24rpx;
+}
+
+/* 通用卡片样式 */
+.feedback-card,
+.reply-section,
+.append-section,
+.resolved-tip {
     background: #fff;
-    border-radius: 16rpx;
-    padding: 30rpx;
-    margin-bottom: 20rpx;
+    border-radius: 24rpx;
+    padding: 32rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
 }
 
+/* 头部状态栏 */
 .card-header {
     display: flex;
-    gap: 12rpx;
-    margin-bottom: 20rpx;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24rpx;
+    padding-bottom: 20rpx;
+    border-bottom: 1rpx solid #f5f7fa;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
 }
 
 .type-badge {
-    padding: 6rpx 16rpx;
-    border-radius: 20rpx;
-    font-size: 22rpx;
+    padding: 8rpx 20rpx;
+    border-radius: 32rpx;
+    font-size: 24rpx;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6rpx;
 
     &.type-course {
-        background: rgba(102, 126, 234, 0.1);
-        color: #667eea;
+        background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%);
+        color: #5e35b1;
     }
 
     &.type-teaching {
-        background: rgba(82, 196, 26, 0.1);
-        color: #52c41a;
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+        color: #00695c;
     }
 
     &.type-environment {
-        background: rgba(250, 173, 20, 0.1);
-        color: #faad14;
+        background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+        color: #e65100;
     }
 
     &.type-other {
-        background: rgba(245, 87, 108, 0.1);
-        color: #f5576c;
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+        color: #c62828;
     }
 }
 
 .status-badge {
-    padding: 6rpx 16rpx;
-    border-radius: 20rpx;
-    font-size: 22rpx;
+    padding: 8rpx 24rpx;
+    border-radius: 8rpx;
+    font-size: 24rpx;
+    font-weight: 600;
+    letter-spacing: 1rpx;
 
     &.status-pending {
-        background: rgba(250, 173, 20, 0.1);
-        color: #faad14;
+        background: #fff7e6;
+        color: #fa8c16;
+        border: 1rpx solid #ffd591;
     }
 
     &.status-processing {
-        background: rgba(102, 126, 234, 0.1);
-        color: #667eea;
+        background: #e6f7ff;
+        color: #1890ff;
+        border: 1rpx solid #91d5ff;
     }
 
     &.status-resolved {
-        background: rgba(82, 196, 26, 0.1);
+        background: #f6ffed;
         color: #52c41a;
+        border: 1rpx solid #b7eb8f;
     }
 }
 
+/* 反馈内容 */
+.feedback-content {
+    margin-bottom: 30rpx;
+}
+
 .feedback-title {
+    font-size: 36rpx;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-bottom: 20rpx;
+    line-height: 1.4;
     display: block;
-    font-size: 32rpx;
-    font-weight: bold;
-    color: #333;
-    margin-bottom: 16rpx;
-    line-height: 1.5;
 }
 
 .feedback-desc {
-    display: block;
-    font-size: 28rpx;
-    color: #666;
+    font-size: 30rpx;
+    color: #4a4a4a;
     line-height: 1.8;
-    margin-bottom: 20rpx;
+    display: block;
+    text-align: justify;
 }
 
+/* 图片网格 */
 .photo-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16rpx;
-    margin-bottom: 20rpx;
+    display: grid;
+    gap: 12rpx;
+    margin-bottom: 24rpx;
+    border-radius: 16rpx;
+    overflow: hidden;
+
+    &.grid-1 {
+        grid-template-columns: 1fr;
+
+        .photo-item {
+            height: 400rpx;
+        }
+    }
+
+    &.grid-2,
+    &.grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+
+        .photo-item {
+            height: 300rpx;
+        }
+    }
+
+    &.grid-3,
+    &.grid-5,
+    &.grid-6,
+    &.grid-7,
+    &.grid-8,
+    &.grid-9 {
+        grid-template-columns: repeat(3, 1fr);
+
+        .photo-item {
+            height: 220rpx;
+        }
+    }
 }
 
 .photo-item {
-    width: 200rpx;
-    height: 200rpx;
-    border-radius: 12rpx;
+    width: 100%;
+    object-fit: cover;
+    border-radius: 8rpx;
+    background: #f0f0f0;
 }
 
-.feedback-time {
-    font-size: 24rpx;
-    color: #999;
+/* 底部信息 */
+.feedback-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24rpx;
+    padding-top: 24rpx;
+    border-top: 1rpx dashed #eee;
+}
+
+.time-info {
     display: flex;
     align-items: center;
-    padding-top: 20rpx;
-    border-top: 1rpx solid #f0f0f0;
-}
-
-.time-icon {
-    margin-right: 8rpx;
+    gap: 8rpx;
+    font-size: 24rpx;
+    color: #999;
 }
 
 /* 回复区域 */
-.reply-section,
-.append-section {
-    background: #fff;
-    border-radius: 16rpx;
-    padding: 30rpx;
-    margin-bottom: 20rpx;
-}
-
-.section-title {
+.section-header {
     display: flex;
     align-items: center;
-    margin-bottom: 20rpx;
-    padding-bottom: 20rpx;
-    border-bottom: 2rpx solid #f0f0f0;
-}
+    gap: 12rpx;
+    margin-bottom: 30rpx;
 
-.title-icon {
-    font-size: 32rpx;
-    margin-right: 12rpx;
-}
+    .header-icon {
+        font-size: 32rpx;
+    }
 
-.title-text {
-    font-size: 30rpx;
-    font-weight: bold;
-    color: #333;
+    .header-title {
+        font-size: 32rpx;
+        font-weight: 700;
+        color: #333;
+    }
 }
 
 .reply-list {
     display: flex;
     flex-direction: column;
-    gap: 20rpx;
+    gap: 30rpx;
 }
 
 .reply-item {
-    background: #f5f5f5;
-    border-radius: 12rpx;
-    padding: 20rpx;
+    display: flex;
+    gap: 20rpx;
 
     &.admin {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        flex-direction: row-reverse;
+
+        .reply-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            border-radius: 24rpx 4rpx 24rpx 24rpx;
+
+            .reply-time {
+                color: rgba(255, 255, 255, 0.7);
+            }
+
+            .reply-role {
+                color: #fff;
+            }
+        }
+    }
+
+    &:not(.admin) {
+        .reply-bubble {
+            background: #f0f2f5;
+            color: #333;
+            border-radius: 4rpx 24rpx 24rpx 24rpx;
+
+            .reply-time {
+                color: #999;
+            }
+
+            .reply-role {
+                color: #666;
+            }
+        }
     }
 }
 
-.reply-header {
+.reply-avatar {
+    width: 80rpx;
+    height: 80rpx;
+    border-radius: 50%;
+    background: #eee;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40rpx;
+    border: 2rpx solid #fff;
+    box-shadow: 0 4rpx 10rpx rgba(0, 0, 0, 0.1);
+}
+
+.reply-bubble {
+    padding: 24rpx;
+    max-width: 70%;
+    position: relative;
+    box-shadow: 0 2rpx 10rpx rgba(0, 0, 0, 0.05);
+}
+
+.reply-meta {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12rpx;
+    font-size: 24rpx;
 }
 
 .reply-role {
-    font-size: 24rpx;
-    color: #667eea;
-    font-weight: bold;
-}
-
-.reply-time {
-    font-size: 22rpx;
-    color: #999;
+    font-weight: 600;
 }
 
 .reply-content {
-    font-size: 26rpx;
-    color: #666;
+    font-size: 28rpx;
     line-height: 1.6;
+    word-break: break-all;
 }
 
-/* 追加区域 */
+/* 追加输入框 */
 .append-input-wrapper {
-    width: 100%;
-    box-sizing: border-box;
+    background: #f9fafc;
+    border-radius: 16rpx;
+    padding: 24rpx;
+    border: 2rpx solid #eee;
+    transition: all 0.3s;
+
+    &:focus-within {
+        background: #fff;
+        border-color: #667eea;
+        box-shadow: 0 0 0 4rpx rgba(102, 126, 234, 0.1);
+    }
 }
 
 .append-input {
     width: 100%;
-    min-height: 200rpx;
-    background: #f5f5f5;
-    border-radius: 12rpx;
-    padding: 20rpx;
+    min-height: 160rpx;
     font-size: 28rpx;
     color: #333;
-    box-sizing: border-box;
+    line-height: 1.5;
 }
 
 .append-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 16rpx;
-}
-
-.char-count {
-    font-size: 24rpx;
-    color: #999;
+    margin-top: 24rpx;
 }
 
 .append-btn {
-    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    margin: 0;
+    padding: 0 48rpx;
+    height: 64rpx;
+    line-height: 64rpx;
+    background: linear-gradient(90deg, #4b6cb7 0%, #182848 100%);
     color: #fff;
     font-size: 26rpx;
-    font-weight: bold;
-    padding: 0 40rpx;
-    height: 60rpx;
-    line-height: 60rpx;
-    border-radius: 30rpx;
-    border: none;
+    border-radius: 32rpx;
+    box-shadow: 0 4rpx 12rpx rgba(24, 40, 72, 0.2);
 
     &[disabled] {
-        opacity: 0.5;
+        background: #ccc;
+        box-shadow: none;
+        opacity: 0.7;
+    }
+
+    &:active {
+        transform: scale(0.98);
     }
 }
 
-/* 已解决提示 */
+/* 已解决状态 */
 .resolved-tip {
-    background: rgba(82, 196, 26, 0.1);
-    border-radius: 16rpx;
-    padding: 40rpx;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16rpx;
+    justify-content: center;
+    padding: 60rpx 0;
+    background: linear-gradient(180deg, #f6ffed 0%, #fff 100%);
+    border: 2rpx dashed #b7eb8f;
 }
 
 .tip-icon {
     font-size: 80rpx;
+    margin-bottom: 20rpx;
+    animation: bounce 2s infinite;
 }
 
 .tip-text {
-    font-size: 28rpx;
+    font-size: 32rpx;
+    font-weight: 600;
     color: #52c41a;
-    font-weight: bold;
+}
+
+@keyframes bounce {
+
+    0%,
+    20%,
+    50%,
+    80%,
+    100% {
+        transform: translateY(0);
+    }
+
+    40% {
+        transform: translateY(-10rpx);
+    }
+
+    60% {
+        transform: translateY(-5rpx);
+    }
 }
 </style>

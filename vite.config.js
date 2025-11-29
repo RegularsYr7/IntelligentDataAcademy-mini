@@ -27,9 +27,9 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  // esbuild: {
-  //   drop: ["console", "debugger"],
-  // },
+  esbuild: {
+    drop: ["console", "debugger"],
+  },
   build: {
     watch: {
       // 监听文件变化

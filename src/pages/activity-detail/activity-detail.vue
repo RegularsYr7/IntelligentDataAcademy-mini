@@ -66,7 +66,8 @@
                             <text class="title-icon">⚠️</text>
                             <text class="title-text">参与须知</text>
                         </view>
-                        <text class="section-content">{{ activity.remark }}</text>
+                        <rich-text class="section-content"
+                            :nodes="formatRichText(activity.participationNotes)"></rich-text>
                     </view>
                 </view>
 
@@ -91,11 +92,11 @@
                         </view>
                         <view class="grid-item">
                             <text class="item-label">活动级别</text>
-                            <text class="item-value">{{ activity.activityLevel }}</text>
+                            <text class="item-value">{{ getActivityLevelText(activity.activityLevel) }}</text>
                         </view>
                         <view class="grid-item">
                             <text class="item-label">参与范围</text>
-                            <text class="item-value">{{ activity.participateScope }}</text>
+                            <text class="item-value">{{ getParticipateScopeText(activity.participateScope) }}</text>
                         </view>
                         <view class="grid-item">
                             <text class="item-label">活动请假</text>
@@ -278,6 +279,7 @@ const activity = ref({
     maxParticipants: 0,
     organizerNames: '',
     activityDetail: '',
+    participationNotes: '',
     remark: '',
     registerStartTime: '',
     registerEndTime: '',
@@ -654,6 +656,7 @@ const loadActivityDetail = async (id) => {
             maxParticipants: activityData.maxParticipants || 0,
             organizerNames: activityData.organizerNames || activityData.organizationName || '',
             activityDetail: activityData.activityDetail || '',
+            participationNotes: activityData.participationNotes || '',
             remark: activityData.remark || '',
             registerStartTime: activityData.registerStartTime || '',
             registerEndTime: activityData.registerEndTime || '',
@@ -691,6 +694,28 @@ const mapCurrentStatusToDisplay = (status) => {
         6: 'completed'      // 已完结
     }
     return statusMap[status] || 'recruiting'
+}
+
+// 映射参与范围
+const getParticipateScopeText = (scope) => {
+    const scopeMap = {
+        '1': '全校',
+        '2': '学院',
+        '3': '本班'
+    }
+    return scopeMap[scope] || scope
+}
+
+// 映射活动级别
+const getActivityLevelText = (level) => {
+    const levelMap = {
+        '1': '国家级',
+        '2': '省级',
+        '3': '市级',
+        '4': '校级',
+        '5': '院级'
+    }
+    return levelMap[level] || level
 }
 
 // 解析活动标签

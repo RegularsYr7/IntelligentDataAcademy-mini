@@ -4,14 +4,14 @@
             <!-- 标题输入 -->
             <view class="input-group">
                 <textarea class="title-input" placeholder="标题（选填）" v-model="title" maxlength="50"
-                    :adjust-position="true" :show-confirm-bar="false" />
+                    :adjust-position="false" :show-confirm-bar="false" />
                 <text class="char-limit" v-if="title.length > 0">{{ title.length }}/50</text>
             </view>
 
             <!-- 内容输入 -->
-            <view class="input-group">
+            <view class="input-group content-group">
                 <textarea class="content-input" placeholder="分享你的想法..." v-model="content" maxlength="5000"
-                    :adjust-position="true" :show-confirm-bar="false" />
+                    :adjust-position="false" :show-confirm-bar="false" />
             </view>
 
             <!-- 图片网格 -->
@@ -27,11 +27,12 @@
                 </view>
             </view>
 
-            <!-- 话题标签 -->
-            <view class="tag-list" v-if="selectedTopics.length > 0">
-                <view class="tag-item" v-for="(topic, index) in selectedTopics" :key="index">
-                    <text class="tag-text">#{{ topic }}</text>
-                    <text class="tag-close" @tap="removeTopic(index)">✕</text>
+            <!-- 分类标签 -->
+            <view class="tag-list" v-if="selectedCategory">
+                <view class="tag-item">
+                    <text class="tag-icon">{{ selectedCategory.icon }}</text>
+                    <text class="tag-text">{{ selectedCategory.name }}</text>
+                    <text class="tag-close" @tap="removeCategory">✕</text>
                 </view>
             </view>
 
@@ -42,17 +43,17 @@
                 <text class="location-close" @tap="removeLocation">✕</text>
             </view>
 
-            <!-- 底部留白 -->
-            <view style="height: 120rpx;"></view>
+            <!-- 底部留白，根据键盘高度动态调整 -->
+            <view :style="{ height: (120 + (keyboardHeight ? keyboardHeight * 2 : 0)) + 'rpx' }"></view>
 
             <!-- 底部工具栏 -->
-            <view class="bottom-toolbar">
+            <view class="bottom-toolbar" :style="{ bottom: keyboardHeight + 'px' }">
                 <view class="tool-list">
                     <view class="tool-btn" @tap="chooseImage">
                         <text class="tool-emoji">🖼️</text>
                     </view>
-                    <view class="tool-btn" @tap="addTopic">
-                        <text class="tool-emoji">#️⃣</text>
+                    <view class="tool-btn" @tap="addCategory">
+                        <text class="tool-emoji">📂</text>
                     </view>
                     <view class="tool-btn" @tap="addLocation">
                         <text class="tool-emoji">📍</text>
@@ -68,20 +69,21 @@
             </view>
         </view>
 
-        <!-- 话题选择弹窗 -->
-        <view class="modal-mask" v-if="showTopicModal" @tap="closeTopicModal">
+        <!-- 分类选择弹窗 -->
+        <view class="modal-mask" v-if="showCategoryModal" @tap="closeCategoryModal">
             <view class="modal-container" @tap.stop>
                 <view class="modal-header">
-                    <text class="modal-title">选择话题</text>
-                    <text class="modal-close" @tap="closeTopicModal">✕</text>
+                    <text class="modal-title">选择分类</text>
+                    <text class="modal-close" @tap="closeCategoryModal">✕</text>
                 </view>
                 <scroll-view class="modal-body" scroll-y>
-                    <view class="topic-grid">
-                        <view class="topic-option" v-for="(topic, index) in hotTopics" :key="index"
-                            @tap="selectTopic(topic)" :class="{ active: isTopicSelected(topic) }">
+                    <view class="category-grid">
+                        <view class="category-option" v-for="(category, index) in categories" :key="index"
+                            @tap="selectCategory(category)" :class="{ active: isCategorySelected(category) }">
                             <view class="option-content">
-                                <text class="option-text">#{{ topic }}</text>
-                                <text class="option-check" v-if="isTopicSelected(topic)">✓</text>
+                                <text class="option-icon">{{ category.icon }}</text>
+                                <text class="option-text">{{ category.name }}</text>
+                                <text class="option-check" v-if="isCategorySelected(category)">✓</text>
                             </view>
                         </view>
                     </view>
@@ -93,43 +95,77 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { uploadImage } from '@/utils/upload'
-import { submitPost } from '@/api/community'
+import { submitPost, getPostTypesMap } from '@/api/community'
 
 const title = ref('')
 const content = ref('')
 const imageList = ref([]) // 临时图片路径
 const uploadedImages = ref([]) // 已上传的图片URL
-const selectedTopics = ref([])
+const selectedCategory = ref(null) // 修改：单个分类对象
 const location = ref('')
-const showTopicModal = ref(false)
-const topicKeyword = ref('')
+const showCategoryModal = ref(false) // 修改：改为分类弹窗
+const keyboardHeight = ref(0) // 键盘高度
 
-// 热门话题
-const hotTopics = ref([
-    '期末复习',
-    '校园美食',
-    '实习经验',
-    '考研交流',
-    '社团招新',
-    '技术分享',
-    '运动健身',
-    '摄影',
-    '学习方法',
-    '四六级',
-    '求职',
-    '校园生活'
-])
+// 分类列表
+const categories = ref([])
+
+// 图标映射
+const getIconByType = (type) => {
+    const iconMap = {
+        '1': '📚',  // 学习
+        '2': '🏠',  // 生活
+        '3': '🎉',  // 活动
+        '4': '💼',  // 求职
+        '5': '🍜',  // 美食
+        '6': '⚽',  // 运动
+        '7': '💻'   // 技术
+    }
+    return iconMap[type] || '📝'
+}
 
 // 是否可以发布
 const canPublish = computed(() => {
     return content.value.trim().length > 0 || imageList.value.length > 0
 })
 
+// 加载帖子分类
+const loadPostCategories = async () => {
+    try {
+        const res = await getPostTypesMap()
+        console.log('帖子类型映射原始数据:', res)
+
+        // 接口直接返回数组
+        const dataArray = Array.isArray(res) ? res : (res.data || [])
+        console.log('数据数组:', dataArray)
+
+        if (Array.isArray(dataArray) && dataArray.length > 0) {
+            categories.value = dataArray.map(item => ({
+                id: item.value,
+                name: item.label,
+                icon: getIconByType(item.value)
+            }))
+            console.log('转换后的分类:', categories.value)
+        }
+    } catch (error) {
+        console.error('加载帖子分类失败:', error)
+    }
+}
+
 onLoad(() => {
     console.log('发布帖子页面加载')
+    loadPostCategories()
 
+    // 监听键盘高度变化
+    uni.onKeyboardHeightChange(res => {
+        keyboardHeight.value = res.height
+    })
+})
+
+onUnload(() => {
+    // 取消监听键盘高度变化
+    uni.offKeyboardHeightChange()
 })
 
 
@@ -273,42 +309,35 @@ const deleteImage = (index) => {
     uploadedImages.value.splice(index, 1)
 }
 
-// 添加话题
-const addTopic = () => {
-    showTopicModal.value = true
+// 添加分类
+const addCategory = () => {
+    showCategoryModal.value = true
 }
 
-// 关闭话题弹窗
-const closeTopicModal = () => {
-    showTopicModal.value = false
-    topicKeyword.value = ''
+// 关闭分类弹窗
+const closeCategoryModal = () => {
+    showCategoryModal.value = false
 }
 
-// 选择话题
-const selectTopic = (topic) => {
-    const index = selectedTopics.value.indexOf(topic)
-    if (index > -1) {
-        selectedTopics.value.splice(index, 1)
+// 选择分类
+const selectCategory = (category) => {
+    if (selectedCategory.value && selectedCategory.value.id === category.id) {
+        // 如果点击已选中的分类，取消选择
+        selectedCategory.value = null
     } else {
-        if (selectedTopics.value.length >= 5) {
-            uni.showToast({
-                title: '最多选择5个话题',
-                icon: 'none'
-            })
-            return
-        }
-        selectedTopics.value.push(topic)
+        // 选择新分类
+        selectedCategory.value = category
     }
 }
 
-// 判断话题是否已选择
-const isTopicSelected = (topic) => {
-    return selectedTopics.value.includes(topic)
+// 判断分类是否已选择
+const isCategorySelected = (category) => {
+    return selectedCategory.value && selectedCategory.value.id === category.id
 }
 
-// 移除话题
-const removeTopic = (index) => {
-    selectedTopics.value.splice(index, 1)
+// 移除分类
+const removeCategory = () => {
+    selectedCategory.value = null
 }
 
 // 添加位置
@@ -369,11 +398,11 @@ const publish = async () => {
         // 构建发布数据
         const postData = {
             studentId: userInfo.studentId,
-            postType: '1', // 默认为普通帖子
+            postType: selectedCategory.value ? selectedCategory.value.id : '1', // 使用选择的分类ID，默认为1
             title: title.value.trim() || '',
             content: content.value.trim(),
             images: uploadedImages.value.join(','), // 多张图片用逗号分隔
-            tags: selectedTopics.value.join(','), // 多个标签用逗号分隔
+            tags: '', // 暂时不使用标签
             location: location.value || '',
             studentName: userInfo.name || userInfo.studentName || '',
             studentAvatar: userInfo.avatar || ''
@@ -415,66 +444,86 @@ const publish = async () => {
 
 <style scoped lang="scss">
 .publish-page {
-    min-height: 100vh;
-    background-color: #f5f5f5;
+    height: 100vh;
+    background-color: #f7f8fa;
     padding-bottom: constant(safe-area-inset-bottom);
     padding-bottom: env(safe-area-inset-bottom);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 .editor-section {
-    padding: 24rpx;
+    flex: 1;
+    margin: 20rpx;
+    padding: 30rpx;
     background-color: #fff;
+    border-radius: 24rpx;
+    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.03);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
 }
 
 /* 输入框组 */
 .input-group {
     position: relative;
-    margin-bottom: 24rpx;
+    margin-bottom: 30rpx;
+}
+
+.content-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 400rpx;
 }
 
 .title-input {
     width: 100%;
-    min-height: 60rpx;
+    min-height: 80rpx;
     max-height: 200rpx;
     font-size: 36rpx;
-    font-weight: bold;
+    font-weight: 600;
     color: #333;
     line-height: 1.5;
-    padding: 0;
+    padding: 10rpx 0;
+    border-bottom: 2rpx solid #f0f0f0;
 }
 
 .char-limit {
     position: absolute;
     right: 0;
-    top: 0;
+    bottom: 16rpx;
     font-size: 24rpx;
-    color: #999;
+    color: #ccc;
 }
 
 .content-input {
     width: 100%;
+    height: 100%;
     min-height: 400rpx;
     font-size: 30rpx;
     color: #333;
-    line-height: 1.8;
-    padding: 0;
+    line-height: 1.6;
+    padding: 10rpx 0;
 }
 
 /* 图片网格 */
 .image-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16rpx;
-    margin-bottom: 24rpx;
+    gap: 20rpx;
+    margin-bottom: 30rpx;
 }
 
 .grid-item {
     position: relative;
     width: 100%;
     aspect-ratio: 1;
-    border-radius: 12rpx;
+    border-radius: 16rpx;
     overflow: hidden;
     background-color: #f5f5f5;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
 }
 
 .grid-image {
@@ -484,21 +533,28 @@ const publish = async () => {
 
 .delete-badge {
     position: absolute;
-    top: 8rpx;
-    right: 8rpx;
-    width: 40rpx;
-    height: 40rpx;
-    background-color: rgba(0, 0, 0, 0.6);
+    top: 10rpx;
+    right: 10rpx;
+    width: 44rpx;
+    height: 44rpx;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 10;
+    transition: all 0.2s;
+
+    &:active {
+        transform: scale(0.9);
+        background-color: rgba(0, 0, 0, 0.7);
+    }
 }
 
 .delete-text {
     color: #fff;
-    font-size: 28rpx;
+    font-size: 24rpx;
     line-height: 1;
 }
 
@@ -506,71 +562,89 @@ const publish = async () => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: #f8f8f8;
-    border: 2rpx dashed #ddd;
+    background-color: #f9f9f9;
+    border: 2rpx dashed #e0e0e0;
+    transition: all 0.3s;
+
+    &:active {
+        background-color: #f0f0f0;
+        border-color: #ccc;
+    }
 }
 
 .add-text {
-    font-size: 72rpx;
+    font-size: 60rpx;
     color: #ccc;
     line-height: 1;
+    font-weight: 300;
 }
 
 /* 话题标签列表 */
 .tag-list {
     display: flex;
     flex-wrap: wrap;
-    gap: 12rpx;
+    gap: 16rpx;
     margin-bottom: 24rpx;
 }
 
 .tag-item {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8rpx;
-    padding: 10rpx 20rpx;
-    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-    border-radius: 32rpx;
+    gap: 10rpx;
+    padding: 12rpx 24rpx;
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-radius: 40rpx;
+    box-shadow: 0 2rpx 10rpx rgba(25, 118, 210, 0.1);
+}
+
+.tag-icon {
+    font-size: 30rpx;
 }
 
 .tag-text {
     font-size: 26rpx;
-    color: #d85a3e;
-    font-weight: 500;
+    color: #1565c0;
+    font-weight: 600;
 }
 
 .tag-close {
     font-size: 24rpx;
-    color: #d85a3e;
-    line-height: 1;
+    color: #1565c0;
+    opacity: 0.6;
+    margin-left: 4rpx;
 }
 
 /* 位置信息 */
 .location-info {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8rpx;
-    padding: 16rpx 24rpx;
+    gap: 10rpx;
+    padding: 12rpx 24rpx;
     background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 100%);
-    border-radius: 12rpx;
+    border-radius: 40rpx;
     margin-bottom: 24rpx;
+    box-shadow: 0 2rpx 10rpx rgba(0, 131, 143, 0.1);
 }
 
 .location-icon {
-    font-size: 28rpx;
+    font-size: 30rpx;
 }
 
 .location-name {
-    flex: 1;
     font-size: 26rpx;
-    color: #00838f;
-    font-weight: 500;
+    color: #006064;
+    font-weight: 600;
+    max-width: 400rpx;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .location-close {
-    font-size: 32rpx;
-    color: #00838f;
-    line-height: 1;
+    font-size: 24rpx;
+    color: #006064;
+    opacity: 0.6;
+    margin-left: 4rpx;
 }
 
 /* 底部工具栏 */
@@ -578,67 +652,80 @@ const publish = async () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16rpx 24rpx;
-    background-color: #fff;
-    border-top: 1rpx solid #e8e8e8;
-    padding-bottom: calc(16rpx + constant(safe-area-inset-bottom));
-    padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
-    position: sticky;
+    padding: 20rpx 30rpx;
+    background-color: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1rpx solid rgba(0, 0, 0, 0.05);
+    padding-bottom: calc(20rpx + constant(safe-area-inset-bottom));
+    padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+    position: fixed;
     bottom: 0;
+    left: 0;
+    right: 0;
     z-index: 100;
+    box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.03);
 }
 
 .tool-list {
     display: flex;
-    gap: 24rpx;
+    gap: 30rpx;
 }
 
 .tool-btn {
-    width: 72rpx;
-    height: 72rpx;
+    width: 80rpx;
+    height: 80rpx;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-    border-radius: 16rpx;
+    background-color: #f5f7fa;
+    border-radius: 20rpx;
     transition: all 0.3s;
 
     &:active {
-        transform: scale(0.9);
+        transform: scale(0.92);
+        background-color: #eef1f5;
     }
 }
 
 .tool-emoji {
-    font-size: 36rpx;
+    font-size: 40rpx;
 }
 
 .word-count {
     flex: 1;
     display: flex;
     align-items: baseline;
-    justify-content: center;
-    gap: 4rpx;
+    justify-content: flex-end;
+    margin-right: 30rpx;
+    gap: 2rpx;
 }
 
 .count-num {
     font-size: 28rpx;
-    color: #333;
-    font-weight: bold;
+    color: #666;
+    font-weight: 500;
 }
 
 .count-max {
     font-size: 24rpx;
-    color: #999;
+    color: #ccc;
 }
 
 .publish-btn {
-    padding: 14rpx 40rpx;
+    padding: 0 48rpx;
+    height: 72rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-    border-radius: 32rpx;
+    border-radius: 36rpx;
     transition: all 0.3s;
+    box-shadow: 0 4rpx 12rpx rgba(24, 40, 72, 0.2);
 
     &.disabled {
-        background: #e8e8e8;
+        background: #e0e0e0;
+        box-shadow: none;
+        pointer-events: none;
 
         .btn-text {
             color: #999;
@@ -646,14 +733,16 @@ const publish = async () => {
     }
 
     &:active:not(.disabled) {
-        transform: scale(0.95);
+        transform: scale(0.96);
+        box-shadow: 0 2rpx 6rpx rgba(24, 40, 72, 0.2);
     }
 }
 
 .btn-text {
     font-size: 28rpx;
     color: #fff;
-    font-weight: bold;
+    font-weight: 600;
+    letter-spacing: 2rpx;
 }
 
 /* 弹窗遮罩 */
@@ -663,21 +752,24 @@ const publish = async () => {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(2px);
     display: flex;
     align-items: flex-end;
     z-index: 9999;
+    transition: opacity 0.3s;
 }
 
 .modal-container {
     width: 100%;
-    max-height: 70vh;
+    max-height: 75vh;
     background-color: #fff;
-    border-radius: 32rpx 32rpx 0 0;
+    border-radius: 40rpx 40rpx 0 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    animation: slideUp 0.3s ease-out;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 -4rpx 30rpx rgba(0, 0, 0, 0.1);
 }
 
 @keyframes slideUp {
@@ -694,83 +786,106 @@ const publish = async () => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 32rpx 24rpx;
-    border-bottom: 1rpx solid #e8e8e8;
+    padding: 36rpx 30rpx;
+    border-bottom: 1rpx solid #f5f5f5;
 }
 
 .modal-title {
-    font-size: 32rpx;
-    font-weight: bold;
+    font-size: 34rpx;
+    font-weight: 600;
     color: #333;
 }
 
 .modal-close {
-    font-size: 48rpx;
+    font-size: 40rpx;
     color: #999;
+    padding: 10rpx;
     line-height: 1;
 }
 
 .modal-body {
-    width: 95%;
-    padding: 24rpx;
+    width: 100%;
+    padding: 30rpx;
+    box-sizing: border-box;
     overflow-y: auto;
-    overflow-x: hidden;
 }
 
-.topic-grid {
+.category-grid {
     display: flex;
     flex-wrap: wrap;
-    gap: 12rpx;
+    gap: 20rpx;
     width: 100%;
+    padding-bottom: 40rpx;
 }
 
-.topic-option {
+.category-option {
     flex: 1;
-    min-width: calc(50% - 6rpx);
-    max-width: calc(50% - 6rpx);
+    min-width: calc(50% - 10rpx);
+    max-width: calc(50% - 10rpx);
     position: relative;
-    padding: 24rpx 20rpx;
-    background-color: #f8f8f8;
-    border-radius: 16rpx;
+    padding: 30rpx 20rpx;
+    background-color: #f9f9f9;
+    border-radius: 20rpx;
     border: 2rpx solid transparent;
     transition: all 0.3s;
     box-sizing: border-box;
 
     &.active {
-        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-        border-color: transparent;
+        background: #f0f7ff;
+        border-color: #4b6cb7;
+        box-shadow: 0 4rpx 12rpx rgba(75, 108, 183, 0.1);
 
         .option-text {
-            color: #fff;
+            color: #4b6cb7;
+            font-weight: 600;
+        }
+
+        .option-icon {
+            transform: scale(1.1);
         }
     }
 
     &:active {
-        transform: scale(0.95);
+        transform: scale(0.98);
     }
 }
 
 .option-content {
     position: relative;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     width: 100%;
+    gap: 12rpx;
+}
+
+.option-icon {
+    font-size: 48rpx;
+    transition: transform 0.3s;
 }
 
 .option-text {
     font-size: 28rpx;
-    color: #333;
+    color: #666;
     font-weight: 500;
     text-align: center;
-    word-break: break-all;
+    transition: color 0.3s;
 }
 
 .option-check {
     position: absolute;
-    top: 8rpx;
-    right: 8rpx;
-    font-size: 20rpx;
+    top: 10rpx;
+    right: 10rpx;
+    width: 32rpx;
+    height: 32rpx;
+    background-color: #4b6cb7;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: #fff;
+    font-size: 20rpx;
+    box-shadow: 0 2rpx 6rpx rgba(75, 108, 183, 0.3);
 }
 </style>

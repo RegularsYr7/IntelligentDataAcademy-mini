@@ -12,7 +12,7 @@
                 <view class="user-header">
                     <image class="avatar" :src="post.studentAvatar || defaultAvatar" mode="aspectFill"></image>
                     <view class="user-info">
-                        <text class="username">{{ post.studentName || '匿名用户' }}</text>
+                        <text class="username">{{ post.studentCommunityName || post.studentName || '匿名用户' }}</text>
                         <text class="time">{{ formatTime(post.createTime) }}</text>
                     </view>
                     <view class="follow-btn" v-if="!isFollowed && post.studentId !== currentUserId" @tap="toggleFollow">
@@ -75,16 +75,17 @@
                         </image>
                         <view class="comment-content">
                             <view class="comment-header">
-                                <text class="comment-username">{{ comment.studentName || '匿名用户' }}</text>
+                                <text class="comment-username">{{ comment.studentCommunityName || comment.studentName ||
+                                    '匿名用户' }}</text>
                             </view>
                             <text class="comment-text">{{ comment.content }}</text>
                             <view class="comment-footer">
                                 <text class="comment-time">{{ formatTime(comment.createTime) }}</text>
                                 <view class="comment-actions">
-                                    <view class="comment-action" @tap="likeComment(comment)">
+                                    <!-- <view class="comment-action" @tap="likeComment(comment)">
                                         <text class="action-icon">🤍</text>
                                         <text class="action-count">{{ comment.likeCount || 0 }}</text>
-                                    </view>
+                                    </view> -->
                                     <view class="comment-action" @tap="replyComment(comment)">
                                         <text class="action-icon">💬</text>
                                         <text class="action-text">回复</text>
@@ -101,17 +102,16 @@
                             <view class="reply-list" v-if="getReplies(comment.commentId).length > 0">
                                 <view class="reply-item-wrapper" v-for="reply in getReplies(comment.commentId)"
                                     :key="reply.commentId">
-                                    <view class="reply-item" @tap="replyToReply(reply, comment)">
-                                        <text class="reply-user">{{ reply.studentName }}</text>
+                                    <view class="reply-item" @tap="replyToReply(reply, comment)"
+                                        @longpress="onReplyLongPress(reply)">
+                                        <text class="reply-user">{{ reply.studentCommunityName || reply.studentName
+                                        }}</text>
                                         <text class="reply-arrow" v-if="reply.replyToName"> 回复 </text>
-                                        <text class="reply-target" v-if="reply.replyToName">{{ reply.replyToName
+                                        <text class="reply-target" v-if="reply.replyToName">{{
+                                            reply.replyToCommunityName || reply.replyToName
                                         }}</text>
                                         <text class="reply-content">{{ reply.replyToName ? ': ' : '' }}{{ reply.content
                                         }}</text>
-                                    </view>
-                                    <view class="reply-delete" v-if="reply.studentId === currentUserId"
-                                        @tap.stop="deleteComment(reply)">
-                                        <text class="delete-icon">🗑️</text>
                                     </view>
                                 </view>
                             </view>
@@ -568,6 +568,13 @@ const likeComment = (comment) => {
     })
 }
 
+// 长按删除回复
+const onReplyLongPress = (reply) => {
+    if (reply.studentId === currentUserId.value) {
+        deleteComment(reply)
+    }
+}
+
 // 删除帖子
 const deletePost = async () => {
     try {
@@ -683,6 +690,8 @@ const deleteComment = async (comment) => {
     background-color: #fff;
     padding: 32rpx;
     margin-bottom: 20rpx;
+    border-radius: 0 0 24rpx 24rpx;
+    box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.05);
 }
 
 .user-header {
@@ -692,22 +701,23 @@ const deleteComment = async (comment) => {
 }
 
 .avatar {
-    width: 80rpx;
-    height: 80rpx;
+    width: 88rpx;
+    height: 88rpx;
     border-radius: 50%;
-    margin-right: 20rpx;
+    margin-right: 24rpx;
+    border: 2rpx solid #f0f0f0;
 }
 
 .user-info {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 8rpx;
+    gap: 6rpx;
 }
 
 .username {
-    font-size: 32rpx;
-    font-weight: bold;
+    font-size: 30rpx;
+    font-weight: 600;
     color: #333;
 }
 
@@ -718,32 +728,47 @@ const deleteComment = async (comment) => {
 
 .follow-btn,
 .followed-btn {
-    padding: 12rpx 32rpx;
-    border-radius: 40rpx;
+    padding: 10rpx 28rpx;
+    border-radius: 32rpx;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .follow-btn {
-    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+    background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+    box-shadow: 0 4rpx 12rpx rgba(58, 123, 213, 0.3);
 
     .follow-text {
         color: #fff;
         font-size: 24rpx;
+        font-weight: 500;
     }
 }
 
 .followed-btn {
-    background: #f0f0f0;
+    background: #f5f7fa;
+    border: 1rpx solid #e4e7ed;
 
     .followed-text {
-        color: #999;
+        color: #909399;
         font-size: 24rpx;
     }
 }
 
+.delete-btn {
+    padding: 10rpx 20rpx;
+    margin-left: 10rpx;
+}
+
+.delete-text {
+    font-size: 32rpx;
+}
+
 .post-title {
     font-size: 36rpx;
-    font-weight: bold;
-    color: #333;
+    font-weight: 600;
+    color: #303133;
     display: block;
     margin-bottom: 20rpx;
     line-height: 1.5;
@@ -751,7 +776,7 @@ const deleteComment = async (comment) => {
 
 .post-content {
     font-size: 30rpx;
-    color: #666;
+    color: #606266;
     line-height: 1.8;
     display: block;
     margin-bottom: 24rpx;
@@ -762,6 +787,8 @@ const deleteComment = async (comment) => {
     display: grid;
     gap: 12rpx;
     margin-bottom: 24rpx;
+    border-radius: 12rpx;
+    overflow: hidden;
 
     &.grid-1 {
         grid-template-columns: 2fr 1fr;
@@ -811,34 +838,40 @@ const deleteComment = async (comment) => {
 .tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 12rpx;
+    gap: 16rpx;
     margin-bottom: 24rpx;
 }
 
 .tag {
     font-size: 24rpx;
-    color: #667eea;
-    background-color: #f0f4ff;
-    padding: 8rpx 16rpx;
-    border-radius: 8rpx;
-    border: 1rpx solid #d4e0ff;
+    color: #3a7bd5;
+    background-color: rgba(58, 123, 213, 0.1);
+    padding: 6rpx 20rpx;
+    border-radius: 24rpx;
+    border: none;
 }
 
 .action-bar {
     display: flex;
     justify-content: space-around;
     padding-top: 24rpx;
-    border-top: 1rpx solid #f0f0f0;
+    border-top: 1rpx solid #f5f7fa;
 }
 
 .action-item {
     display: flex;
     align-items: center;
-    gap: 8rpx;
-    padding: 8rpx 16rpx;
+    gap: 12rpx;
+    padding: 12rpx 24rpx;
+    border-radius: 32rpx;
+    transition: all 0.3s;
+
+    &:active {
+        background-color: #f5f7fa;
+    }
 
     .icon {
-        font-size: 32rpx;
+        font-size: 36rpx;
 
         &.active {
             animation: heartbeat 0.6s;
@@ -846,12 +879,12 @@ const deleteComment = async (comment) => {
     }
 
     .text {
-        font-size: 24rpx;
-        color: #999;
+        font-size: 26rpx;
+        color: #909399;
 
         &.active {
-            color: #667eea;
-            font-weight: bold;
+            color: #3a7bd5;
+            font-weight: 600;
         }
     }
 }
@@ -880,6 +913,8 @@ const deleteComment = async (comment) => {
 .comments-section {
     background-color: #fff;
     padding: 32rpx;
+    border-radius: 24rpx 24rpx 0 0;
+    min-height: 400rpx;
 }
 
 .section-title {
@@ -887,19 +922,22 @@ const deleteComment = async (comment) => {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 32rpx;
+    padding-left: 16rpx;
+    border-left: 8rpx solid #3a7bd5;
 
     .title-text {
-        font-size: 32rpx;
-        font-weight: bold;
+        font-size: 30rpx;
+        font-weight: 600;
         color: #333;
+        line-height: 1;
     }
 }
 
 .comment-list {
     .comment-item {
         display: flex;
-        gap: 20rpx;
-        margin-bottom: 32rpx;
+        gap: 24rpx;
+        margin-bottom: 40rpx;
     }
 
     .comment-avatar {
@@ -907,6 +945,7 @@ const deleteComment = async (comment) => {
         height: 72rpx;
         border-radius: 50%;
         flex-shrink: 0;
+        border: 1rpx solid #f0f0f0;
     }
 
     .comment-content {
@@ -914,27 +953,30 @@ const deleteComment = async (comment) => {
     }
 
     .comment-header {
-        margin-bottom: 12rpx;
+        margin-bottom: 8rpx;
+        display: flex;
+        align-items: center;
     }
 
     .comment-username {
         font-size: 28rpx;
-        font-weight: bold;
-        color: #333;
+        font-weight: 600;
+        color: #606266;
     }
 
     .comment-text {
         font-size: 28rpx;
-        color: #666;
+        color: #333;
         line-height: 1.6;
         display: block;
-        margin-bottom: 12rpx;
+        margin-bottom: 16rpx;
     }
 
     .comment-footer {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        margin-bottom: 16rpx;
     }
 
     .comment-time {
@@ -951,6 +993,7 @@ const deleteComment = async (comment) => {
         display: flex;
         align-items: center;
         gap: 8rpx;
+        padding: 8rpx;
 
         .action-icon {
             font-size: 28rpx;
@@ -965,28 +1008,40 @@ const deleteComment = async (comment) => {
 }
 
 .reply-list {
-    background-color: #f8f8f8;
+    background-color: #f9fafc;
     border-radius: 12rpx;
-    padding: 16rpx;
+    padding: 20rpx;
     margin-top: 16rpx;
 
     .reply-item {
         font-size: 26rpx;
-        color: #666;
+        color: #606266;
         line-height: 1.6;
-        margin-bottom: 12rpx;
+        margin-bottom: 16rpx;
+        padding: 8rpx 0;
 
         &:last-child {
             margin-bottom: 0;
         }
 
+        &:active {
+            background-color: rgba(0, 0, 0, 0.02);
+        }
+
         .reply-user,
         .reply-target {
-            color: #667eea;
+            color: #3a7bd5;
+            font-weight: 500;
         }
 
         .reply-arrow {
-            color: #999;
+            color: #909399;
+            margin: 0 8rpx;
+            font-size: 24rpx;
+        }
+
+        .reply-content {
+            color: #333;
         }
     }
 }

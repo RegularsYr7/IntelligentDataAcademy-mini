@@ -8,8 +8,8 @@
 
             <!-- 功能列表 -->
             <view class="action-list">
-                <!-- 签到二维码: 已有二维码显示查看，没有显示生成 -->
-                <view class="action-item" :class="{ disabled: !canGenerateQR && !hasQRCode }" @tap="handleQRCodeAction">
+                <!-- 签到二维码: 只有活动进行中才能查看和生成 -->
+                <view class="action-item" :class="{ disabled: currentStatus !== 4 }" @tap="handleQRCodeAction">
                     <view class="item-left">
                         <text class="item-icon">📷</text>
                         <view class="item-content">
@@ -118,9 +118,9 @@ const hasQRCode = computed(() => {
     return !!qrCodeData.value.qrCodeUrl
 })
 
-// 是否可以生成二维码 (活动状态 >= 3: 等待中、进行中、已结束，但不包括已完结)
+// 只有活动进行中才能生成和查看二维码 (状态4: 进行中)
 const canGenerateQR = computed(() => {
-    return currentStatus.value >= 3 && currentStatus.value <= 5
+    return currentStatus.value === 4
 })
 
 // 是否可以结束活动 (活动已结束但未完结: status === 5)
@@ -143,22 +143,32 @@ const getStatusText = () => {
 
 // 获取二维码描述
 const getQRCodeDesc = () => {
-    if (hasQRCode.value) {
-        return '点击查看已生成的二维码'
+    if (currentStatus.value === 4) {
+        return hasQRCode.value ? '点击查看签到二维码' : '点击生成签到二维码'
     }
-    return canGenerateQR.value ? '点击生成活动签到二维码' : '报名结束且活动开始后可生成'
+    return '只有活动进行中才能查看二维码'
 }
 
 // 处理二维码操作
 const handleQRCodeAction = () => {
+    // 只有活动进行中才能查看和生成二维码
+    if (currentStatus.value !== 4) {
+        uni.showToast({
+            title: '只有活动进行中才能查看二维码',
+            icon: 'none'
+        })
+        return
+    }
+
+    // 如果已有二维码，直接显示
     if (hasQRCode.value) {
-        // 已有二维码，直接显示
         showQrModal.value = true
         imageLoadError.value = false
-    } else {
-        // 没有二维码，尝试生成
-        generateQRCode()
+        return
     }
+
+    // 没有二维码，尝试生成
+    generateQRCode()
 }
 
 // 生成签到二维码

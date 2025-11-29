@@ -1,58 +1,61 @@
 <template>
     <view class="page">
-        <view class="container">
-            <!-- 组织头部 -->
-            <view class="org-header">
+        <!-- 顶部背景装饰 -->
+        <view class="bg-decoration"></view>
+
+        <!-- 组织头部 -->
+        <view class="org-header">
+            <view class="logo-wrapper">
                 <image class="org-logo-large" :src="organization.logo" mode="aspectFill"></image>
-                <view class="org-basic-info">
-                    <text class="org-name">{{ organization.name }}</text>
-                    <view class="org-level-badge" :class="'level-' + organization.level">
-                        <text class="level-text">{{ getLevelText(organization.level) }}</text>
+            </view>
+            <view class="org-basic-info">
+                <text class="org-name">{{ organization.name }}</text>
+                <view class="org-tags">
+                    <view class="tag level-tag" :class="'level-' + organization.level">
+                        <text>{{ getLevelText(organization.level) }}</text>
+                    </view>
+                    <view class="tag college-tag" v-if="organization.college">
+                        <text>{{ organization.college }}</text>
                     </view>
                 </view>
             </view>
+        </view>
 
+        <!-- 内容区域 -->
+        <view class="content-area">
             <!-- 组织简介 -->
             <view class="section-card">
-                <view class="section-title">
-                    <text class="title-icon">📝</text>
-                    <text class="title-text">组织简介</text>
+                <view class="section-header">
+                    <text class="section-title">组织简介</text>
                 </view>
-                <text class="org-intro-text">{{ organization.intro }}</text>
+                <view class="intro-content">
+                    <text class="org-intro-text">{{ organization.intro }}</text>
+                </view>
             </view>
 
-            <!-- 组织信息 -->
+            <!-- 基本信息 -->
             <view class="section-card">
-                <view class="section-title">
-                    <text class="title-icon">ℹ️</text>
-                    <text class="title-text">基本信息</text>
+                <view class="section-header">
+                    <text class="section-title">基本信息</text>
                 </view>
-                <view class="info-list">
+                <view class="info-grid">
                     <view class="info-item">
-                        <text class="info-label">所属分类</text>
-                        <text class="info-value">{{ getLevelText(organization.level) }}</text>
-                    </view>
-                    <view class="info-item" v-if="organization.college">
-                        <text class="info-label">所属学院</text>
-                        <text class="info-value">{{ organization.college }}</text>
-                    </view>
-                    <view class="info-item" v-if="organization.className">
-                        <text class="info-label">所属班级</text>
-                        <text class="info-value">{{ organization.className }}</text>
+                        <text class="info-label">成立时间</text>
+                        <text class="info-value">{{ organization.foundedYear }}年</text>
                     </view>
                     <view class="info-item">
                         <text class="info-label">成员人数</text>
                         <text class="info-value">{{ organization.memberCount }}人</text>
                     </view>
-                    <view class="info-item">
-                        <text class="info-label">成立时间</text>
-                        <text class="info-value">{{ organization.foundedYear }}年</text>
+                    <view class="info-item full-width" v-if="organization.className">
+                        <text class="info-label">所属班级</text>
+                        <text class="info-value">{{ organization.className }}</text>
                     </view>
-                    <view class="info-item" v-if="organization.location">
+                    <view class="info-item full-width" v-if="organization.location">
                         <text class="info-label">办公地点</text>
                         <text class="info-value">{{ organization.location }}</text>
                     </view>
-                    <view class="info-item" v-if="organization.contact">
+                    <view class="info-item full-width" v-if="organization.contact">
                         <text class="info-label">联系方式</text>
                         <text class="info-value">{{ organization.contact }}</text>
                     </view>
@@ -61,75 +64,87 @@
 
             <!-- 主要负责人 -->
             <view class="section-card">
-                <view class="section-title">
-                    <text class="title-icon">👤</text>
-                    <text class="title-text">主要负责人</text>
+                <view class="section-header">
+                    <text class="section-title">主要负责人</text>
                 </view>
-                <view class="leader-list">
+                <view class="leader-list" v-if="organization.leaders && organization.leaders.length > 0">
                     <view class="leader-item" v-for="(leader, index) in organization.leaders" :key="index">
                         <image class="leader-avatar" :src="leader.avatar" mode="aspectFill"></image>
                         <view class="leader-info">
                             <text class="leader-name">{{ leader.name }}</text>
-                            <text class="leader-position">{{ leader.position }}</text>
+                            <view class="leader-tag">{{ leader.position }}</view>
                         </view>
                     </view>
+                </view>
+                <view class="empty-state" v-else>
+                    <text class="empty-text">暂无负责人信息</text>
                 </view>
             </view>
 
             <!-- 主要活动 -->
             <view class="section-card">
-                <view class="section-title">
-                    <text class="title-icon">🎯</text>
-                    <text class="title-text">主要活动</text>
+                <view class="section-header">
+                    <text class="section-title">主要活动</text>
+                    <text class="more-link" v-if="organization.activities.length > 0">查看全部 ›</text>
                 </view>
-                <view class="activity-list">
-                    <view class="activity-item" v-for="(activity, index) in organization.activities" :key="index">
-                        <view class="activity-dot"></view>
-                        <text class="activity-text">{{ activity }}</text>
+                <view class="activity-timeline" v-if="organization.activities && organization.activities.length > 0">
+                    <view class="timeline-item" v-for="(activity, index) in organization.activities" :key="index"
+                        @tap="goToActivityDetail(activity)">
+                        <view class="timeline-line"></view>
+                        <view class="timeline-dot"></view>
+                        <view class="timeline-content">
+                            <text class="activity-name">{{ activity.name || activity }}</text>
+                            <text class="activity-time" v-if="activity.time">{{ activity.time }}</text>
+                        </view>
                     </view>
+                </view>
+                <view class="empty-state" v-else>
+                    <text class="empty-text">暂无活动信息</text>
                 </view>
             </view>
 
             <!-- 荣誉成就 -->
             <view class="section-card" v-if="organization.honors && organization.honors.length > 0">
-                <view class="section-title">
-                    <text class="title-icon">🏆</text>
-                    <text class="title-text">荣誉成就</text>
+                <view class="section-header">
+                    <text class="section-title">荣誉成就</text>
                 </view>
                 <view class="honor-list">
                     <view class="honor-item" v-for="(honor, index) in organization.honors" :key="index">
-                        <text class="honor-year">{{ honor.year }}</text>
-                        <text class="honor-title">{{ honor.title }}</text>
+                        <view class="honor-icon">🏆</view>
+                        <view class="honor-content">
+                            <text class="honor-title">{{ honor.title }}</text>
+                            <text class="honor-year" v-if="honor.year">{{ honor.year }}</text>
+                        </view>
                     </view>
                 </view>
             </view>
+        </view>
 
-            <!-- 底部操作 -->
-            <view class="footer-actions">
-                <!-- 管理员显示管理按钮 -->
-                <button v-if="isAdmin" class="action-btn primary-btn full-width" @tap="manageOrg">
-                    <text class="btn-icon">⚙️</text>
-                    <text class="btn-text">管理组织</text>
-                </button>
-                <!-- 普通成员显示已加入状态 -->
-                <button v-else-if="isMember" class="action-btn disabled-btn full-width" disabled>
-                    <text class="btn-icon">✓</text>
-                    <text class="btn-text">已加入</text>
-                </button>
-                <!-- 非成员显示申请加入按钮 -->
-                <button v-else class="action-btn primary-btn full-width" @tap="joinOrg">
-                    <text class="btn-icon">✨</text>
-                    <text class="btn-text">申请加入</text>
-                </button>
-            </view>
+        <!-- 底部操作 -->
+        <view class="footer-actions">
+            <!-- 管理员显示管理按钮 -->
+            <button v-if="isAdmin" class="action-btn manage-btn" @tap="manageOrg">
+                <text class="btn-icon">⚙️</text>
+                <text class="btn-text">管理组织</text>
+            </button>
+            <!-- 普通成员显示已加入状态 -->
+            <button v-else-if="isMember" class="action-btn member-btn" disabled>
+                <text class="btn-icon">✓</text>
+                <text class="btn-text">已加入</text>
+            </button>
+            <!-- 非成员显示申请加入按钮 -->
+            <button v-else class="action-btn join-btn" @tap="joinOrg">
+                <text class="btn-icon">✨</text>
+                <text class="btn-text">申请加入</text>
+            </button>
         </view>
     </view>
 </template>
-
 <script setup>
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { getOrganizationDetail, applyOrganization, } from '@/api/organization'
+import { getActivityList } from '@/api/activity'
 
 // 是否为组织成员
 const isMember = ref(false)
@@ -177,14 +192,34 @@ const loadOrgDetail = async (id) => {
             const data = res
             const org = data.organization
 
-            // 解析主要负责人 - 使用API返回的结构化数据
+            // 解析主要负责人 - 从 API 根级别的 mainLeaders 数组获取
             const leaders = parseLeadersFromAPI(data.mainLeaders || [])
-
-            // 解析主要活动
-            const activities = parseActivities(org.mainActivities)
 
             // 解析荣誉成就
             const honors = parseHonors(org.honors)
+
+            // 加载组织的活动列表（替代 mainActivities 字段）
+            let activities = []
+            try {
+                const activityRes = await getActivityList({
+                    organizationId: id,
+                    pageNum: 1,
+                    pageSize: 5 // 只显示最近5个活动
+                })
+                console.log('组织活动响应:', activityRes)
+                if (activityRes && activityRes.rows) {
+                    activities = activityRes.rows.map(activity => ({
+                        id: activity.activityId,
+                        name: activity.activityName,
+                        time: formatActivityTime(activity.activityStartTime),
+                        status: activity.currentStatus
+                    }))
+                }
+            } catch (error) {
+                console.error('加载组织活动失败:', error)
+                // 如果活动列表加载失败，尝试使用 mainActivities 字段
+                activities = parseActivities(org.mainActivities)
+            }
 
             organization.value = {
                 id: org.organizationId,
@@ -309,6 +344,32 @@ const manageOrg = () => {
     })
 }
 
+// 格式化活动时间
+const formatActivityTime = (dateTimeStr) => {
+    if (!dateTimeStr) return ''
+    try {
+        const date = new Date(dateTimeStr)
+        const month = String(date.getMonth() + 1).padStart(2, '0')
+        const day = String(date.getDate()).padStart(2, '0')
+        const hours = String(date.getHours()).padStart(2, '0')
+        const minutes = String(date.getMinutes()).padStart(2, '0')
+        return `${month}-${day} ${hours}:${minutes}`
+    } catch (error) {
+        return ''
+    }
+}
+
+// 跳转到活动详情
+const goToActivityDetail = (activity) => {
+    // 如果是对象格式（从API获取），跳转到详情页
+    if (activity.id) {
+        uni.navigateTo({
+            url: `/pages/activity-detail/activity-detail?id=${activity.id}`
+        })
+    }
+    // 如果是字符串格式（从 mainActivities 字段解析），不跳转
+}
+
 // 申请加入
 const joinOrg = async () => {
     try {
@@ -362,27 +423,50 @@ const joinOrg = async () => {
 </script>
 
 <style scoped lang="scss">
-.container {
+.page {
     min-height: 100vh;
-    background: #f5f5f5;
+    background: #f5f7fa;
+    position: relative;
     padding-bottom: 140rpx;
+}
+
+.bg-decoration {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 420rpx;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-bottom-left-radius: 40rpx;
+    border-bottom-right-radius: 40rpx;
+    z-index: 0;
 }
 
 /* 组织头部 */
 .org-header {
-    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-    padding: 60rpx 30rpx 40rpx;
+    position: relative;
+    z-index: 1;
+    padding: 40rpx 30rpx 60rpx;
     display: flex;
     flex-direction: column;
     align-items: center;
+    color: #fff;
 }
 
-.org-logo-large {
+.logo-wrapper {
     width: 160rpx;
     height: 160rpx;
-    border-radius: 16rpx;
-    border: 4rpx solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    background: #fff;
+    padding: 6rpx;
+    box-shadow: 0 8rpx 20rpx rgba(0, 0, 0, 0.1);
     margin-bottom: 24rpx;
+
+    .org-logo-large {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+    }
 }
 
 .org-basic-info {
@@ -395,89 +479,110 @@ const joinOrg = async () => {
 .org-name {
     font-size: 40rpx;
     font-weight: bold;
-    color: #fff;
     text-align: center;
+    text-shadow: 0 2rpx 4rpx rgba(0, 0, 0, 0.1);
 }
 
-.org-level-badge {
-    padding: 8rpx 24rpx;
-    border-radius: 20rpx;
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10rpx);
+.org-tags {
     display: flex;
-    align-items: center;
+    gap: 16rpx;
     justify-content: center;
-}
+    flex-wrap: wrap;
 
-.level-text {
-    font-size: 24rpx;
-    color: #fff;
-}
+    .tag {
+        padding: 6rpx 20rpx;
+        border-radius: 30rpx;
+        font-size: 24rpx;
 
-/* 卡片区域 */
-.section-card {
-    background: #fff;
-    margin: 20rpx;
-    border-radius: 16rpx;
-    padding: 30rpx;
-    box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
-}
+        &.level-tag {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1rpx solid rgba(255, 255, 255, 0.4);
+        }
 
-.section-title {
-    display: flex;
-    align-items: center;
-    gap: 12rpx;
-    margin-bottom: 24rpx;
-    padding-bottom: 16rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-}
-
-.title-icon {
-    font-size: 32rpx;
-}
-
-.title-text {
-    font-size: 30rpx;
-    font-weight: bold;
-    color: #333;
-}
-
-/* 组织简介 */
-.org-intro-text {
-    font-size: 28rpx;
-    color: #666;
-    line-height: 1.8;
-    text-align: justify;
-}
-
-/* 信息列表 */
-.info-list {
-    display: flex;
-    flex-direction: column;
-    gap: 20rpx;
-}
-
-.info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16rpx 0;
-    border-bottom: 1rpx solid #f5f5f5;
-
-    &:last-child {
-        border-bottom: none;
+        &.college-tag {
+            background: rgba(255, 255, 255, 0.9);
+            color: #667eea;
+        }
     }
 }
 
-.info-label {
-    font-size: 28rpx;
+/* 内容区域 */
+.content-area {
+    position: relative;
+    z-index: 1;
+    padding: 0 30rpx;
+    margin-top: -40rpx;
+}
+
+.section-card {
+    background: #fff;
+    border-radius: 20rpx;
+    padding: 30rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.04);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24rpx;
+    padding-left: 16rpx;
+    border-left: 6rpx solid #667eea;
+}
+
+.section-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    color: #333;
+}
+
+.more-link {
+    font-size: 24rpx;
     color: #999;
 }
 
-.info-value {
-    font-size: 28rpx;
-    color: #333;
-    font-weight: 500;
+/* 组织简介 */
+.intro-content {
+    .org-intro-text {
+        font-size: 28rpx;
+        color: #444;
+        line-height: 1.8;
+        text-align: justify;
+    }
+}
+
+/* 基本信息网格 */
+.info-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24rpx;
+}
+
+.info-item {
+    width: calc(50% - 12rpx);
+    background: #f8f9ff;
+    padding: 20rpx;
+    border-radius: 12rpx;
+    box-sizing: border-box;
+
+    &.full-width {
+        width: 100%;
+    }
+
+    .info-label {
+        font-size: 24rpx;
+        color: #999;
+        margin-bottom: 8rpx;
+        display: block;
+    }
+
+    .info-value {
+        font-size: 28rpx;
+        color: #333;
+        font-weight: 500;
+        word-break: break-all;
+    }
 }
 
 /* 负责人列表 */
@@ -490,19 +595,27 @@ const joinOrg = async () => {
 .leader-item {
     display: flex;
     align-items: center;
-    gap: 20rpx;
-    padding: 16rpx;
-    background: #f8f8f8;
-    border-radius: 12rpx;
+    gap: 24rpx;
+    padding: 20rpx;
+    background: #fff;
+    border: 1rpx solid #f0f0f0;
+    border-radius: 16rpx;
+    transition: all 0.3s;
+
+    &:active {
+        background: #f9f9f9;
+    }
 }
 
 .leader-avatar {
-    width: 80rpx;
-    height: 80rpx;
+    width: 90rpx;
+    height: 90rpx;
     border-radius: 50%;
+    border: 2rpx solid #f0f0f0;
 }
 
 .leader-info {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 8rpx;
@@ -510,138 +623,177 @@ const joinOrg = async () => {
 
 .leader-name {
     font-size: 30rpx;
-    font-weight: bold;
+    font-weight: 600;
     color: #333;
 }
 
-.leader-position {
-    font-size: 24rpx;
-    color: #999;
+.leader-tag {
+    display: inline-block;
+    font-size: 22rpx;
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+    padding: 4rpx 12rpx;
+    border-radius: 8rpx;
+    align-self: flex-start;
 }
 
-/* 活动列表 */
-.activity-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16rpx;
+/* 活动时间轴 */
+.activity-timeline {
+    padding: 10rpx 0;
 }
 
-.activity-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12rpx;
-    padding: 12rpx 0;
+.timeline-item {
+    position: relative;
+    padding-left: 40rpx;
+    padding-bottom: 40rpx;
+
+    &:last-child {
+        padding-bottom: 0;
+
+        .timeline-line {
+            display: none;
+        }
+    }
 }
 
-.activity-dot {
-    width: 12rpx;
-    height: 12rpx;
-    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+.timeline-line {
+    position: absolute;
+    left: 10rpx;
+    top: 24rpx;
+    bottom: 0;
+    width: 2rpx;
+    background: #e0e0e0;
+}
+
+.timeline-dot {
+    position: absolute;
+    left: 0;
+    top: 12rpx;
+    width: 22rpx;
+    height: 22rpx;
     border-radius: 50%;
-    margin-top: 10rpx;
-    flex-shrink: 0;
+    background: #fff;
+    border: 6rpx solid #667eea;
+    box-sizing: border-box;
+    z-index: 1;
 }
 
-.activity-text {
-    font-size: 28rpx;
-    color: #666;
-    line-height: 1.6;
-    flex: 1;
+.timeline-content {
+    background: #f8f9ff;
+    padding: 20rpx;
+    border-radius: 12rpx;
+
+    .activity-name {
+        font-size: 28rpx;
+        color: #333;
+        font-weight: 500;
+        margin-bottom: 8rpx;
+        display: block;
+    }
+
+    .activity-time {
+        font-size: 24rpx;
+        color: #999;
+    }
 }
 
 /* 荣誉列表 */
 .honor-list {
     display: flex;
     flex-direction: column;
-    gap: 16rpx;
+    gap: 20rpx;
 }
 
 .honor-item {
     display: flex;
+    align-items: center;
     gap: 20rpx;
-    padding: 16rpx;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-    border-radius: 12rpx;
-    border-left: 4rpx solid #667eea;
+    padding: 24rpx;
+    background: linear-gradient(to right, #fff, #fcfcfc);
+    border: 1rpx solid #f0f0f0;
+    border-radius: 16rpx;
 }
 
-.honor-year {
-    font-size: 26rpx;
-    color: #667eea;
-    font-weight: bold;
-    flex-shrink: 0;
+.honor-icon {
+    font-size: 40rpx;
 }
 
-.honor-title {
-    font-size: 28rpx;
-    color: #333;
-    line-height: 1.6;
+.honor-content {
     flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4rpx;
+
+    .honor-title {
+        font-size: 28rpx;
+        color: #333;
+        font-weight: 500;
+    }
+
+    .honor-year {
+        font-size: 24rpx;
+        color: #999;
+    }
 }
 
-/* 底部操作 */
+/* 空状态 */
+.empty-state {
+    padding: 40rpx 0;
+    text-align: center;
+
+    .empty-text {
+        font-size: 26rpx;
+        color: #999;
+    }
+}
+
+/* 底部操作栏 */
 .footer-actions {
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
     background: #fff;
-    padding: 20rpx;
-    box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.08);
-    display: flex;
-    gap: 20rpx;
+    padding: 20rpx 30rpx;
+    box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.05);
     z-index: 100;
 }
 
 .action-btn {
-    flex: 1;
+    width: 100%;
+    height: 90rpx;
+    border-radius: 45rpx;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8rpx;
-    height: 90rpx;
-    border-radius: 45rpx;
-    font-size: 30rpx;
+    gap: 12rpx;
     border: none;
+    font-size: 32rpx;
+    font-weight: 500;
     transition: all 0.3s;
-
-    &:active {
-        transform: scale(0.95);
-    }
 
     &::after {
         border: none;
     }
-}
 
-.full-width {
-    flex: 1;
-}
+    &:active {
+        transform: scale(0.98);
+        opacity: 0.9;
+    }
 
-.primary-btn {
-    background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-
-    .btn-icon,
-    .btn-text {
+    &.manage-btn {
+        background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
         color: #fff;
     }
-}
 
-.disabled-btn {
-    background: #f5f5f5;
+    &.join-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: #fff;
+    }
 
-    .btn-icon,
-    .btn-text {
+    &.member-btn {
+        background: #f5f7fa;
         color: #999;
     }
-}
-
-.btn-icon {
-    font-size: 32rpx;
-}
-
-.btn-text {
-    font-size: 30rpx;
-    font-weight: 500;
 }
 </style>

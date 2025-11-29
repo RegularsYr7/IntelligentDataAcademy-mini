@@ -41,14 +41,14 @@
                     <view class="activity-list">
                         <view class="activity-item" v-for="activity in items" :key="activity.id"
                             @tap="goToDetail(activity)">
-                            <image class="activity-image" :src="activity.image" mode="aspectFill"></image>
-                            <view class="activity-info">
-                                <view class="activity-header">
-                                    <text class="activity-title">{{ activity.title }}</text>
-                                    <view class="activity-status" :class="'status-' + activity.status">
-                                        <text class="status-text">{{ getStatusText(activity.status) }}</text>
-                                    </view>
+                            <view class="image-wrapper">
+                                <image class="activity-image" :src="activity.image" mode="aspectFill"></image>
+                                <view class="activity-status" :class="'status-' + activity.status">
+                                    <text class="status-text">{{ getStatusText(activity.status) }}</text>
                                 </view>
+                            </view>
+                            <view class="activity-info">
+                                <text class="activity-title">{{ activity.title }}</text>
                                 <view class="activity-meta">
                                     <view class="meta-item">
                                         <text class="meta-icon">📅</text>
@@ -62,7 +62,6 @@
                                 <view class="activity-footer">
                                     <view class="footer-left">
                                         <text class="credit-badge">{{ activity.credit }} 学分</text>
-                                        <text class="points-badge">{{ activity.points }} 积分</text>
                                     </view>
                                     <text class="organizer">{{ activity.organizer }}</text>
                                 </view>
@@ -366,6 +365,7 @@ const goToActivityList = () => {
     overflow: hidden;
     box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.05);
     transition: all 0.3s;
+    position: relative;
 
     &:active {
         transform: scale(0.98);
@@ -373,9 +373,15 @@ const goToActivityList = () => {
     }
 }
 
-.activity-image {
+.image-wrapper {
+    position: relative;
     width: 100%;
     height: 240rpx;
+}
+
+.activity-image {
+    width: 100%;
+    height: 100%;
 }
 
 .activity-info {
@@ -383,12 +389,6 @@ const goToActivityList = () => {
     display: flex;
     flex-direction: column;
     gap: 12rpx;
-}
-
-.activity-header {
-    display: flex;
-    flex-direction: column;
-    gap: 8rpx;
 }
 
 .activity-title {
@@ -406,12 +406,16 @@ const goToActivityList = () => {
 }
 
 .activity-status {
-    align-self: flex-start;
-    padding: 4rpx 12rpx;
-    border-radius: 8rpx;
+    position: absolute;
+    top: 12rpx;
+    right: 12rpx;
+    padding: 6rpx 16rpx;
+    border-radius: 30rpx;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 1;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.15);
 
     &.status-ongoing {
         background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
