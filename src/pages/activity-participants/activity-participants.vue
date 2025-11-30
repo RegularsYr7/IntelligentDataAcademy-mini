@@ -66,7 +66,6 @@ import { getParticipants } from '@/api/activity'
 const listRef = ref(null)
 const activityId = ref(null)
 const currentFilter = ref('all')
-const operatorId = ref(null)
 
 // 统计数据
 const statistics = ref({
@@ -101,7 +100,6 @@ const getParticipantList = async (params) => {
         }
 
         const res = await getParticipants(activityId.value, {
-            operatorId: operatorId.value,
             filter: currentFilter.value,
             pageNum,
             pageSize
@@ -135,7 +133,6 @@ const updateStatistics = (data) => {
 const loadAllStatistics = async () => {
     try {
         const res = await getParticipants(activityId.value, {
-            operatorId: operatorId.value,
             filter: 'all',
             pageNum: 1,
             pageSize: 1000  // 获取所有数据用于统计
@@ -232,10 +229,6 @@ const getRoleClass = (role) => {
 
 onLoad((options) => {
     activityId.value = options.id
-
-    // 获取操作者ID
-    const userInfo = uni.getStorageSync('userInfo')
-    operatorId.value = userInfo?.studentId
 
     // 加载全部人员的统计数据
     loadAllStatistics()

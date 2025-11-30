@@ -179,13 +179,7 @@ const loadOrgDetail = async (id) => {
     try {
         console.log('加载组织详情, ID:', id)
 
-        const userInfo = uni.getStorageSync('userInfo')
-        const params = {}
-        if (userInfo && (userInfo.studentId || userInfo.id)) {
-            params.studentId = userInfo.studentId || userInfo.id
-        }
-
-        const res = await getOrganizationDetail(id, params)
+        const res = await getOrganizationDetail(id)
         console.log('组织详情响应:', res)
 
         if (res && res.organization) {
@@ -250,11 +244,6 @@ const loadOrgDetail = async (id) => {
             console.log('是否为管理员:', isAdmin.value)
         }
     } catch (error) {
-        console.error('加载组织详情失败:', error)
-        uni.showToast({
-            title: error.message || '加载失败',
-            icon: 'none'
-        })
     }
 }
 
@@ -373,9 +362,8 @@ const goToActivityDetail = (activity) => {
 // 申请加入
 const joinOrg = async () => {
     try {
-        // 获取用户信息
-        const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || (!userInfo.studentId && !userInfo.id)) {
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
             uni.showToast({
                 title: '请先登录',
                 icon: 'none'
@@ -395,7 +383,6 @@ const joinOrg = async () => {
 
             try {
                 await applyOrganization({
-                    studentId: Number(userInfo.studentId || userInfo.id),
                     organizationId: Number(organization.value.id),
                     applyReason: applyReason
                 })

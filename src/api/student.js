@@ -60,32 +60,29 @@ export const updatePassword = (data) => {
 };
 
 /**
- * 获取我的活动
- * @param {Object} data - 请求数据
- * @param {number} data.studentId - 学生ID (必填)
- * @param {string} data.activityStatus - 活动状态 (可选)
+ * 获取我的活动（基于 token 自动识别当前学生）
+ * @param {Object} params - 可选筛选参数
+ * @param {number} params.currentStatus - 活动状态过滤（可选）
  */
-export const getMyActivities = (data) => {
-  return request.post("/edu/student/myActivities", data);
+export const getMyActivities = (params = {}) => {
+  return request.post("/edu/student/myActivities", params);
 };
 
 /**
- * 获取我的组织
- * @param {Object} data - 请求数据
- * @param {number} data.studentId - 学生ID (必填)
+ * 获取我的组织（基于 token 自动识别当前学生）
+ * @param {Object} params - 可选筛选参数
  */
-export const getMyOrganizations = (data) => {
-  return request.post("/edu/student/myOrganizations", data);
+export const getMyOrganizations = (params = {}) => {
+  return request.post("/edu/student/myOrganizations", params);
 };
 
 /**
- * 获取我的成长记录
- * @param {Object} data - 请求数据
- * @param {number} data.studentId - 学生ID (必填)
- * @param {string} data.recordType - 记录类型 (可选)
+ * 获取我的成长记录（基于 token 自动识别当前学生）
+ * @param {Object} params - 请求参数
+ * @param {string} params.recordType - 记录类型 (可选)
  */
-export const getMyGrowthRecords = (data) => {
-  return request.post("/edu/student/myGrowthRecords", data);
+export const getMyGrowthRecords = (params = {}) => {
+  return request.post("/edu/student/myGrowthRecords", params);
 };
 
 /**
@@ -97,12 +94,11 @@ export const getStudentDetail = (studentId) => {
 };
 
 /**
- * 获取学生信息（小程序专用）
- * @param {number} studentId - 学生ID
+ * 获取当前登录学生信息（基于 token 识别身份）
  * @returns {Promise} 学生完整信息
  */
-export const getStudentInfo = (studentId) => {
-  return request.get("/edu/student/getStudentInfo", { studentId });
+export const getStudentInfo = () => {
+  return request.get("/edu/student/getStudentInfo");
 };
 
 /**
@@ -111,4 +107,12 @@ export const getStudentInfo = (studentId) => {
  */
 export const getStudentList = (params) => {
   return request.get("/edu/student/list", params);
+};
+
+/**
+ * 检查本月头像修改次数
+ * @returns {Promise} 返回 { used: 已使用次数, remaining: 剩余次数, total: 总次数 }
+ */
+export const checkMonthlyAvatarChanges = () => {
+  return request.get("/edu/student/checkMonthlyAvatarChanges");
 };

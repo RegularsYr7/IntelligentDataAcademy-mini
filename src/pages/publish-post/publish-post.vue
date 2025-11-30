@@ -199,7 +199,7 @@ const chooseImage = async () => {
 
     // 获取用户信息
     const userInfo = uni.getStorageSync('userInfo')
-    if (!userInfo || !userInfo.studentId) {
+    if (!userInfo) {
         uni.showToast({
             title: '请先登录',
             icon: 'none'
@@ -214,7 +214,7 @@ const chooseImage = async () => {
             mask: true
         })
 
-        const res = await checkTodayImageCount({ studentId: userInfo.studentId })
+        const res = await checkTodayImageCount()
         console.log('checkTodayImageCount 完整返回:', res)
         console.log('res.data:', res.data)
         const todayCount = res.data !== undefined ? res.data : 0
@@ -261,7 +261,7 @@ const chooseImage = async () => {
             }
         }
 
-        selectAndUploadImages(maxCount, userInfo.studentId, todayCount)
+        selectAndUploadImages(maxCount)
     } catch (error) {
         uni.hideLoading()
         console.error('检查上传数量失败:', error)
@@ -273,7 +273,7 @@ const chooseImage = async () => {
 }
 
 // 选择并上传图片
-const selectAndUploadImages = (count, studentId, currentTodayCount) => {
+const selectAndUploadImages = (count) => {
     uni.chooseImage({
         count: count,
         sizeType: ['compressed'],
@@ -318,8 +318,8 @@ const selectAndUploadImages = (count, studentId, currentTodayCount) => {
                     try {
                         console.log(`开始上传第${i + 1}张图片:`, tempPath)
 
-                        // 调用上传接口，传递studentId用于检查上传限制
-                        const result = await uploadImage(tempPath, { studentId })
+                        // 调用上传接口
+                        const result = await uploadImage(tempPath)
                         console.log(`第${i + 1}张图片上传结果:`, result)
 
                         // 兼容不同的返回格式
@@ -468,7 +468,7 @@ const publish = async () => {
 
     // 获取用户信息
     const userInfo = uni.getStorageSync('userInfo')
-    if (!userInfo || !userInfo.studentId) {
+    if (!userInfo) {
         uni.showToast({
             title: '请先登录',
             icon: 'none'
@@ -489,7 +489,6 @@ const publish = async () => {
     try {
         // 构建发布数据
         const postData = {
-            studentId: userInfo.studentId,
             postType: selectedCategory.value ? selectedCategory.value.id : '1', // 使用选择的分类ID，默认为1
             title: title.value.trim() || '',
             content: content.value.trim(),

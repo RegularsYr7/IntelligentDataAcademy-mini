@@ -107,10 +107,7 @@ const totalPoints = ref(0)
 
 // 列表请求参数
 const listParams = computed(() => {
-    const userInfo = uni.getStorageSync('userInfo')
-    const params = {
-        studentId: userInfo?.studentId ? Number(userInfo.studentId) : null
-    }
+    const params = {}
 
     // 添加状态筛选 - 只有非 'all' 时才传递 currentStatus
     if (currentFilter.value !== 'all') {

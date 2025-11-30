@@ -372,10 +372,6 @@ const loadSchedule = async () => {
         }
     } catch (error) {
         console.error('加载课程表失败:', error)
-        uni.showToast({
-            title: error.message || '加载失败',
-            icon: 'none'
-        })
     }
 }
 

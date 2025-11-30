@@ -107,19 +107,17 @@ onShow(() => {
 })
 
 const loadData = () => {
-    const userInfo = uni.getStorageSync('userInfo')
-    if (userInfo) {
-        fetchMyOrganizations(userInfo.studentId || userInfo.id)
+    const token = uni.getStorageSync('userToken')
+    if (token) {
+        fetchMyOrganizations()
     }
     // fetchRecommendOrganizations()
 }
 
 // 获取我的组织
-const fetchMyOrganizations = async (studentId) => {
+const fetchMyOrganizations = async () => {
     try {
-        const res = await getMyOrganizations({
-            studentId: Number(studentId)
-        })
+        const res = await getMyOrganizations()
 
         // Handle new response structure
         if (res) {
@@ -344,6 +342,7 @@ const goToOrganizationList = () => {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     word-break: break-all;
     line-height: 1.5;
 }

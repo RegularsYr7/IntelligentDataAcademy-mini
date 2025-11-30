@@ -70,11 +70,11 @@ export const getFeedbackListAdmin = (params) => {
 };
 
 /**
- * 获取反馈详情
+ * 获取反馈详情（小程序端）
  * @param {string} feedbackId - 反馈ID
  */
 export const getFeedbackDetail = (feedbackId) => {
-  return request.get(`/edu/feedback/${feedbackId}`);
+  return request.get(`/edu/feedback/detail/${feedbackId}`);
 };
 
 /**

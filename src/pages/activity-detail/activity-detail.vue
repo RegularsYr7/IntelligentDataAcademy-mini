@@ -403,11 +403,10 @@ const handleCheckin = () => {
 // 提交签到
 const handleCheckinSubmit = async (qrData) => {
     try {
-        // 获取用户信息
-        const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
             uni.showToast({
-                title: '未找到学生信息',
+                title: '请先登录',
                 icon: 'none'
             })
             return
@@ -416,7 +415,6 @@ const handleCheckinSubmit = async (qrData) => {
         // 调用签到接口
         const res = await signInActivity({
             signInCode: qrData,
-            studentId: Number(userInfo.studentId),
             activityId: Number(activity.value.activityId)
         })
 
@@ -457,11 +455,10 @@ const handleSignup = async () => {
         return
     }
 
-    // 获取用户信息
-    const userInfo = uni.getStorageSync('userInfo')
-    if (!userInfo || !userInfo.studentId) {
+    const token = uni.getStorageSync('userToken')
+    if (!token) {
         uni.showToast({
-            title: '未找到学生信息',
+            title: '请先登录',
             icon: 'none'
         })
         return
@@ -501,8 +498,7 @@ const handleSignup = async () => {
                     try {
                         // 调用取消报名接口
                         await cancelEnroll({
-                            activityId: Number(activity.value.activityId),
-                            studentId: Number(userInfo.studentId)
+                            activityId: Number(activity.value.activityId)
                         })
 
                         loadActivityDetail(activity.value.activityId) // 重新加载活动详情
@@ -531,8 +527,7 @@ const handleSignup = async () => {
                     try {
                         // 调用报名接口
                         await enrollActivity({
-                            activityId: Number(activity.value.activityId),
-                            studentId: Number(userInfo.studentId)
+                            activityId: Number(activity.value.activityId)
                         })
 
                         loadActivityDetail(activity.value.activityId) // 重新加载活动详情
@@ -617,12 +612,8 @@ const loadActivityDetail = async (id) => {
     try {
         console.log('加载活动详情, ID:', id)
 
-        // 获取用户信息
-        const userInfo = uni.getStorageSync('userInfo')
-        const studentId = userInfo?.studentId
-
-        // 调用活动详情接口，传递 studentId 参数
-        const res = await getActivityDetail(id, studentId ? { studentId: Number(studentId) } : {})
+        // 调用活动详情接口
+        const res = await getActivityDetail(id)
 
         // 后端返回的数据在 res 中（request.js 已经解包了 data）
         const activityData = res.activity || res
@@ -672,10 +663,7 @@ const loadActivityDetail = async (id) => {
         console.log('当前状态:', currentStatus.value, '是否负责人:', isLeader.value, '是否已报名:', isRegistered.value)
     } catch (error) {
         console.error('加载活动详情失败:', error)
-        uni.showToast({
-            title: error.message || '加载失败',
-            icon: 'none'
-        })
+
     }
 }
 

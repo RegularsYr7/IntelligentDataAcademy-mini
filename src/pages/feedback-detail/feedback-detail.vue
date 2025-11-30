@@ -30,6 +30,10 @@
                         <text class="time-icon">🕒</text>
                         <text>{{ formatDateTime(feedback.createTime) }}</text>
                     </view>
+                    <view class="contact-info" v-if="feedback.contact">
+                        <text class="contact-icon">📱</text>
+                        <text>{{ feedback.contact }}</text>
+                    </view>
                 </view>
             </view>
 
@@ -41,13 +45,13 @@
                 </view>
                 <view class="reply-list">
                     <view class="reply-item" v-for="(reply, index) in feedback.replies" :key="index"
-                        :class="{ admin: reply.isAdmin }">
+                        :class="{ 'is-me': reply.isMe }">
                         <view class="reply-avatar">
-                            <text>{{ reply.isAdmin ? '👨‍💼' : '👤' }}</text>
+                            <text>{{ reply.isMe ? '👤' : '👨‍💼' }}</text>
                         </view>
                         <view class="reply-bubble">
                             <view class="reply-meta">
-                                <text class="reply-role">{{ reply.isAdmin ? '管理员' : '我' }}</text>
+                                <text class="reply-role">{{ reply.isMe ? '我' : (reply.roleName || '管理员') }}</text>
                                 <text class="reply-time">{{ formatReplyTime(reply.time) }}</text>
                             </view>
                             <text class="reply-content">{{ reply.content }}</text>
@@ -147,6 +151,22 @@ const loadFeedbackDetail = async (id) => {
         }
 
         // 适配后端返回的数据结构
+        let replies = []
+        if (res.replyRecords) {
+            try {
+                const records = typeof res.replyRecords === 'string' ? JSON.parse(res.replyRecords) : res.replyRecords
+                replies = records.map(item => ({
+                    isMe: item.type === 'append', // 学生追加的是"我"
+                    isAdmin: item.type === 'reply', // 管理员回复的是"管理员"
+                    content: item.content,
+                    time: item.replyTime,
+                    roleName: item.replyBy
+                }))
+            } catch (e) {
+                console.error('解析回复记录失败', e)
+            }
+        }
+
         feedback.value = {
             id: res.feedbackId,
             type: typeMap[res.feedbackType] || 'other',
@@ -157,7 +177,7 @@ const loadFeedbackDetail = async (id) => {
             status: statusMap[res.feedbackStatus] || 'pending',
             createTime: res.createTime,
             submitTime: res.submitTime,
-            replies: res.replyRecords ? JSON.parse(res.replyRecords) : [],
+            replies: replies,
             studentName: res.studentName,
             studentNo: res.studentNo,
             currentHandlerName: res.currentHandlerName,
@@ -198,9 +218,21 @@ const getStatusText = (status) => {
     return statusMap[status] || ''
 }
 
+// 解析时间
+const parseDate = (time) => {
+    if (!time) return new Date()
+    if (typeof time === 'string') {
+        // 解决iOS等环境不支持 - 连接符的问题
+        return new Date(time.replace(/-/g, '/'))
+    }
+    return new Date(time)
+}
+
 // 格式化日期时间
 const formatDateTime = (timeStr) => {
-    const date = new Date(timeStr)
+    const date = parseDate(timeStr)
+    if (isNaN(date.getTime())) return timeStr // 如果解析失败，返回原字符串
+
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
@@ -215,7 +247,9 @@ const formatDateTime = (timeStr) => {
 
 // 格式化回复时间
 const formatReplyTime = (timeStr) => {
-    const date = new Date(timeStr)
+    const date = parseDate(timeStr)
+    if (isNaN(date.getTime())) return timeStr
+
     const now = new Date()
     const month = date.getMonth() + 1
     const day = date.getDate()
@@ -254,11 +288,10 @@ const submitAppend = async () => {
     }
 
     try {
-        // 获取用户信息
-        const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
             uni.showToast({
-                title: '未找到学生信息',
+                title: '请先登录',
                 icon: 'none'
             })
             return
@@ -267,7 +300,6 @@ const submitAppend = async () => {
         // 调用追加反馈接口
         await appendFeedback({
             feedbackId: Number(feedback.value.id),  // 反馈ID
-            studentId: Number(userInfo.studentId),  // 学生ID
             content: appendContent.value            // 追加内容
         })
 
@@ -550,6 +582,21 @@ const printAPIRequirements = () => {
     color: #999;
 }
 
+.contact-info {
+    display: flex;
+    align-items: center;
+    gap: 8rpx;
+    font-size: 24rpx;
+    color: #666;
+    background: #f5f7fa;
+    padding: 4rpx 16rpx;
+    border-radius: 20rpx;
+}
+
+.contact-icon {
+    font-size: 24rpx;
+}
+
 /* 回复区域 */
 .section-header {
     display: flex;
@@ -578,7 +625,7 @@ const printAPIRequirements = () => {
     display: flex;
     gap: 20rpx;
 
-    &.admin {
+    &.is-me {
         flex-direction: row-reverse;
 
         .reply-bubble {
@@ -596,7 +643,7 @@ const printAPIRequirements = () => {
         }
     }
 
-    &:not(.admin) {
+    &:not(.is-me) {
         .reply-bubble {
             background: #f0f2f5;
             color: #333;
@@ -640,6 +687,7 @@ const printAPIRequirements = () => {
     align-items: center;
     margin-bottom: 12rpx;
     font-size: 24rpx;
+    gap: 12rpx;
 }
 
 .reply-role {

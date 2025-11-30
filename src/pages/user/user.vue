@@ -116,23 +116,18 @@ const loadUserData = async () => {
         console.log('基本信息:', basicInfo.value)
 
         // 调用接口获取动态数据
-        const studentId = cachedUserInfo.studentId || cachedUserInfo.studentNo
-        if (studentId) {
-            await Promise.all([
-                loadMyActivities(studentId),
-                loadMyOrganizations(studentId),
-                loadGrowthRecords(studentId)
-            ])
-        }
+        await Promise.all([
+            loadMyActivities(),
+            loadMyOrganizations(),
+            loadGrowthRecords()
+        ])
     }
 }
 
 // 加载我的活动
-const loadMyActivities = async (studentId) => {
+const loadMyActivities = async () => {
     try {
-        const res = await getMyActivities({
-            studentId: Number(studentId)
-        })
+        const res = await getMyActivities()
         console.log('我的活动响应:', res)
 
         // 后端返回格式: { totalCredits, participantCount, totalPoints, activityList }
@@ -153,11 +148,9 @@ const loadMyActivities = async (studentId) => {
 }
 
 // 加载我的组织
-const loadMyOrganizations = async (studentId) => {
+const loadMyOrganizations = async () => {
     try {
-        const res = await getMyOrganizations({
-            studentId: Number(studentId)
-        })
+        const res = await getMyOrganizations()
         console.log('我的组织响应:', res)
 
         // Handle new response structure
@@ -190,11 +183,9 @@ const getRoleName = (role) => {
 }
 
 // 加载成长记录
-const loadGrowthRecords = async (studentId) => {
+const loadGrowthRecords = async () => {
     try {
-        const res = await getMyGrowthRecords({
-            studentId: Number(studentId)
-        })
+        const res = await getMyGrowthRecords()
         console.log('成长记录响应:', res)
 
         if (res) {
@@ -390,14 +381,16 @@ const handleLogout = () => {
 
     uni.showToast({
         title: '已退出登录',
-        icon: 'success'
+        icon: 'success',
+        duration: 1500
     })
 
-    // 滚动到页面顶部
-    uni.pageScrollTo({
-        scrollTop: 0,
-        duration: 300
-    })
+    // 销毁所有页面，重新加载当前页面
+    setTimeout(() => {
+        uni.reLaunch({
+            url: '/pages/user/user'
+        })
+    }, 1500)
 }
 </script>
 

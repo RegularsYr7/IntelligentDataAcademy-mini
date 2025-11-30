@@ -41,16 +41,17 @@
                     <view class="photo-preview" v-if="photoPath">
                         <image class="preview-image" :src="photoPath" mode="aspectFill"></image>
                         <view class="photo-actions">
-                            <button class="action-btn retake-btn" @tap="takePhoto">
+                            <button class="action-btn retake-btn" @tap="handleTakePhoto">
                                 <text class="btn-icon">🔄</text>
                                 <text>重拍</text>
                             </button>
                         </view>
                     </view>
-                    <view class="photo-placeholder" v-else @tap="takePhoto">
+                    <view class="photo-placeholder" v-else @tap="handleTakePhoto" :class="{ 'disabled': !taskId }">
                         <text class="placeholder-icon">📸</text>
-                        <text class="placeholder-text">点击拍照</text>
-                        <text class="placeholder-tip">请确保人脸清晰可见</text>
+                        <text class="placeholder-text">{{ taskId ? '点击拍照' : '暂无签到任务' }}</text>
+                        <text class="placeholder-tip" v-if="taskId">请确保人脸清晰可见</text>
+                        <text class="placeholder-tip" v-else>当前没有可用的签到任务</text>
                     </view>
                 </view>
             </view>
@@ -181,6 +182,18 @@ const getLocation = () => {
     })
 }
 
+// 处理拍照点击（带验证）
+const handleTakePhoto = () => {
+    if (!taskId.value) {
+        uni.showToast({
+            title: '当前没有签到任务',
+            icon: 'none'
+        })
+        return
+    }
+    takePhoto()
+}
+
 // 拍照
 const takePhoto = async () => {
     try {
@@ -274,11 +287,10 @@ const submitSignIn = async () => {
     submitting.value = true
 
     try {
-        // 获取用户信息
-        const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
             uni.showToast({
-                title: '未找到学生信息',
+                title: '请先登录',
                 icon: 'none'
             })
             submitting.value = false
@@ -288,7 +300,6 @@ const submitSignIn = async () => {
         // 调用签到接口
         await submitCheckin({
             taskId: Number(taskId.value),           // 转换为数字
-            studentId: Number(userInfo.studentId),  // 学生ID
             latitude: location.value.latitude,       // 纬度
             longitude: location.value.longitude,     // 经度
             address: location.value.address || '',   // 地址
@@ -529,6 +540,21 @@ onUnmounted(() => {
     justify-content: center;
     gap: 16rpx;
     background: #fafafa;
+
+    &.disabled {
+        opacity: 0.5;
+        background: #f0f0f0;
+        border-color: #e0e0e0;
+        cursor: not-allowed;
+
+        .placeholder-icon {
+            filter: grayscale(1);
+        }
+
+        .placeholder-text {
+            color: #999;
+        }
+    }
 }
 
 .placeholder-icon {

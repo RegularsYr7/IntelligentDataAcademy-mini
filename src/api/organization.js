@@ -18,10 +18,9 @@ export const getOrganizationList = (params) => {
 /**
  * 获取组织详情
  * @param {string} id - 组织ID
- * @param {Object} params - 查询参数 (如 studentId)
  */
-export const getOrganizationDetail = (id, params) => {
-  return request.get(`/edu/organization/detail/${id}`, params);
+export const getOrganizationDetail = (id) => {
+  return request.get(`/edu/organization/detail/${id}`);
 };
 
 /**
@@ -35,7 +34,6 @@ export const getCarouselOrganizations = (params) => {
 /**
  * 申请加入组织
  * @param {Object} data - 申请信息
- * @param {number} data.studentId - 学生ID
  * @param {number} data.organizationId - 组织ID
  * @param {string} data.applyReason - 申请理由(可选)
  */

@@ -83,7 +83,7 @@
                                     <view class="footer-item" @tap.stop="toggleLike(item)">
                                         <text class="icon" :class="{ liked: item.isLiked }">{{ item.isLiked ? '❤️' :
                                             '🤍'
-                                        }}</text>
+                                            }}</text>
                                         <text class="count" :class="{ liked: item.isLiked }">{{ item.likes }}</text>
                                     </view>
                                     <view class="footer-item" @tap.stop="viewComments(item)">
@@ -218,11 +218,7 @@ const currentApi = computed(() => {
 
 // 列表请求参数
 const listParams = computed(() => {
-    const userInfo = uni.getStorageSync('userInfo')
-    const params = {
-        currentStudentId: userInfo?.studentId, // 当前学生ID，用于查询交互状态
-        studentId: userInfo?.studentId // 某些接口（如关注列表）需要 studentId 参数
-    }
+    const params = {}
 
     // 分类筛选参数
     if (currentCategory.value === 'all') {
@@ -296,11 +292,11 @@ onUnload(() => {
 
 // 加载未读消息数量
 const loadUnreadCount = async () => {
-    const userInfo = uni.getStorageSync('userInfo')
-    if (!userInfo || !userInfo.studentId) return
+    const token = uni.getStorageSync('userToken')
+    if (!token) return
 
     try {
-        const res = await getUnreadCount({ studentId: userInfo.studentId })
+        const res = await getUnreadCount()
         if (res && res.data) {
             unreadCount.value = res.data.totalUnread || 0
         }
@@ -404,8 +400,9 @@ const viewPost = (post) => {
 // 关注/取消关注用户
 const followUser = async (post) => {
     try {
+        const token = uni.getStorageSync('userToken')
         const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        if (!token || !userInfo) {
             uni.showToast({
                 title: '请先登录',
                 icon: 'none'
@@ -413,7 +410,7 @@ const followUser = async (post) => {
             return
         }
 
-        if (String(post.studentId) === String(userInfo.studentId)) {
+        if (userInfo.studentId && String(post.studentId) === String(userInfo.studentId)) {
             uni.showToast({
                 title: '不能关注自己',
                 icon: 'none'
@@ -424,9 +421,7 @@ const followUser = async (post) => {
         if (post.isFollowed) {
             // 取消关注
             await unfollowUser({
-                followerId: userInfo.studentId,
-                followeeId: post.studentId,
-                studentId: userInfo.studentId
+                followeeId: post.studentId
             })
             post.isFollowed = false
             uni.showToast({
@@ -436,13 +431,11 @@ const followUser = async (post) => {
         } else {
             // 关注
             await followUserApi({
-                followerId: userInfo.studentId,                    // 关注者ID（当前用户）
                 followeeId: post.studentId,                        // 被关注者ID
                 followerName: userInfo.name,                       // 关注者姓名
                 followerAvatar: userInfo.avatar || '',             // 关注者头像（可选）
                 followeeName: post.userName,                       // 被关注者姓名
-                followeeAvatar: post.userAvatar || '',             // 被关注者头像（可选）
-                studentId: userInfo.studentId
+                followeeAvatar: post.userAvatar || ''              // 被关注者头像（可选）
             })
             post.isFollowed = true
             uni.showToast({
@@ -478,8 +471,9 @@ const searchTag = (tag) => {
 // 点赞
 const toggleLike = async (post) => {
     try {
+        const token = uni.getStorageSync('userToken')
         const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        if (!token || !userInfo) {
             uni.showToast({
                 title: '请先登录',
                 icon: 'none'
@@ -487,7 +481,7 @@ const toggleLike = async (post) => {
             return
         }
 
-        if (String(post.studentId) === String(userInfo.studentId)) {
+        if (userInfo.studentId && String(post.studentId) === String(userInfo.studentId)) {
             uni.showToast({
                 title: '不能给自己点赞',
                 icon: 'none'
@@ -500,14 +494,12 @@ const toggleLike = async (post) => {
         // 调用点赞/取消点赞接口 - 传递所有必需参数
         if (isLiking) {
             await likePost({
-                studentId: userInfo.studentId,           // 当前用户ID
                 postId: post.id,                         // 帖子ID
                 studentName: userInfo.name,              // 学生姓名
                 studentAvatar: userInfo.avatar || ''     // 学生头像（可选）
             })
         } else {
             await unlikePost({
-                studentId: userInfo.studentId,           // 当前用户ID
                 postId: post.id,                         // 帖子ID
                 studentName: userInfo.name,              // 学生姓名
                 studentAvatar: userInfo.avatar || ''     // 学生头像（可选）
@@ -542,8 +534,9 @@ const viewComments = (post) => {
 // 收藏
 const collectPost = async (post) => {
     try {
+        const token = uni.getStorageSync('userToken')
         const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        if (!token || !userInfo) {
             uni.showToast({
                 title: '请先登录',
                 icon: 'none'
@@ -551,7 +544,7 @@ const collectPost = async (post) => {
             return
         }
 
-        if (String(post.studentId) === String(userInfo.studentId)) {
+        if (userInfo.studentId && String(post.studentId) === String(userInfo.studentId)) {
             uni.showToast({
                 title: '不能收藏自己的帖子',
                 icon: 'none'
@@ -564,13 +557,11 @@ const collectPost = async (post) => {
         // 调用收藏/取消收藏接口 - 传递所有必需参数
         if (isCollecting) {
             await collectPostApi({
-                studentId: userInfo.studentId,      // 当前用户ID
                 postId: post.id,                    // 帖子ID
                 studentName: userInfo.name          // 学生姓名
             })
         } else {
             await uncollectPost({
-                studentId: userInfo.studentId,      // 当前用户ID
                 postId: post.id,                    // 帖子ID
                 studentName: userInfo.name          // 学生姓名
             })
@@ -597,8 +588,8 @@ const collectPost = async (post) => {
 const publishPost = async () => {
     try {
         // 获取用户信息
-        const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
             uni.showToast({
                 title: '请先登录',
                 icon: 'none'
@@ -613,7 +604,7 @@ const publishPost = async () => {
         })
 
         // 调用接口检查今日发帖数量
-        const res = await checkTodayPostCount({ studentId: userInfo.studentId })
+        const res = await checkTodayPostCount()
 
         uni.hideLoading()
 
@@ -662,8 +653,8 @@ const deletePost = async (post) => {
             return
         }
 
-        const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
             uni.showToast({
                 title: '请先登录',
                 icon: 'none'
@@ -676,8 +667,7 @@ const deletePost = async (post) => {
         })
 
         await deleteOwnPost({
-            postId: post.id,
-            studentId: userInfo.studentId
+            postId: post.id
         })
 
         uni.hideLoading()

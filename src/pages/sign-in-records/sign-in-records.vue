@@ -84,10 +84,6 @@ const currentFilter = ref('all')
 // 加载中状态
 const loading = ref(false)
 
-// 获取用户信息
-const userInfo = uni.getStorageSync('userInfo') || {}
-const studentId = userInfo.studentId
-
 // 加载记录
 const loadRecords = async () => {
     try {
@@ -96,8 +92,7 @@ const loadRecords = async () => {
         // 调用签到记录接口
         const res = await getMyRecords({
             pageNum: 1,
-            pageSize: 100,
-            studentId: studentId
+            pageSize: 100
         })
 
         // 适配后端返回的数据结构

@@ -112,13 +112,7 @@ onLoad((options) => {
 
 const loadOrgData = async (id) => {
     try {
-        const userInfo = uni.getStorageSync('userInfo')
-        const params = {}
-        if (userInfo && (userInfo.studentId || userInfo.id)) {
-            params.studentId = userInfo.studentId || userInfo.id
-        }
-
-        const res = await getOrganizationDetail(id, params)
+        const res = await getOrganizationDetail(id)
         if (res && res.organization) {
             const org = res.organization
             orgData.value = {
@@ -146,7 +140,7 @@ const loadOrgData = async (id) => {
         }
     } catch (error) {
         console.error('加载组织信息失败:', error)
-        uni.showToast({ title: '加载失败', icon: 'none' })
+
     }
 }
 

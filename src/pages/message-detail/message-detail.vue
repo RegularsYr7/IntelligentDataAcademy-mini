@@ -142,8 +142,9 @@ const followBack = async () => {
     }
 
     try {
+        const token = uni.getStorageSync('userToken')
         const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        if (!token || !userInfo) {
             uni.showToast({
                 title: '请先登录',
                 icon: 'none'
@@ -152,13 +153,11 @@ const followBack = async () => {
         }
 
         await followUserApi({
-            followerId: userInfo.studentId,
             followeeId: message.value.senderId,
             followerName: userInfo.name,
             followerAvatar: userInfo.avatar || '',
             followeeName: message.value.senderName,
-            followeeAvatar: message.value.avatar || '',
-            studentId: userInfo.studentId
+            followeeAvatar: message.value.avatar || ''
         })
 
         // 更新状态

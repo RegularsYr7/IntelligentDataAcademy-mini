@@ -81,14 +81,21 @@ const loadData = async (reset = false) => {
     }
     if (!hasMore.value) return
 
+    const token = uni.getStorageSync('userToken')
+    if (!token) {
+        uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+        })
+        return
+    }
+
     loading.value = true
     try {
-        const userInfo = uni.getStorageSync('userInfo')
         const res = await getOrganizationApplications(organizationId.value, {
             pageNum: pageNum.value,
             pageSize: pageSize.value,
-            status: '0', // 0: pending, 1: approved, 2: rejected
-            operatorStudentId: userInfo.studentId || userInfo.id
+            status: '0' // 0: pending, 1: approved, 2: rejected
         })
 
         console.log('API返回数据:', res)
@@ -110,10 +117,7 @@ const loadData = async (reset = false) => {
         }
     } catch (error) {
         console.error('获取申请列表失败:', error)
-        uni.showToast({
-            title: '加载失败',
-            icon: 'none'
-        })
+
     } finally {
         loading.value = false
     }
@@ -137,10 +141,19 @@ const processApplication = async (item, approved) => {
     item.loading = true
     uni.showLoading({ title: '处理中...' })
 
+    const token = uni.getStorageSync('userToken')
+    if (!token) {
+        uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+        })
+        item.loading = false
+        uni.hideLoading()
+        return
+    }
+
     try {
-        const userInfo = uni.getStorageSync('userInfo')
         await approveApplication({
-            operatorStudentId: userInfo.studentId || userInfo.id,
             targetStudentId: item.studentId,
             organizationId: organizationId.value,
             approved: approved

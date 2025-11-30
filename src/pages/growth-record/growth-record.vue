@@ -122,8 +122,8 @@ const updateFilterCounts = () => {
 }
 
 const fetchGrowthData = async () => {
-    const userInfo = uni.getStorageSync('userInfo')
-    if (!userInfo) return
+    const token = uni.getStorageSync('userToken')
+    if (!token) return
 
     // 映射前端筛选类型到后端参数
     // 1=活动，2=证书，3=竞赛，4=其他
@@ -136,7 +136,6 @@ const fetchGrowthData = async () => {
 
     try {
         const res = await getMyGrowthRecords({
-            studentId: userInfo.studentId,
             recordType: typeMap[currentFilter.value]
         })
         console.log('Growth records response:', res)

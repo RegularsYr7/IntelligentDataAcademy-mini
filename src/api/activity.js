@@ -19,11 +19,9 @@ export const getActivityList = (params) => {
 /**
  * 获取活动详情
  * @param {string} id - 活动ID
- * @param {Object} params - 查询参数(可选)
- * @param {number} params.studentId - 学生ID(可选)
  */
-export const getActivityDetail = (id, params = {}) => {
-  return request.get(`/edu/activity/detail/${id}`, params);
+export const getActivityDetail = (id) => {
+  return request.get(`/edu/activity/detail/${id}`);
 };
 
 /**
@@ -39,20 +37,15 @@ export const enrollActivity = (data) => {
  * 取消报名
  * @param {Object} params - 取消报名信息
  * @param {number} params.activityId - 活动ID
- * @param {number} params.studentId - 学生ID
  */
-export const cancelEnroll = (params) => {
-  const { studentId, activityId } = params;
-  return request.post(
-    `/edu/activity/cancelEnroll?studentId=${studentId}&activityId=${activityId}`
-  );
+export const cancelEnroll = ({ activityId }) => {
+  return request.post(`/edu/activity/cancelEnroll?activityId=${activityId}`);
 };
 
 /**
  * 活动签到 (扫码签到)
  * @param {Object} data - 签到信息
  * @param {string} data.signInCode - 二维码内容
- * @param {number} data.studentId - 学生ID
  * @param {number} data.activityId - 活动ID
  */
 export const signInActivity = (data) => {
@@ -62,19 +55,15 @@ export const signInActivity = (data) => {
 /**
  * 生成签到二维码
  * @param {string} activityId - 活动ID
- * @param {number} operatorId - 操作者ID
  */
-export const generateQRCode = (activityId, operatorId) => {
-  return request.get(`/edu/activity/generateQRCode/${activityId}`, {
-    operatorId,
-  });
+export const generateQRCode = (activityId) => {
+  return request.get(`/edu/activity/generateQRCode/${activityId}`);
 };
 
 /**
  * 获取参与人员列表
  * @param {string} activityId - 活动ID
  * @param {Object} params - 查询参数
- * @param {number} params.operatorId - 操作者ID
  * @param {string} params.filter - 筛选条件(all/signed/unsigned)
  * @param {number} params.pageNum - 页码
  * @param {number} params.pageSize - 每页数量
@@ -87,7 +76,6 @@ export const getParticipants = (activityId, params) => {
  * 结束活动
  * @param {Object} data - 结束信息
  * @param {number} data.activityId - 活动ID
- * @param {number} data.operatorId - 操作者ID
  * @param {string} data.finishNote - 结束备注(可选)
  */
 export const finishActivity = (data) => {

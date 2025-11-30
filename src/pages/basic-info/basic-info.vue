@@ -126,7 +126,7 @@
 import { ref, computed } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import cityData from '@/utils/city.js'
-import { updateProfile, getStudentInfo } from '@/api/student'
+import { updateProfile, getStudentInfo, checkMonthlyAvatarChanges } from '@/api/student'
 import { chooseAndUploadImage } from '@/utils/upload'
 
 // 原始用户信息，用于对比是否修改
@@ -134,6 +134,13 @@ const originalUserInfo = ref(null)
 
 // 用户信息
 const userInfo = ref({
+})
+
+// 头像修改次数信息
+const avatarChangeInfo = ref({
+    remaining: 3,
+    used: 0,
+    total: 3
 })
 
 // 初始化省份列表
@@ -188,8 +195,8 @@ const hometownText = computed(() => {
 // 加载用户信息
 const loadUserInfo = async () => {
     try {
-        const cachedUserInfo = uni.getStorageSync('userInfo')
-        if (!cachedUserInfo || !cachedUserInfo.studentId) {
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
             uni.showToast({
                 title: '请先登录',
                 icon: 'none'
@@ -197,13 +204,15 @@ const loadUserInfo = async () => {
             return
         }
 
+        const cachedUserInfo = uni.getStorageSync('userInfo') || {}
+
         // 显示加载提示
         uni.showLoading({
             title: '加载中...'
         })
 
         // 从后端获取最新的学生信息
-        const studentData = await getStudentInfo(cachedUserInfo.studentId)
+        const studentData = await getStudentInfo()
         console.log('从后端获取的学生信息:', studentData)
 
         // 获取学校、学院、专业、班级名称（从缓存中获取，因为后端返回的是ID）
@@ -251,10 +260,6 @@ const loadUserInfo = async () => {
     } catch (error) {
         console.error('加载用户信息失败:', error)
         uni.hideLoading()
-        uni.showToast({
-            title: '加载失败',
-            icon: 'none'
-        })
     }
 }
 
@@ -300,8 +305,14 @@ const formatBirthdayForPicker = (dateStr) => {
 // 在 onLoad 之前添加保存函数
 const saveUserInfo = async (updates) => {
     try {
-        // 添加学生ID
-        updates.studentId = uni.getStorageSync('userInfo').studentId
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
+            uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+            })
+            throw new Error('未登录')
+        }
 
         console.log('保存用户信息:', updates)
         await updateProfile(updates)
@@ -321,6 +332,18 @@ const saveUserInfo = async (updates) => {
     }
 }
 
+// 加载头像修改次数信息
+const loadAvatarChangeInfo = async () => {
+    try {
+        const result = await checkMonthlyAvatarChanges()
+        if (result && result.data) {
+            avatarChangeInfo.value = result.data
+        }
+    } catch (error) {
+        console.error('获取头像修改次数失败:', error)
+    }
+}
+
 onLoad(() => {
     console.log('基本信息页面加载')
 
@@ -335,23 +358,144 @@ onLoad(() => {
 // 修改头像
 const changeAvatar = async () => {
     try {
+        console.log('=== 开始修改头像流程 ===')
+
+        // 显示加载提示
+        uni.showLoading({
+            title: '检查中...',
+            mask: true
+        })
+
+        // 1. 先检查本月修改次数
+        console.log('调用 checkMonthlyAvatarChanges 接口...')
+        const checkResult = await checkMonthlyAvatarChanges()
+        console.log('头像修改次数检查结果:', checkResult)
+
+        // 隐藏加载提示
+        uni.hideLoading()
+
+        // 检查返回数据的有效性
+        if (!checkResult) {
+            console.error('checkResult 为空')
+            uni.showToast({
+                title: '获取次数信息失败',
+                icon: 'none'
+            })
+            return
+        }
+
+        // 判断数据中是否包含 remaining 字段
+        // 接口可能直接返回数据对象，也可能包含在 data 字段中
+        let resultData = checkResult
+        if (checkResult.data && typeof checkResult.data.remaining !== 'undefined') {
+            resultData = checkResult.data
+        }
+
+        // 验证数据格式
+        if (typeof resultData.remaining === 'undefined' ||
+            typeof resultData.used === 'undefined' ||
+            typeof resultData.total === 'undefined') {
+            console.error('返回数据格式错误，缺少必要字段:', resultData)
+            uni.showToast({
+                title: '获取次数信息失败',
+                icon: 'none'
+            })
+            return
+        }
+
+        const { used, remaining, total } = resultData
+        console.log(`✓ 当前修改次数: 已使用${used}次, 剩余${remaining}次, 总共${total}次`)
+
+        // 如果剩余次数为0，提示并拦截
+        if (remaining <= 0) {
+            uni.showModal({
+                title: '温馨提示',
+                content: `本月头像修改次数已用完（${used}/${total}次），请下个月再试哦~`,
+                showCancel: false,
+                confirmText: '知道了'
+            })
+            return
+        }
+
+        // 弹窗提示剩余次数
+        const confirmMsg = remaining === 1
+            ? `本月还可以修改 ${remaining} 次头像（这是最后一次机会哦）\n\n确认要继续修改吗？`
+            : `本月还可以修改 ${remaining} 次头像\n\n确认要继续修改吗？`
+
+        const confirmed = await new Promise((resolve) => {
+            uni.showModal({
+                title: '修改头像',
+                content: confirmMsg,
+                confirmText: '继续修改',
+                cancelText: '取消',
+                success: (res) => {
+                    resolve(res.confirm)
+                }
+            })
+        })
+
+        if (!confirmed) {
+            console.log('用户取消修改头像')
+            return
+        }
+
+        // 2. 选择并上传图片
+        console.log('开始选择图片...')
         const result = await chooseAndUploadImage({
             count: 1,
             sourceType: ['album', 'camera']
         })
 
         if (result && result.url) {
+            console.log('图片上传成功:', result.url)
             userInfo.value.avatar = result.url
 
-            // 立即保存到服务器
+            // 3. 保存到服务器
+            console.log('开始保存头像到服务器...')
             await saveUserInfo({ avatar: result.url })
+
+            // 4. 刷新头像修改次数信息并提示
+            console.log('刷新头像修改次数信息...')
+            const newCheckResult = await checkMonthlyAvatarChanges()
+            if (newCheckResult && newCheckResult.data) {
+                avatarChangeInfo.value = newCheckResult.data
+                const { remaining } = newCheckResult.data
+
+                uni.showModal({
+                    title: '修改成功',
+                    content: `头像修改成功！本月还可修改 ${remaining} 次`,
+                    showCancel: false,
+                    confirmText: '知道了'
+                })
+            } else {
+                uni.showToast({
+                    title: '修改成功',
+                    icon: 'success'
+                })
+            }
+        } else {
+            console.log('用户取消选择图片')
         }
     } catch (error) {
         console.error('修改头像失败:', error)
-        uni.showToast({
-            title: '修改失败',
-            icon: 'none'
-        })
+
+        // 隐藏可能还在显示的加载提示
+        uni.hideLoading()
+
+        // 如果是服务器返回的次数限制错误
+        if (error.msg && error.msg.includes('已达上限')) {
+            uni.showModal({
+                title: '温馨提示',
+                content: error.msg,
+                showCancel: false,
+                confirmText: '知道了'
+            })
+        } else {
+            uni.showToast({
+                title: error.msg || '修改失败',
+                icon: 'none'
+            })
+        }
     }
 }
 
@@ -543,7 +687,7 @@ onUnload(() => {
 
     .avatar-wrapper {
         position: relative;
-        margin-bottom: 24rpx;
+        margin-bottom: 16rpx;
 
         &::after {
             content: '';

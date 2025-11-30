@@ -177,10 +177,6 @@ const loadCompetitionDetail = async (id) => {
         }
     } catch (error) {
         console.error('加载竞赛详情失败:', error)
-        uni.showToast({
-            title: '加载失败',
-            icon: 'none'
-        })
     }
 }
 

@@ -100,11 +100,10 @@ const loadRecords = async () => {
     try {
         loading.value = true
 
-        // 获取用户信息
-        const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
             uni.showToast({
-                title: '未找到学生信息',
+                title: '请先登录',
                 icon: 'none'
             })
             loading.value = false
@@ -114,8 +113,7 @@ const loadRecords = async () => {
         // 调用反馈列表接口
         const res = await getFeedbackList({
             pageNum: 1,
-            pageSize: 100,
-            studentId: Number(userInfo.studentId)  // 添加 studentId 参数
+            pageSize: 100
             // 如果需要按状态筛选，可以传递 status 参数
             // status: currentStatus.value === 'all' ? undefined : statusMap[currentStatus.value]
         })

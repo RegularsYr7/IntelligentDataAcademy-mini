@@ -191,11 +191,10 @@ const submitForm = async () => {
     submitting.value = true
 
     try {
-        // 获取用户信息
-        const userInfo = uni.getStorageSync('userInfo')
-        if (!userInfo || !userInfo.studentId) {
+        const token = uni.getStorageSync('userToken')
+        if (!token) {
             uni.showToast({
-                title: '未找到学生信息',
+                title: '请先登录',
                 icon: 'none'
             })
             submitting.value = false
@@ -212,7 +211,6 @@ const submitForm = async () => {
 
         // 调用提交反馈接口
         const res = await submitFeedback({
-            studentId: Number(userInfo.studentId),  // 学生ID
             feedbackType: typeMap[form.value.type], // 反馈类型 (1-4)
             title: form.value.title,                // 反馈标题
             description: form.value.description,    // 详细描述

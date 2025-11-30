@@ -95,7 +95,6 @@ const imageLoadError = ref(false)
 // 页面参数
 const activityId = ref(null)
 const currentStatus = ref(1)
-const operatorId = ref(null)
 
 // 活动信息
 const activity = ref({
@@ -181,12 +180,21 @@ const generateQRCode = async () => {
         return
     }
 
+    const token = uni.getStorageSync('userToken')
+    if (!token) {
+        uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+        })
+        return
+    }
+
     try {
         uni.showLoading({ title: '生成中...' })
         imageLoadError.value = false
 
         // 调用后端接口生成二维码
-        const res = await genQRCodeAPI(activityId.value, operatorId.value)
+        const res = await genQRCodeAPI(activityId.value)
         console.log('生成二维码响应:', res)
 
         // 兼容处理：如果后端返回的是 data 包装的
@@ -216,10 +224,7 @@ const generateQRCode = async () => {
 const handleImageError = (e) => {
     console.error('二维码图片加载失败:', e)
     imageLoadError.value = true
-    uni.showToast({
-        title: '图片加载失败',
-        icon: 'none'
-    })
+
 }
 
 // 关闭二维码弹窗
@@ -244,6 +249,15 @@ const finishActivity = async () => {
         return
     }
 
+    const token = uni.getStorageSync('userToken')
+    if (!token) {
+        uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+        })
+        return
+    }
+
     uni.showModal({
         title: '结束活动',
         content: '确定要结束此活动吗？结束后将生成统计报告。',
@@ -253,8 +267,7 @@ const finishActivity = async () => {
                     uni.showLoading({ title: '处理中...' })
 
                     const result = await finishActivityAPI({
-                        activityId: activityId.value,
-                        operatorId: operatorId.value
+                        activityId: activityId.value
                     })
 
                     uni.hideLoading()
@@ -327,10 +340,6 @@ const loadActivityInfo = async () => {
 onLoad((options) => {
     activityId.value = options.id
     currentStatus.value = Number(options.status) || 1
-
-    // 获取操作者ID
-    const userInfo = uni.getStorageSync('userInfo')
-    operatorId.value = userInfo?.studentId
 
     loadActivityInfo()
 })

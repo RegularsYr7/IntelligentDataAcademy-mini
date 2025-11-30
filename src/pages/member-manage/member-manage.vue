@@ -148,7 +148,7 @@ const loadMembers = async (id) => {
         })
     } catch (error) {
         console.error('加载成员失败:', error)
-        uni.showToast({ title: '加载失败', icon: 'none' })
+
     }
 }
 
@@ -192,12 +192,13 @@ const confirmPromote = (member) => {
         success: async (res) => {
             if (res.confirm) {
                 try {
-                    const userInfo = uni.getStorageSync('userInfo')
-                    const operatorId = userInfo.studentId || userInfo.id
-
+                    const token = uni.getStorageSync('userToken')
+                    if (!token) {
+                        uni.showToast({ title: '请先登录', icon: 'none' })
+                        return
+                    }
                     await setAdmin({
                         targetStudentId: member.studentId,
-                        operatorStudentId: operatorId,
                         organizationId: orgId.value
                     })
                     uni.showToast({ title: '操作成功', icon: 'success' })
@@ -217,12 +218,13 @@ const confirmDemote = (member) => {
         success: async (res) => {
             if (res.confirm) {
                 try {
-                    const userInfo = uni.getStorageSync('userInfo')
-                    const operatorId = userInfo.studentId || userInfo.id
-
+                    const token = uni.getStorageSync('userToken')
+                    if (!token) {
+                        uni.showToast({ title: '请先登录', icon: 'none' })
+                        return
+                    }
                     await removeAdmin({
                         targetStudentId: member.studentId,
-                        operatorStudentId: operatorId,
                         organizationId: orgId.value
                     })
                     uni.showToast({ title: '操作成功', icon: 'success' })
@@ -242,12 +244,13 @@ const confirmRemove = (member) => {
         success: async (res) => {
             if (res.confirm) {
                 try {
-                    const userInfo = uni.getStorageSync('userInfo')
-                    const operatorId = userInfo.studentId || userInfo.id
-
+                    const token = uni.getStorageSync('userToken')
+                    if (!token) {
+                        uni.showToast({ title: '请先登录', icon: 'none' })
+                        return
+                    }
                     await removeMember({
                         targetStudentId: member.studentId,
-                        operatorStudentId: operatorId,
                         organizationId: orgId.value
                     })
                     uni.showToast({ title: '操作成功', icon: 'success' })

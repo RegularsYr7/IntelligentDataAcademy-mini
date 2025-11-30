@@ -443,14 +443,11 @@ const getPhoneNumber = async (e) => {
     }
 }
 
-// 跳转到首页
+// 跳转到首页（销毁所有页面）
 const navigateToHome = () => {
-    uni.navigateBack({
-        fail: () => {
-            uni.switchTab({
-                url: '/pages/index/index'
-            })
-        }
+    // 使用 reLaunch 销毁所有页面栈，重新加载首页
+    uni.reLaunch({
+        url: '/pages/index/index'
     })
 }
 

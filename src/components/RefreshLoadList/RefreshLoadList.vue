@@ -143,11 +143,6 @@ const loadData = async (isRefresh = false) => {
             pageNum: pageNum.value
         })
     } catch (error) {
-        console.error('加载数据失败:', error)
-        uni.showToast({
-            title: '加载失败',
-            icon: 'none'
-        })
 
         // 触发错误事件
         emit('load-error', error)

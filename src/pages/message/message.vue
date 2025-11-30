@@ -85,19 +85,18 @@ onShow(() => {
     loadUnreadCounts()
 })
 
-// 获取当前用户ID
-const getStudentId = () => {
-    const userInfo = uni.getStorageSync('userInfo')
-    return userInfo ? (userInfo.studentId || userInfo.id) : null
+// 判断是否已登录
+const hasLogin = () => {
+    const token = uni.getStorageSync('userToken')
+    return !!token
 }
 
 // 加载未读数量
 const loadUnreadCounts = async () => {
-    const studentId = getStudentId()
-    if (!studentId) return
+    if (!hasLogin()) return
 
     try {
-        const res = await getUnreadCount({ studentId })
+        const res = await getUnreadCount()
         if (res && res.data) {
             const data = res.data
             tabs.value.forEach(tab => {
@@ -121,13 +120,12 @@ const loadUnreadCounts = async () => {
 
 // 加载消息列表
 const loadMessages = async () => {
-    const studentId = getStudentId()
-    if (!studentId) return
+    if (!hasLogin()) return
 
     uni.showLoading({ title: '加载中' })
     try {
         let res = []
-        const params = { pageNum: 1, pageSize: 20, studentId }
+        const params = { pageNum: 1, pageSize: 20 }
 
         if (currentTab.value === 'all') {
             // 并行获取所有类型消息并合并排序
@@ -189,7 +187,7 @@ const loadMessages = async () => {
 
     } catch (e) {
         console.error('加载消息失败', e)
-        uni.showToast({ title: '加载失败', icon: 'none' })
+
     } finally {
         uni.hideLoading()
     }

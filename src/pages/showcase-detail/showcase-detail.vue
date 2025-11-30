@@ -147,10 +147,7 @@ const loadDetail = async (id) => {
 
     } catch (error) {
         console.error('加载详情失败:', error)
-        uni.showToast({
-            title: '加载失败',
-            icon: 'none'
-        })
+
     } finally {
         loading.value = false
     }

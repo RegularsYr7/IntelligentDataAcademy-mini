@@ -194,19 +194,50 @@ const handleHttpError = (statusCode, options) => {
  * 清除token并跳转到登录页
  */
 const handleUnauthorized = () => {
+  // 如果已经在显示登录提示,直接返回,防止并发请求时多次弹窗
+  if (isShowingAuthModal) {
+    return;
+  }
+
+  // 设置标志,防止重复弹窗
+  isShowingAuthModal = true;
+
   // 清除本地存储
   uni.removeStorageSync("userToken");
   uni.removeStorageSync("userInfo");
 
-  // 跳转到登录页
-  uni.navigateTo({
-    url: "/pages/login/login",
-    fail: () => {
-      uni.reLaunch({
-        url: "/pages/login/login",
-      });
+  uni.showModal({
+    title: '登录提醒',
+    content: '需要先登录才能继续操作哦～点击"确定"跳转登录页',
+    confirmText: '确定登录',
+    cancelText: '取消',
+    success: (res) => {
+      // 用户操作完成后重置标志
+      resetAuthModalFlag();
+
+      if (res.confirm) {
+        uni.navigateTo({
+          url: '/pages/login/login',
+          fail: () => uni.reLaunch({ url: '/pages/login/login' })
+        });
+      }
     },
+    fail: () => {
+      // 弹窗失败也要重置标志
+      resetAuthModalFlag();
+    }
   });
+};
+
+// 防止重复弹窗的标志
+let isShowingAuthModal = false;
+
+/**
+ * 重置未授权弹窗标志
+ * 用于处理401时防止多次弹窗
+ */
+const resetAuthModalFlag = () => {
+  isShowingAuthModal = false;
 };
 
 /**
