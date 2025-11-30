@@ -101,13 +101,20 @@ export const chooseImage = (options = {}) => {
  * @param {string} options.url - 上传地址，默认使用配置的地址
  * @param {string} options.name - 文件对应的 key，默认为 'file'
  * @param {Object} options.formData - HTTP 请求中其他额外的 form data
+ * @param {number} options.studentId - 学生ID，用于检查上传限制
  * @returns {Promise} 返回上传结果
  */
 export const uploadImage = (filePath, options = {}) => {
-  const { url = UPLOAD_URL, formData = {}, name = "file" } = options;
+  const { url = UPLOAD_URL, formData = {}, name = "file", studentId } = options;
+
+  // 如果传入了studentId，添加到formData中
+  const finalFormData = { ...formData };
+  if (studentId) {
+    finalFormData.studentId = studentId;
+  }
 
   // 使用 request.upload 方法
-  return request.upload(url, filePath, formData, { name });
+  return request.upload(url, filePath, finalFormData, { name });
 };
 
 /**

@@ -83,7 +83,7 @@
                                     <view class="footer-item" @tap.stop="toggleLike(item)">
                                         <text class="icon" :class="{ liked: item.isLiked }">{{ item.isLiked ? '❤️' :
                                             '🤍'
-                                            }}</text>
+                                        }}</text>
                                         <text class="count" :class="{ liked: item.isLiked }">{{ item.likes }}</text>
                                     </view>
                                     <view class="footer-item" @tap.stop="viewComments(item)">
@@ -130,7 +130,8 @@ import {
     unfollowUser,
     getUnreadCount,
     getPostTypesMap,
-    deleteOwnPost
+    deleteOwnPost,
+    checkTodayPostCount
 } from '@/api/community'
 import { formatRichText } from '@/utils/richtext'
 
@@ -593,10 +594,58 @@ const collectPost = async (post) => {
 }
 
 // 发布帖子
-const publishPost = () => {
-    uni.navigateTo({
-        url: '/pages/publish-post/publish-post'
-    })
+const publishPost = async () => {
+    try {
+        // 获取用户信息
+        const userInfo = uni.getStorageSync('userInfo')
+        if (!userInfo || !userInfo.studentId) {
+            uni.showToast({
+                title: '请先登录',
+                icon: 'none'
+            })
+            return
+        }
+
+        // 显示加载提示
+        uni.showLoading({
+            title: '检查中...',
+            mask: true
+        })
+
+        // 调用接口检查今日发帖数量
+        const res = await checkTodayPostCount({ studentId: userInfo.studentId })
+
+        uni.hideLoading()
+
+        // 检查返回的发帖数量
+        const todayCount = res.data || 0
+
+        if (todayCount >= 3) {
+            // 已达到今日发帖上限
+            uni.showModal({
+                title: '提示',
+                content: '您今天已发布3篇帖子,已达到每日上限,请明天再来吧~',
+                showCancel: false,
+                confirmText: '知道了',
+                confirmColor: '#667eea'
+            })
+            return
+        }
+
+        // 未达到上限,允许发布
+        uni.navigateTo({
+            url: '/pages/publish-post/publish-post'
+        })
+    } catch (error) {
+        uni.hideLoading()
+        console.error('检查发帖数量失败:', error)
+
+        // 如果接口调用失败,显示错误提示
+        uni.showToast({
+            title: error.msg || '检查失败,请稍后重试',
+            icon: 'none'
+        })
+    }
 }
 
 // 删除帖子

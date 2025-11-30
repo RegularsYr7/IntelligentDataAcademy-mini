@@ -97,7 +97,7 @@
 import { ref, computed } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { uploadImage } from '@/utils/upload'
-import { submitPost, getPostTypesMap } from '@/api/community'
+import { submitPost, getPostTypesMap, checkTodayImageCount } from '@/api/community'
 
 const title = ref('')
 const content = ref('')
@@ -188,7 +188,7 @@ const goBack = () => {
 
 // 选择图片
 const chooseImage = async () => {
-    // 检查是否已达到上限
+    // 检查是否已达到单次上传上限
     if (imageList.value.length >= 9) {
         uni.showToast({
             title: '最多上传9张图片',
@@ -197,7 +197,83 @@ const chooseImage = async () => {
         return
     }
 
-    const count = 9 - imageList.value.length
+    // 获取用户信息
+    const userInfo = uni.getStorageSync('userInfo')
+    if (!userInfo || !userInfo.studentId) {
+        uni.showToast({
+            title: '请先登录',
+            icon: 'none'
+        })
+        return
+    }
+
+    // 检查今日已上传图片数量
+    try {
+        uni.showLoading({
+            title: '检查中...',
+            mask: true
+        })
+
+        const res = await checkTodayImageCount({ studentId: userInfo.studentId })
+        console.log('checkTodayImageCount 完整返回:', res)
+        console.log('res.data:', res.data)
+        const todayCount = res.data !== undefined ? res.data : 0
+        console.log('todayCount:', todayCount)
+
+        uni.hideLoading()
+
+        // 检查是否超过今日上传限制
+        if (todayCount >= 20) {
+            uni.showModal({
+                title: '提示',
+                content: '您今天已上传20张图片,已达到每日上限,请明天再来吧~',
+                showCancel: false,
+                confirmText: '知道了',
+                confirmColor: '#667eea'
+            })
+            return
+        }
+
+        // 计算还可以上传的数量
+        const remainingToday = 20 - todayCount
+        const remainingInPost = 9 - imageList.value.length
+        const maxCount = Math.min(remainingToday, remainingInPost)
+
+        if (maxCount <= 0) {
+            uni.showToast({
+                title: '今日上传已达上限',
+                icon: 'none'
+            })
+            return
+        }
+
+        // 如果剩余数量小于用户可能选择的数量,提示用户
+        if (remainingToday < remainingInPost) {
+            const result = await uni.showModal({
+                title: '温馨提示',
+                content: `您今天还可以上传${remainingToday}张图片,是否继续?`,
+                confirmText: '继续上传',
+                confirmColor: '#667eea'
+            })
+
+            if (!result.confirm) {
+                return
+            }
+        }
+
+        selectAndUploadImages(maxCount, userInfo.studentId, todayCount)
+    } catch (error) {
+        uni.hideLoading()
+        console.error('检查上传数量失败:', error)
+        uni.showToast({
+            title: error.msg || '检查失败,请稍后重试',
+            icon: 'none'
+        })
+    }
+}
+
+// 选择并上传图片
+const selectAndUploadImages = (count, studentId, currentTodayCount) => {
     uni.chooseImage({
         count: count,
         sizeType: ['compressed'],
@@ -242,8 +318,8 @@ const chooseImage = async () => {
                     try {
                         console.log(`开始上传第${i + 1}张图片:`, tempPath)
 
-                        // 调用上传接口
-                        const result = await uploadImage(tempPath)
+                        // 调用上传接口，传递studentId用于检查上传限制
+                        const result = await uploadImage(tempPath, { studentId })
                         console.log(`第${i + 1}张图片上传结果:`, result)
 
                         // 兼容不同的返回格式
@@ -268,6 +344,22 @@ const chooseImage = async () => {
                         console.log(`第${i + 1}张图片上传成功:`, imageUrl)
                     } catch (error) {
                         console.error(`第${i + 1}张图片上传失败:`, error)
+
+                        // 检查是否是达到上传限制的错误
+                        const errorMsg = error.msg || error.message || '上传失败'
+                        if (errorMsg.includes('已达到每日上限') || errorMsg.includes('上传20张')) {
+                            uni.hideLoading()
+                            uni.showModal({
+                                title: '提示',
+                                content: errorMsg,
+                                showCancel: false,
+                                confirmText: '知道了',
+                                confirmColor: '#667eea'
+                            })
+                            // 达到上限，停止继续上传
+                            break
+                        }
+
                         uni.showToast({
                             title: `第${i + 1}张上传失败`,
                             icon: 'none',

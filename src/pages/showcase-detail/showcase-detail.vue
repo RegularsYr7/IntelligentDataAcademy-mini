@@ -413,19 +413,24 @@ const drawCoverImage = (ctx, canvasW, startY, coverHeight) => {
                     if (imgRatio > coverRatio) {
                         // 图片更宽,按高度缩放
                         drawHeight = coverHeight
-                        drawWidth = imgHeight * imgRatio
-                        drawX = -(drawWidth - canvasW) / 2
+                        drawWidth = imgWidth * (coverHeight / imgHeight)
+                        drawX = (canvasW - drawWidth) / 2
                         drawY = startY
                     } else {
                         // 图片更高,按宽度缩放
                         drawWidth = canvasW
-                        drawHeight = imgWidth / imgRatio
+                        drawHeight = imgHeight * (canvasW / imgWidth)
                         drawX = 0
-                        drawY = startY - (drawHeight - coverHeight) / 2
+                        drawY = startY + (coverHeight - drawHeight) / 2
                     }
 
                     // 绘制图片
+                    ctx.save()
+                    ctx.beginPath()
+                    ctx.rect(0, startY, canvasW, coverHeight)
+                    ctx.clip()
                     ctx.drawImage(imageInfo.path, drawX, drawY, drawWidth, drawHeight)
+                    ctx.restore()
                     resolve()
                 } catch (error) {
                     console.error('绘制封面图片错误:', error)

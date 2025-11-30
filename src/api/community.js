@@ -108,6 +108,26 @@ export const getPostTypesMap = () => {
   return request.get("/edu/communityPost/types/map");
 };
 
+/**
+ * 检查用户今日发帖数量
+ * @param {Object} params - 查询参数
+ * @param {string} params.studentId - 学生ID
+ * @returns {Promise} 返回今日发帖数量
+ */
+export const checkTodayPostCount = (params) => {
+  return request.get("/edu/communityPost/checkTodayCount", params);
+};
+
+/**
+ * 检查用户今日上传图片数量
+ * @param {Object} params - 查询参数
+ * @param {string} params.studentId - 学生ID
+ * @returns {Promise} 返回今日已上传图片数量
+ */
+export const checkTodayImageCount = (params) => {
+  return request.get("/edu/communityPost/checkTodayImageCount", params);
+};
+
 // ==================== 评论相关 ====================
 
 /**
