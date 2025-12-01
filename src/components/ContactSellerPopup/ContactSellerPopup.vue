@@ -127,10 +127,7 @@ const copyText = (text, label) => {
             })
         },
         fail: () => {
-            uni.showToast({
-                title: '复制失败',
-                icon: 'none'
-            })
+
         }
     })
 }

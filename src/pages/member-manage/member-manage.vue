@@ -204,7 +204,6 @@ const confirmPromote = (member) => {
                     uni.showToast({ title: '操作成功', icon: 'success' })
                     loadMembers(orgId.value)
                 } catch (e) {
-                    uni.showToast({ title: e.message || '操作失败', icon: 'none' })
                 }
             }
         }
@@ -230,7 +229,6 @@ const confirmDemote = (member) => {
                     uni.showToast({ title: '操作成功', icon: 'success' })
                     loadMembers(orgId.value)
                 } catch (e) {
-                    uni.showToast({ title: e.message || '操作失败', icon: 'none' })
                 }
             }
         }
@@ -256,7 +254,6 @@ const confirmRemove = (member) => {
                     uni.showToast({ title: '操作成功', icon: 'success' })
                     loadMembers(orgId.value)
                 } catch (e) {
-                    uni.showToast({ title: e.message || '操作失败', icon: 'none' })
                 }
             }
         }

@@ -349,10 +349,7 @@ const saveAsImage = async () => {
                                             }
                                         })
                                     } else {
-                                        uni.showToast({
-                                            title: '保存失败',
-                                            icon: 'none'
-                                        })
+
                                     }
                                     generating.value = false
                                 }
@@ -374,10 +371,7 @@ const saveAsImage = async () => {
     } catch (error) {
         console.error('保存图片失败:', error)
         uni.hideLoading()
-        uni.showToast({
-            title: '保存失败',
-            icon: 'none'
-        })
+
         generating.value = false
     }
 }

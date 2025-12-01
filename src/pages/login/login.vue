@@ -290,18 +290,12 @@ const handlePhoneNumberForBind = async (e) => {
                 },
                 fail: (err) => {
                     console.error('wx.login失败:', err)
-                    uni.showToast({
-                        title: '获取登录凭证失败',
-                        icon: 'none'
-                    })
+
                 }
             })
         } catch (error) {
             console.error('绑定过程出错:', error)
-            uni.showToast({
-                title: '绑定失败',
-                icon: 'none'
-            })
+
         }
     } else {
         uni.showToast({

@@ -392,10 +392,7 @@ const handleCheckin = () => {
         },
         fail: (err) => {
             console.error('扫码失败:', err)
-            uni.showToast({
-                title: '扫码失败',
-                icon: 'none'
-            })
+
         }
     })
 }
@@ -430,10 +427,7 @@ const handleCheckinSubmit = async (qrData) => {
         }
     } catch (error) {
         console.error('签到失败:', error)
-        uni.showToast({
-            title: error.message || '签到失败',
-            icon: 'none'
-        })
+
     }
 }
 
@@ -509,10 +503,7 @@ const handleSignup = async () => {
                         })
                     } catch (error) {
                         console.error('取消报名失败:', error)
-                        uni.showToast({
-                            title: error.message || '取消报名失败',
-                            icon: 'none'
-                        })
+
                     }
                 }
             }
@@ -538,10 +529,7 @@ const handleSignup = async () => {
                         })
                     } catch (error) {
                         console.error('报名失败:', error)
-                        uni.showToast({
-                            title: error.message || '报名失败',
-                            icon: 'none'
-                        })
+
                     }
                 }
             }

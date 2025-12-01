@@ -31,9 +31,7 @@
                     <view class="org-content">
                         <view class="org-header">
                             <text class="org-name">{{ org.name }}</text>
-                            <view class="org-level" :class="'level-' + org.level">
-                                <text class="level-text">{{ getLevelText(org.level) }}</text>
-                            </view>
+
                         </view>
                         <text class="org-intro">{{ org.intro }}</text>
                         <view class="org-meta">
@@ -57,26 +55,6 @@
                 </view>
             </view>
 
-            <!-- 推荐组织 -->
-            <!-- <view class="recommend-section" v-if="recommendOrganizations.length > 0">
-                <view class="section-header">
-                    <text class="section-title">推荐组织</text>
-                    <text class="section-more" @tap="goToOrganizationList">查看更多 ›</text>
-                </view>
-                <view class="recommend-list">
-                    <view class="recommend-item" v-for="(org, index) in recommendOrganizations" :key="index"
-                        @tap="goToDetail(org)">
-                        <image class="recommend-logo" :src="org.logo" mode="aspectFill"></image>
-                        <view class="recommend-info">
-                            <text class="recommend-name">{{ org.name }}</text>
-                            <view class="recommend-level" :class="'level-' + org.level">
-                                {{ getLevelText(org.level) }}
-                            </view>
-                        </view>
-                        <text class="recommend-count">{{ org.memberCount }}人</text>
-                    </view>
-                </view>
-            </view> -->
         </view>
     </view>
 </template>
@@ -176,7 +154,7 @@ const getLevelText = (level) => {
     const levelMap = {
         '1': '校级',
         '2': '院级',
-        '3': '班级',
+        '3': '班级'
     }
     return levelMap[level] || '未知'
 }

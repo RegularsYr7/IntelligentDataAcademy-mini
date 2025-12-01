@@ -195,8 +195,6 @@ const loadLandmarks = async () => {
         console.log('当前分类:', currentCategory.value)
 
         const params = {}
-        // 如果需要按分类过滤,需要将前端分类转换回后端的landmarkType
-        // 暂时不传category,获取全部数据后在前端过滤
 
         const res = await getLandmarkList(params)
         console.log('地标数据API响应:', res)
@@ -228,10 +226,7 @@ const loadLandmarks = async () => {
         console.log('地标数量:', locations.value.length)
     } catch (error) {
         console.error('加载地标数据失败:', error)
-        uni.showToast({
-            title: '加载地标失败',
-            icon: 'none'
-        })
+
         locations.value = []
     }
 }
@@ -606,10 +601,7 @@ const navigateToLocation = (location) => {
         },
         fail: (err) => {
             console.error('打开地图失败', err)
-            uni.showToast({
-                title: '打开地图失败',
-                icon: 'none'
-            })
+
         }
     })
 }

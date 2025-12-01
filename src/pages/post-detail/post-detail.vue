@@ -30,7 +30,14 @@
                 <text class="post-title" v-if="post.title">{{ post.title }}</text>
 
                 <!-- 帖子内容 -->
-                <rich-text class="post-content" :nodes="formattedContent"></rich-text>
+                <view class="post-content-container" :class="{ 'is-collapsed': !isPostExpanded && showPostExpandBtn }">
+                    <rich-text class="post-content" :nodes="formattedContent"></rich-text>
+                    <view class="content-mask" v-if="!isPostExpanded && showPostExpandBtn"></view>
+                </view>
+                <view class="expand-toggle" v-if="showPostExpandBtn" @tap="isPostExpanded = !isPostExpanded">
+                    <text>{{ isPostExpanded ? '收起全文' : '展开全文' }}</text>
+                    <text class="arrow">{{ isPostExpanded ? '▲' : '▼' }}</text>
+                </view>
 
                 <!-- 图片 -->
                 <view class="images-grid" v-if="postImages.length > 0" :class="'grid-' + postImages.length">
@@ -78,7 +85,13 @@
                                 <text class="comment-username">{{ comment.studentCommunityName || comment.studentName ||
                                     '匿名用户' }}</text>
                             </view>
-                            <text class="comment-text">{{ comment.content }}</text>
+                            <text class="comment-text"
+                                :class="{ 'text-collapsed': !comment.expanded && comment.showExpand }">{{
+                                    comment.content }}</text>
+                            <!-- <view class="comment-expand-toggle" v-if="comment.showExpand"
+                                @tap.stop="comment.expanded = !comment.expanded">
+                                <text>{{ comment.expanded ? '收起' : '展开' }}</text>
+                            </view> -->
                             <view class="comment-footer">
                                 <text class="comment-time">{{ formatTime(comment.createTime) }}</text>
                                 <view class="comment-actions">
@@ -147,7 +160,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, getCurrentInstance } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import {
     getPostDetail,
@@ -166,6 +179,7 @@ import {
 } from '@/api/community'
 import { formatRichText } from '@/utils/richtext'
 
+const instance = getCurrentInstance()
 const postId = ref(null)
 const loading = ref(true)
 const post = ref(null)
@@ -181,6 +195,10 @@ const currentUserId = ref(null)
 const isFollowed = ref(false)
 const isLiked = ref(false)
 const isCollected = ref(false)
+
+// 内容折叠状态
+const isPostExpanded = ref(false)
+const showPostExpandBtn = ref(false)
 
 // 格式化富文本内容
 const formattedContent = computed(() => {
@@ -240,10 +258,20 @@ const loadPostDetail = async () => {
 
         if (response && response.post) {
             post.value = response.post
-            comments.value = response.comments || []
+            // 处理评论数据，添加折叠状态
+            comments.value = (response.comments || []).map(c => ({
+                ...c,
+                expanded: false,
+                showExpand: c.content && c.content.length > 120 // 超过120字显示展开按钮
+            }))
             isFollowed.value = response.isFollowed || false
             isLiked.value = response.isLiked || false
             isCollected.value = response.isCollected || false
+
+            // 检查帖子内容高度
+            nextTick(() => {
+                checkPostContentHeight()
+            })
         }
     } catch (error) {
         console.error('加载帖子详情失败:', error)
@@ -251,6 +279,18 @@ const loadPostDetail = async () => {
     } finally {
         loading.value = false
     }
+}
+
+// 检查帖子内容高度
+const checkPostContentHeight = () => {
+    const query = uni.createSelectorQuery().in(instance)
+    query.select('.post-content').boundingClientRect(data => {
+        if (data && data.height > 300) { // 超过300px显示展开按钮
+            showPostExpandBtn.value = true
+        } else {
+            showPostExpandBtn.value = false
+        }
+    }).exec()
 }
 
 // 格式化时间
@@ -780,6 +820,41 @@ const deleteComment = async (comment) => {
     display: block;
     margin-bottom: 20rpx;
     line-height: 1.5;
+    word-break: break-all;
+}
+
+.post-content-container {
+    position: relative;
+    margin-bottom: 24rpx;
+
+    &.is-collapsed {
+        max-height: 600rpx;
+        overflow: hidden;
+    }
+
+    .content-mask {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 120rpx;
+        background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 1));
+        z-index: 1;
+    }
+}
+
+.expand-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 24rpx;
+    color: #3a7bd5;
+    font-size: 28rpx;
+    gap: 8rpx;
+
+    .arrow {
+        font-size: 24rpx;
+    }
 }
 
 .post-content {
@@ -787,8 +862,8 @@ const deleteComment = async (comment) => {
     color: #606266;
     line-height: 1.8;
     display: block;
-    margin-bottom: 24rpx;
     white-space: pre-wrap;
+    word-break: break-all;
 }
 
 .images-grid {
@@ -978,6 +1053,22 @@ const deleteComment = async (comment) => {
         line-height: 1.6;
         display: block;
         margin-bottom: 16rpx;
+        word-break: break-all;
+
+        &.text-collapsed {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 4;
+            line-clamp: 4;
+            overflow: hidden;
+        }
+    }
+
+    .comment-expand-toggle {
+        font-size: 26rpx;
+        color: #3a7bd5;
+        margin-bottom: 16rpx;
+        display: inline-block;
     }
 
     .comment-footer {
@@ -1027,6 +1118,7 @@ const deleteComment = async (comment) => {
         line-height: 1.6;
         margin-bottom: 16rpx;
         padding: 8rpx 0;
+        word-break: break-all;
 
         &:last-child {
             margin-bottom: 0;

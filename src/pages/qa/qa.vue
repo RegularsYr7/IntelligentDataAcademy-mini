@@ -167,7 +167,7 @@ const loadPostTypes = async () => {
         const res = await getPostTypesMap()
         console.log('帖子类型映射原始数据:', res)
 
-        // 接口直接返回数组(与其他map接口一样)
+
         const dataArray = Array.isArray(res) ? res : (res.data || [])
         console.log('数据数组:', dataArray)
 
@@ -525,9 +525,8 @@ const toggleLike = async (post) => {
 
 // 查看评论
 const viewComments = (post) => {
-    uni.showToast({
-        title: '查看评论',
-        icon: 'none'
+    uni.navigateTo({
+        url: `/pages/post-detail/post-detail?id=${post.id}`
     })
 }
 
@@ -1029,6 +1028,13 @@ const deletePost = async (post) => {
     display: block;
     margin-bottom: 12rpx;
     line-height: 1.5;
+    word-break: break-all;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .post-detail {
@@ -1043,6 +1049,7 @@ const deletePost = async (post) => {
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    word-break: break-all;
 }
 
 /* 图片网格 */

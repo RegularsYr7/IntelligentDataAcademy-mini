@@ -360,19 +360,10 @@ const changeAvatar = async () => {
     try {
         console.log('=== 开始修改头像流程 ===')
 
-        // 显示加载提示
-        uni.showLoading({
-            title: '检查中...',
-            mask: true
-        })
-
         // 1. 先检查本月修改次数
         console.log('调用 checkMonthlyAvatarChanges 接口...')
         const checkResult = await checkMonthlyAvatarChanges()
         console.log('头像修改次数检查结果:', checkResult)
-
-        // 隐藏加载提示
-        uni.hideLoading()
 
         // 检查返回数据的有效性
         if (!checkResult) {
@@ -507,10 +498,7 @@ const onBirthdayChange = async (e) => {
     try {
         await saveUserInfo({ birthday: e.detail.value })
     } catch (error) {
-        uni.showToast({
-            title: '保存失败',
-            icon: 'none'
-        })
+
     }
 }
 
@@ -553,10 +541,7 @@ const onHometownChange = async (e) => {
                 hometown: newHometown
             })
         } catch (error) {
-            uni.showToast({
-                title: '保存失败',
-                icon: 'none'
-            })
+
         }
     }
 }
@@ -569,10 +554,7 @@ const onBloodTypeChange = async (e) => {
     try {
         await saveUserInfo({ bloodType: userInfo.value.bloodType })
     } catch (error) {
-        uni.showToast({
-            title: '保存失败',
-            icon: 'none'
-        })
+
     }
 }
 

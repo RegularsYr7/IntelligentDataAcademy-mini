@@ -213,10 +213,7 @@ const generateQRCode = async () => {
     } catch (error) {
         uni.hideLoading()
         console.error('生成二维码失败:', error)
-        uni.showToast({
-            title: error.message || '生成失败',
-            icon: 'none'
-        })
+
     }
 }
 
@@ -264,13 +261,9 @@ const finishActivity = async () => {
         success: async (res) => {
             if (res.confirm) {
                 try {
-                    uni.showLoading({ title: '处理中...' })
-
                     const result = await finishActivityAPI({
                         activityId: activityId.value
                     })
-
-                    uni.hideLoading()
 
                     if (result.success) {
                         const stats = result.statistics

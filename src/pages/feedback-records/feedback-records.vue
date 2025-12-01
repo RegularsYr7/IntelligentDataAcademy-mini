@@ -158,10 +158,6 @@ const loadRecords = async () => {
 
     } catch (error) {
         console.error('获取反馈记录失败:', error)
-        uni.showToast({
-            title: '获取记录失败',
-            icon: 'none'
-        })
     } finally {
         loading.value = false
     }

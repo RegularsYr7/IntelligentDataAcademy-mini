@@ -225,10 +225,7 @@ const saveAsImage = async () => {
         query.exec(async (res) => {
             if (!res || res.length === 0) {
                 uni.hideLoading()
-                uni.showToast({
-                    title: '获取页面信息失败',
-                    icon: 'none'
-                })
+
                 generating.value = false
                 return
             }
@@ -341,10 +338,7 @@ const saveAsImage = async () => {
                                             }
                                         })
                                     } else {
-                                        uni.showToast({
-                                            title: '保存失败',
-                                            icon: 'none'
-                                        })
+
                                     }
                                     generating.value = false
                                 }
@@ -366,10 +360,7 @@ const saveAsImage = async () => {
     } catch (error) {
         console.error('保存图片失败:', error)
         uni.hideLoading()
-        uni.showToast({
-            title: '保存失败',
-            icon: 'none'
-        })
+
         generating.value = false
     }
 }

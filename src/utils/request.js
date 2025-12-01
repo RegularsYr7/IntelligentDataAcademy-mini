@@ -454,10 +454,7 @@ const download = (url, options = {}) => {
         if (response.statusCode === 200) {
           resolve(response.tempFilePath);
         } else {
-          uni.showToast({
-            title: "下载失败",
-            icon: "none",
-          });
+
           reject(response);
         }
       },

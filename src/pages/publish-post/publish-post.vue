@@ -389,10 +389,7 @@ const selectAndUploadImages = (count) => {
         },
         fail: (error) => {
             console.error('选择图片失败:', error)
-            uni.showToast({
-                title: '选择图片失败',
-                icon: 'none'
-            })
+
         }
     })
 }// 删除图片
@@ -902,24 +899,22 @@ const publish = async () => {
 }
 
 .category-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20rpx;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24rpx;
     width: 100%;
     padding-bottom: 40rpx;
 }
 
 .category-option {
-    flex: 1;
-    min-width: calc(50% - 10rpx);
-    max-width: calc(50% - 10rpx);
     position: relative;
-    padding: 30rpx 20rpx;
+    padding: 24rpx;
     background-color: #f9f9f9;
     border-radius: 20rpx;
     border: 2rpx solid transparent;
     transition: all 0.3s;
     box-sizing: border-box;
+    width: 100%;
 
     &.active {
         background: #f0f7ff;
@@ -944,11 +939,10 @@ const publish = async () => {
 .option-content {
     position: relative;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     width: 100%;
-    gap: 12rpx;
+    gap: 16rpx;
 }
 
 .option-icon {
