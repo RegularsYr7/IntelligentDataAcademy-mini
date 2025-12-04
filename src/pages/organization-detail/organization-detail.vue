@@ -389,7 +389,7 @@ const joinOrg = async () => {
 
                 uni.showToast({
                     title: '申请已提交',
-                    icon: 'success'
+                    icon: 'none'
                 })
             } catch (error) {
                 uni.showToast({

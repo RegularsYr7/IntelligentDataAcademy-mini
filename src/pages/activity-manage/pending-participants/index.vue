@@ -67,7 +67,7 @@ const handleApprove = async (item) => {
 
                     uni.showToast({
                         title: '已录取',
-                        icon: 'success'
+                        icon: 'none'
                     })
                     // 刷新列表
                     refreshList.value.reload()

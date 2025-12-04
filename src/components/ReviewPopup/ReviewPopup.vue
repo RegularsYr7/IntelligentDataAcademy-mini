@@ -123,7 +123,7 @@ const handleSubmit = () => {
 
     uni.showToast({
         title: '评价成功',
-        icon: 'success'
+        icon: 'none'
     })
 
     setTimeout(() => {

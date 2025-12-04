@@ -188,7 +188,7 @@ const accountLogin = async (formData) => {
 
         uni.showToast({
             title: '登录成功',
-            icon: 'success',
+            icon: 'none',
             duration: 1500
         })
 
@@ -277,7 +277,7 @@ const handlePhoneNumberForBind = async (e) => {
 
                         uni.showToast({
                             title: '绑定成功',
-                            icon: 'success'
+                            icon: 'none'
                         })
 
                         setTimeout(() => {
@@ -409,7 +409,7 @@ const getPhoneNumber = async (e) => {
 
             uni.showToast({
                 title: '登录成功',
-                icon: 'success',
+                icon: 'none',
                 duration: 1500
             })
 
@@ -487,7 +487,7 @@ const performLogin = () => {
 
         uni.showToast({
             title: '登录成功',
-            icon: 'success',
+            icon: 'none',
             duration: 1500
         })
 

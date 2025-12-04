@@ -314,7 +314,7 @@ const saveAsImage = async () => {
                                 success: () => {
                                     uni.showToast({
                                         title: '已保存到相册',
-                                        icon: 'success'
+                                        icon: 'none'
                                     })
                                     generating.value = false
                                 },

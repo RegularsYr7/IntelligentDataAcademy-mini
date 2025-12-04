@@ -123,7 +123,7 @@ const copyText = (text, label) => {
         success: () => {
             uni.showToast({
                 title: `${label}已复制`,
-                icon: 'success'
+                icon: 'none'
             })
         },
         fail: () => {

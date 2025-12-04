@@ -8,7 +8,7 @@
                         <text class="current-date">{{ currentDateText }}</text>
                         <text class="week-info" v-if="displayWeek === currentWeek">第{{ displayWeek }}周 星期{{
                             currentDayText
-                        }}</text>
+                            }}</text>
                         <text class="week-info" v-else>第{{ displayWeek }}周 当前为第{{ currentWeek }}周</text>
                     </view>
                     <view class="calibrate-btn" v-if="displayWeek !== currentWeek" @tap="backToCurrentWeek">
@@ -60,12 +60,12 @@
                                             borderLeftColor: getCourseColor(getCourse(dayIndex, timeIndex, week).courseName).border
                                         }">
                                         <text class="course-name">{{ getCourse(dayIndex, timeIndex, week).courseName
-                                        }}</text>
+                                            }}</text>
                                         <text class="course-location">📍 {{ getCourse(dayIndex, timeIndex,
                                             week).classroom
-                                        }}</text>
-                                        <text class="course-teacher">{{ getCourse(dayIndex, timeIndex, week).teacherName
                                             }}</text>
+                                        <text class="course-teacher">{{ getCourse(dayIndex, timeIndex, week).teacherName
+                                        }}</text>
                                     </view>
                                 </view>
                             </view>
@@ -275,8 +275,45 @@ const getCourseColor = (name) => {
     return courseColors[index]
 }
 
-// 课程数据（模拟数据）
-const courses = ref({})
+// 课程数据（规则列表）
+const courses = ref([])
+const SCHEDULE_CACHE_KEY = 'schedule_data_cache'
+// 预处理后的课程表数据 Map<week-day-slot, Course>
+const scheduleMap = ref(new Map())
+
+// 预处理课程数据
+const processScheduleData = (courseList) => {
+    console.time('processScheduleData')
+    const map = new Map()
+
+    if (!courseList || !Array.isArray(courseList)) {
+        scheduleMap.value = map
+        return
+    }
+
+    // 遍历所有课程规则
+    courseList.forEach(course => {
+        // 遍历该课程的有效周次
+        for (let w = course.startWeek; w <= course.endWeek; w++) {
+            // 检查单双周
+            // weekType: 0=全部, 1=单周, 2=双周
+            if (course.weekType === '1' && w % 2 === 0) continue
+            if (course.weekType === '2' && w % 2 !== 0) continue
+
+            // 生成Key: week-dayIndex-timeIndex
+            // course.weekDay: 1-7 (周一到周日) -> dayIndex: 0-6
+            // course.timeSlot: 0-4
+            const key = `${w}-${course.weekDay - 1}-${course.timeSlot}`
+
+            // 如果同一个格子有冲突，这里简单的覆盖，或者可以做成数组
+            map.set(key, course)
+        }
+    })
+
+    scheduleMap.value = map
+    console.timeEnd('processScheduleData')
+    console.log('课程表预处理完成，Map大小:', map.size)
+}
 
 // 加载当前学期
 const loadCurrentSemester = async () => {
@@ -358,17 +395,59 @@ const loadSchedule = async () => {
             return
         }
 
+        // 1. 尝试读取缓存
+        const cachedWrapper = uni.getStorageSync(SCHEDULE_CACHE_KEY)
+        let cachedData = null
+
+        if (cachedWrapper &&
+            cachedWrapper.classId === classId &&
+            cachedWrapper.semester === semesterName.value) {
+            console.log('读取到匹配的课表缓存')
+            cachedData = cachedWrapper.data
+            courses.value = cachedData
+            // 立即预处理缓存数据
+            processScheduleData(cachedData)
+        }
+
         const res = await getSchedule({
             classId,
             semester: semesterName.value
         })
 
-        // 后端返回的数据结构是 {周次: {星期: {节次: {课程信息}}}}
-        // 直接赋值,不需要转换
-        if (res && typeof res === 'object') {
-            courses.value = res
+        // 后端现在返回 List<EduSchedule> 数组
+        if (res && Array.isArray(res)) {
+            // 2. 对比数据
+            const isDifferent = JSON.stringify(res) !== JSON.stringify(cachedData)
+
+            if (isDifferent) {
+                console.log('课表数据有更新')
+                courses.value = res
+                // 预处理新数据
+                processScheduleData(res)
+
+                // 更新缓存
+                uni.setStorageSync(SCHEDULE_CACHE_KEY, {
+                    classId,
+                    semester: semesterName.value,
+                    data: res
+                })
+
+                // 如果之前有缓存（说明是更新），提示用户
+                if (cachedData) {
+                    uni.showToast({
+                        title: '课表已更新',
+                        icon: 'none'
+                    })
+                }
+            } else {
+                console.log('课表数据无变化')
+            }
         } else {
             console.log('响应数据格式不正确')
+            if (!cachedData) {
+                courses.value = []
+                processScheduleData([])
+            }
         }
     } catch (error) {
         console.error('加载课程表失败:', error)
@@ -386,11 +465,9 @@ const isToday = (dayIndex, week) => {
 
 // 获取课程
 const getCourse = (dayIndex, timeIndex, week) => {
-    const weekData = courses.value[week]
-    if (!weekData) return null
-    const dayData = weekData[dayIndex]
-    if (!dayData) return null
-    return dayData[timeIndex] || null
+    // 使用预处理的Map进行O(1)查找
+    const key = `${week}-${dayIndex}-${timeIndex}`
+    return scheduleMap.value.get(key) || null
 }
 
 // swiper切换事件

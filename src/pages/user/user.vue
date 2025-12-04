@@ -377,11 +377,12 @@ const handleLogout = () => {
     // 清除登录信息
     uni.removeStorageSync('userToken')
     uni.removeStorageSync('userInfo')
+    uni.removeStorageSync('schedule_data_cache')
     isLoggedIn.value = false
 
     uni.showToast({
         title: '已退出登录',
-        icon: 'success',
+        icon: 'none',
         duration: 1500
     })
 

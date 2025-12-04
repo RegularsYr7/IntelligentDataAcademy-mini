@@ -362,7 +362,7 @@ const selectAndUploadImages = (count) => {
                 if (uploadedImages.value.length > 0) {
                     uni.showToast({
                         title: `成功上传${uploadedImages.value.length}张`,
-                        icon: 'success',
+                        icon: 'none',
                         duration: 1500
                     })
                 }
@@ -489,7 +489,7 @@ const publish = async () => {
 
         uni.showToast({
             title: '发布成功',
-            icon: 'success',
+            icon: 'none',
             duration: 2000
         })
 

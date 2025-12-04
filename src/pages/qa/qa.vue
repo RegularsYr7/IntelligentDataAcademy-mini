@@ -83,7 +83,7 @@
                                     <view class="footer-item" @tap.stop="toggleLike(item)">
                                         <text class="icon" :class="{ liked: item.isLiked }">{{ item.isLiked ? '❤️' :
                                             '🤍'
-                                            }}</text>
+                                        }}</text>
                                         <text class="count" :class="{ liked: item.isLiked }">{{ item.likes }}</text>
                                     </view>
                                     <view class="footer-item" @tap.stop="viewComments(item)">
@@ -440,7 +440,7 @@ const followUser = async (post) => {
             post.isFollowed = true
             uni.showToast({
                 title: '已关注 ' + post.userName,
-                icon: 'success'
+                icon: 'none'
             })
         }
     } catch (error) {

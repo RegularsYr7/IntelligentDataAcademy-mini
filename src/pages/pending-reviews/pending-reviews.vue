@@ -160,7 +160,7 @@ const processApplication = async (item, approved) => {
 
         uni.showToast({
             title: approved ? '已同意' : '已拒绝',
-            icon: 'success'
+            icon: 'none'
         })
 
         // Remove from list

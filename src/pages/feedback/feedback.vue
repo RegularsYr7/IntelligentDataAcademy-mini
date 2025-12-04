@@ -140,7 +140,7 @@ const addPhoto = async () => {
 
         uni.showToast({
             title: '图片上传成功',
-            icon: 'success'
+            icon: 'none'
         })
     } catch (error) {
         console.error('图片上传失败:', error)
@@ -223,7 +223,7 @@ const submitForm = async () => {
 
         uni.showToast({
             title: '提交成功',
-            icon: 'success'
+            icon: 'none'
         })
 
         // 延迟跳转到反馈记录页

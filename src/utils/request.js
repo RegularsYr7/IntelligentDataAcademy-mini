@@ -199,6 +199,7 @@ const handleUnauthorized = () => {
   // 清除本地存储
   uni.removeStorageSync("userToken");
   uni.removeStorageSync("userInfo");
+  uni.removeStorageSync("schedule_data_cache");
 
   uni.showModal({
     title: '登录提醒',

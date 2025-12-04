@@ -192,7 +192,7 @@ const contactUser = () => {
                     success: () => {
                         uni.showToast({
                             title: '已复制',
-                            icon: 'success'
+                            icon: 'none'
                         })
                     }
                 })

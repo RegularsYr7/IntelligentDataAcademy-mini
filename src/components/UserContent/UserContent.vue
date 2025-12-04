@@ -1,7 +1,7 @@
 <template>
     <view class="content-wrapper">
         <!-- 个人信息卡片 -->
-        <view class="profile-card">
+        <view class="profile-card" @tap="viewBasicInfo">
             <view class="profile-layout">
                 <view class="profile-left">
                     <image class="avatar" :src="userInfo.avatar" mode="aspectFill"></image>

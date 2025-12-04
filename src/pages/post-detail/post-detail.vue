@@ -118,13 +118,13 @@
                                     <view class="reply-item" @tap="replyToReply(reply, comment)"
                                         @longpress="onReplyLongPress(reply)">
                                         <text class="reply-user">{{ reply.studentCommunityName || reply.studentName
-                                            }}</text>
+                                        }}</text>
                                         <text class="reply-arrow" v-if="reply.replyToName"> 回复 </text>
                                         <text class="reply-target" v-if="reply.replyToName">{{
                                             reply.replyToCommunityName || reply.replyToName
-                                            }}</text>
+                                        }}</text>
                                         <text class="reply-content">{{ reply.replyToName ? ': ' : '' }}{{ reply.content
-                                            }}</text>
+                                        }}</text>
                                     </view>
                                 </view>
                             </view>
@@ -362,7 +362,7 @@ const toggleFollow = async () => {
         isFollowed.value = isFollowing
         uni.showToast({
             title: isFollowing ? '已关注' : '已取消关注',
-            icon: 'success'
+            icon: 'none'
         })
     } catch (error) {
         console.error('关注操作失败:', error)
@@ -578,7 +578,7 @@ const sendComment = async () => {
 
         uni.showToast({
             title: '评论成功',
-            icon: 'success'
+            icon: 'none'
         })
 
         // 清空输入框和回复目标

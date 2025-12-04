@@ -218,8 +218,8 @@
 
                 <!-- 活动进行中: 显示签到按钮(参与者) 或 管理活动按钮(管理员) -->
                 <view v-if="currentStatus === 4" class="action-buttons">
-                    <!-- 普通参与者: 签到按钮 -->
-                    <button v-if="isRegistered" class="checkin-btn" @tap="handleCheckin">
+                    <!-- 普通参与者: 签到按钮 (未签到时显示) -->
+                    <button v-if="isRegistered && !isSigned" class="checkin-btn" @tap="handleCheckin">
                         <text class="btn-icon">📷</text>
                         <text>签到</text>
                     </button>
@@ -274,6 +274,8 @@ const showFixedFooter = computed(() => {
 
 // 是否已报名
 const isRegistered = ref(false)
+// 是否已签到
+const isSigned = ref(false)
 
 // 活动详情数据
 const activity = ref({
@@ -425,10 +427,6 @@ const handleCheckinSubmit = async (qrData) => {
         })
 
         if (res.success) {
-            uni.showToast({
-                title: res.message || '签到成功',
-                icon: 'success'
-            })
 
             setTimeout(() => {
                 loadActivityDetail(activity.value.activityId)
@@ -523,7 +521,7 @@ const handleSignup = async () => {
 
                         uni.showToast({
                             title: '取消报名成功',
-                            icon: 'success'
+                            icon: 'none'
                         })
                     } catch (error) {
                         console.error('取消报名失败:', error)
@@ -549,7 +547,7 @@ const handleSignup = async () => {
 
                         uni.showToast({
                             title: '报名成功',
-                            icon: 'success'
+                            icon: 'none'
                         })
                     } catch (error) {
                         console.error('报名失败:', error)
@@ -638,6 +636,8 @@ const loadActivityDetail = async (id) => {
         // enrollStatus: "0"=已报名未签到, "1"=已签到, "2"=已完成, "3"=已取消, null=未报名
         const enrollStatus = res.enrollStatus
         isRegistered.value = res.isRegistered || (enrollStatus !== null && enrollStatus !== '3')
+        // 判断是否已签到
+        isSigned.value = res.isSigned || false
 
         // 直接使用后端返回的字段,不进行映射
         activity.value = {
@@ -744,7 +744,7 @@ onLoad((options) => {
     } else {
         console.error('活动ID无效:', id)
         uni.showToast({
-            title: '活动ID不存在',
+            title: '活动不存在',
             icon: 'none',
             duration: 2000
         })

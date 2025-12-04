@@ -221,7 +221,7 @@ const takePhoto = async () => {
 
         uni.showToast({
             title: '照片已上传',
-            icon: 'success'
+            icon: 'none'
         })
     } catch (error) {
         console.error('拍照或上传失败', error)
@@ -306,10 +306,6 @@ const submitSignIn = async () => {
             photoUrl: photoUrl.value                 // 自拍照片URL
         })
 
-        uni.showToast({
-            title: '签到成功',
-            icon: 'success'
-        })
 
         // 1秒后跳转到签到记录页
         setTimeout(() => {

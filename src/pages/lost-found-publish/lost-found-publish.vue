@@ -231,7 +231,7 @@ const submitForm = () => {
 
         uni.showToast({
             title: '发布成功',
-            icon: 'success'
+            icon: 'none'
         })
 
         // 返回上一页

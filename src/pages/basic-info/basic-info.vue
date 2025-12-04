@@ -456,7 +456,7 @@ const changeAvatar = async () => {
             } else {
                 uni.showToast({
                     title: '修改成功',
-                    icon: 'success'
+                    icon: 'none'
                 })
             }
         } else {
@@ -586,7 +586,7 @@ const onCommunityNameChange = async () => {
         originalUserInfo.value.communityName = communityName
         uni.showToast({
             title: '保存成功',
-            icon: 'success'
+            icon: 'none'
         })
     } catch (error) {
         console.error('保存社区昵称失败:', error)

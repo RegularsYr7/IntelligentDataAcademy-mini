@@ -302,7 +302,7 @@ const submitAppend = async () => {
 
         uni.showToast({
             title: '追加成功',
-            icon: 'success'
+            icon: 'none'
         })
 
         // 清空输入框

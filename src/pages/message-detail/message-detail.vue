@@ -165,7 +165,7 @@ const followBack = async () => {
 
         uni.showToast({
             title: '已关注',
-            icon: 'success'
+            icon: 'none'
         })
     } catch (e) {
         console.error('关注失败', e)
@@ -186,7 +186,7 @@ const handleDelete = () => {
             if (res.confirm) {
                 try {
                     await deleteMessage(messageId.value)
-                    uni.showToast({ title: '删除成功', icon: 'success' })
+                    uni.showToast({ title: '删除成功', icon: 'none' })
                     setTimeout(() => {
                         uni.navigateBack({
                             success: () => {
