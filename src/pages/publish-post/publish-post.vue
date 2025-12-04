@@ -209,10 +209,6 @@ const chooseImage = async () => {
 
     // 检查今日已上传图片数量
     try {
-        uni.showLoading({
-            title: '检查中...',
-            mask: true
-        })
 
         const res = await checkTodayImageCount()
         console.log('checkTodayImageCount 完整返回:', res)
@@ -220,7 +216,7 @@ const chooseImage = async () => {
         const todayCount = res.data !== undefined ? res.data : 0
         console.log('todayCount:', todayCount)
 
-        uni.hideLoading()
+
 
         // 检查是否超过今日上传限制
         if (todayCount >= 20) {
@@ -263,7 +259,7 @@ const chooseImage = async () => {
 
         selectAndUploadImages(maxCount)
     } catch (error) {
-        uni.hideLoading()
+
         console.error('检查上传数量失败:', error)
         uni.showToast({
             title: error.msg || '检查失败,请稍后重试',
@@ -293,11 +289,7 @@ const selectAndUploadImages = (count) => {
 
             console.log('待上传的图片路径:', tempPaths)
 
-            // 显示上传进度
-            uni.showLoading({
-                title: `上传中 0/${tempPaths.length}`,
-                mask: true
-            })
+
 
             try {
                 // 逐个上传图片
@@ -309,11 +301,7 @@ const selectAndUploadImages = (count) => {
                         continue
                     }
 
-                    // 更新进度提示
-                    uni.showLoading({
-                        title: `上传中 ${i + 1}/${tempPaths.length}`,
-                        mask: true
-                    })
+
 
                     try {
                         console.log(`开始上传第${i + 1}张图片:`, tempPath)
@@ -348,7 +336,7 @@ const selectAndUploadImages = (count) => {
                         // 检查是否是达到上传限制的错误
                         const errorMsg = error.msg || error.message || '上传失败'
                         if (errorMsg.includes('已达到每日上限') || errorMsg.includes('上传20张')) {
-                            uni.hideLoading()
+
                             uni.showModal({
                                 title: '提示',
                                 content: errorMsg,
@@ -369,7 +357,7 @@ const selectAndUploadImages = (count) => {
                     }
                 }
 
-                uni.hideLoading()
+
 
                 if (uploadedImages.value.length > 0) {
                     uni.showToast({
@@ -379,7 +367,7 @@ const selectAndUploadImages = (count) => {
                     })
                 }
             } catch (error) {
-                uni.hideLoading()
+
                 console.error('上传过程出错:', error)
                 uni.showToast({
                     title: '上传失败',
@@ -478,10 +466,6 @@ const publish = async () => {
         return
     }
 
-    uni.showLoading({
-        title: '发布中...',
-        mask: true
-    })
 
     try {
         // 构建发布数据
@@ -501,7 +485,7 @@ const publish = async () => {
         // 调用发布接口
         const result = await submitPost(postData)
 
-        uni.hideLoading()
+
 
         uni.showToast({
             title: '发布成功',
@@ -519,7 +503,7 @@ const publish = async () => {
             })
         }, 2000)
     } catch (error) {
-        uni.hideLoading()
+
         console.error('发布失败:', error)
         uni.showToast({
             title: error.message || '发布失败，请重试',

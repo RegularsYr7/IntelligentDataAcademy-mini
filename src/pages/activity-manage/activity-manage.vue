@@ -25,8 +25,20 @@
                     <view class="item-left">
                         <text class="item-icon">👥</text>
                         <view class="item-content">
-                            <text class="item-title">报名人员列表</text>
-                            <text class="item-desc">查看所有报名参与者</text>
+                            <text class="item-title">成功报名</text>
+                            <text class="item-desc">查看成功报名人员</text>
+                        </view>
+                    </view>
+                    <text class="item-arrow">›</text>
+                </view>
+
+                <!-- 待录取列表 -->
+                <view class="action-item" @tap="goToPendingParticipants">
+                    <view class="item-left">
+                        <text class="item-icon">⏳</text>
+                        <view class="item-content">
+                            <text class="item-title">待录取</text>
+                            <text class="item-desc">查看待录取人员</text>
                         </view>
                     </view>
                     <text class="item-arrow">›</text>
@@ -190,7 +202,6 @@ const generateQRCode = async () => {
     }
 
     try {
-        uni.showLoading({ title: '生成中...' })
         imageLoadError.value = false
 
         // 调用后端接口生成二维码
@@ -209,9 +220,7 @@ const generateQRCode = async () => {
         // 显示二维码弹窗
         showQrModal.value = true
 
-        uni.hideLoading()
     } catch (error) {
-        uni.hideLoading()
         console.error('生成二维码失败:', error)
 
     }
@@ -233,6 +242,13 @@ const closeQRPopup = () => {
 const goToParticipants = () => {
     uni.navigateTo({
         url: `/pages/activity-participants/activity-participants?id=${activityId.value}`
+    })
+}
+
+// 跳转到待录取列表
+const goToPendingParticipants = () => {
+    uni.navigateTo({
+        url: `/pages/activity-manage/pending-participants/index?id=${activityId.value}`
     })
 }
 
@@ -283,7 +299,7 @@ const finishActivity = async () => {
                         })
                     }
                 } catch (error) {
-                    uni.hideLoading()
+
                     console.error('结束活动失败:', error)
                     uni.showToast({
                         title: error.message || '操作失败',

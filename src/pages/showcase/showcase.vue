@@ -5,6 +5,13 @@
                 :pageSize="10" emptyIcon="🎨" emptyText="暂无风采展示" class="list-container">
 
                 <template #header>
+                    <!-- 搜索框 -->
+                    <view class="search-box">
+                        <u-search placeholder="搜索风采展示" v-model="keyword" :showAction="true" actionText="搜索"
+                            :animation="true" @search="handleSearch" @custom="handleCustom" @clear="handleSearch">
+                        </u-search>
+                    </view>
+
                     <!-- 分类标签 -->
                     <view class="category-tabs">
                         <scroll-view scroll-x="true" class="tabs-scroll">
@@ -64,6 +71,9 @@ const categories = ref([
 
 // 当前选中分类
 const currentCategory = ref('all')
+// 搜索关键字
+const keyword = ref('')
+const searchKeyword = ref('')
 
 // 计算请求参数
 const requestParams = computed(() => {
@@ -74,8 +84,23 @@ const requestParams = computed(() => {
         params.type = currentCategory.value
     }
 
+    // 如果有搜索关键字
+    if (searchKeyword.value) {
+        params.keyword = searchKeyword.value
+    }
+
     return params
 })
+
+// 搜索处理
+const handleSearch = () => {
+    searchKeyword.value = keyword.value
+}
+
+// 点击搜索按钮
+const handleCustom = () => {
+    handleSearch()
+}
 
 // 数据映射函数(后端 -> 前端)
 const mapShowcaseData = (item) => {
@@ -181,6 +206,13 @@ onLoad(() => {
     flex: 1;
     height: 0;
     width: 100%;
+}
+
+/* 搜索框 */
+.search-box {
+    padding: 20rpx;
+    background: #fff;
+    border-bottom: 1rpx solid #f0f0f0;
 }
 
 /* 分类标签 */

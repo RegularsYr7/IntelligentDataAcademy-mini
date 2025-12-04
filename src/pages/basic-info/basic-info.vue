@@ -206,10 +206,7 @@ const loadUserInfo = async () => {
 
         const cachedUserInfo = uni.getStorageSync('userInfo') || {}
 
-        // 显示加载提示
-        uni.showLoading({
-            title: '加载中...'
-        })
+
 
         // 从后端获取最新的学生信息
         const studentData = await getStudentInfo()
@@ -256,10 +253,8 @@ const loadUserInfo = async () => {
         hometownColumns.value[0] = provinceList.value.map(p => p.name)
         hometownColumns.value[1] = cityList.value.map(c => c.name)
 
-        uni.hideLoading()
     } catch (error) {
         console.error('加载用户信息失败:', error)
-        uni.hideLoading()
     }
 }
 
@@ -471,7 +466,7 @@ const changeAvatar = async () => {
         console.error('修改头像失败:', error)
 
         // 隐藏可能还在显示的加载提示
-        uni.hideLoading()
+
 
         // 如果是服务器返回的次数限制错误
         if (error.msg && error.msg.includes('已达上限')) {

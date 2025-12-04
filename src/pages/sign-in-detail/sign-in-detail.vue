@@ -164,10 +164,7 @@ const loadRecordDetail = async (id) => {
         console.log('处理后的图片URL:', photoUrl)
     } catch (error) {
         console.error('获取签到详情失败:', error)
-        uni.showToast({
-            title: '获取详情失败',
-            icon: 'none'
-        })
+
     } finally {
         loading.value = false
     }

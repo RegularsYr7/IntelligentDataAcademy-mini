@@ -139,7 +139,6 @@ const processApplication = async (item, approved) => {
     if (item.loading) return
 
     item.loading = true
-    uni.showLoading({ title: '处理中...' })
 
     const token = uni.getStorageSync('userToken')
     if (!token) {
@@ -148,7 +147,7 @@ const processApplication = async (item, approved) => {
             icon: 'none'
         })
         item.loading = false
-        uni.hideLoading()
+
         return
     }
 
@@ -184,7 +183,6 @@ const processApplication = async (item, approved) => {
         })
     } finally {
         item.loading = false
-        uni.hideLoading()
     }
 }
 

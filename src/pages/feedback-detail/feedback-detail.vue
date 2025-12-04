@@ -188,10 +188,7 @@ const loadFeedbackDetail = async (id) => {
         console.log('反馈详情加载成功:', feedback.value)
     } catch (error) {
         console.error('获取反馈详情失败:', error)
-        uni.showToast({
-            title: '获取详情失败',
-            icon: 'none'
-        })
+
     } finally {
         loading.value = false
     }

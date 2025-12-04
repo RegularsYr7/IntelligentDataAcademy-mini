@@ -6,6 +6,12 @@
                 class="list-container">
 
                 <template #header>
+                    <!-- 搜索框 -->
+                    <view class="search-box">
+                        <u-search placeholder="搜索竞赛名称" v-model="keyword" :showAction="true" actionText="搜索"
+                            :animation="true" @search="handleSearch" @custom="handleSearch" @clear="handleSearch">
+                        </u-search>
+                    </view>
                     <!-- 分类标签 -->
                     <view class="category-tabs">
                         <scroll-view scroll-x="true" class="tabs-scroll">
@@ -62,6 +68,10 @@ import RefreshLoadList from '@/components/RefreshLoadList/RefreshLoadList.vue'
 // 列表组件引用
 const listRef = ref(null)
 
+// 搜索关键字
+const keyword = ref('')
+const searchKeyword = ref('')
+
 // 分类数据
 const categories = ref([
     { id: 'all', name: '全部' }
@@ -96,8 +106,18 @@ const requestParams = computed(() => {
         params.category = currentCategory.value
     }
 
+    // 如果有搜索关键字
+    if (searchKeyword.value) {
+        params.keyword = searchKeyword.value
+    }
+
     return params
 })
+
+// 搜索处理
+const handleSearch = () => {
+    searchKeyword.value = keyword.value
+}
 
 // 数据映射函数(后端 -> 前端)
 const mapCompetitionData = (item) => {
@@ -211,6 +231,13 @@ onLoad(() => {
     display: flex;
     flex-direction: column;
     background: #f5f5f5;
+}
+
+/* 搜索框 */
+.search-box {
+    padding: 20rpx;
+    background: #fff;
+    border-bottom: 1rpx solid #f0f0f0;
 }
 
 /* 分类标签 */

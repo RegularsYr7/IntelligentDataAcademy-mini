@@ -625,10 +625,6 @@ const deletePost = async () => {
             return
         }
 
-        uni.showLoading({
-            title: '删除中...'
-        })
-
         const token = uni.getStorageSync('userToken')
         if (!token) {
             uni.showToast({
@@ -641,11 +637,7 @@ const deletePost = async () => {
             postId: post.value.postId
         })
 
-        uni.hideLoading()
-        uni.showToast({
-            title: '删除成功',
-            icon: 'success'
-        })
+        uni.showToast({ title: '删除成功', icon: 'none' })
 
         // 延迟返回上一页,并传递刷新标识
         setTimeout(() => {
@@ -658,7 +650,7 @@ const deletePost = async () => {
             })
         }, 1500)
     } catch (error) {
-        uni.hideLoading()
+
         console.error('删除帖子失败:', error)
         uni.showToast({
             title: error.message || '删除失败',
@@ -681,9 +673,7 @@ const deleteComment = async (comment) => {
             return
         }
 
-        uni.showLoading({
-            title: '删除中...'
-        })
+
 
         const token = uni.getStorageSync('userToken')
         if (!token) {
@@ -697,16 +687,12 @@ const deleteComment = async (comment) => {
             commentId: comment.commentId
         })
 
-        uni.hideLoading()
-        uni.showToast({
-            title: '删除成功',
-            icon: 'success'
-        })
 
+        uni.showToast({ title: '删除成功', icon: 'none' })
         // 重新加载帖子详情（包含评论）
         loadPostDetail()
     } catch (error) {
-        uni.hideLoading()
+
         console.error('删除评论失败:', error)
         uni.showToast({
             title: error.message || '删除失败',

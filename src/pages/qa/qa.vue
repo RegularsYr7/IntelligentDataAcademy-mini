@@ -297,8 +297,8 @@ const loadUnreadCount = async () => {
 
     try {
         const res = await getUnreadCount()
-        if (res && res.data) {
-            unreadCount.value = res.data.totalUnread || 0
+        if (res) {
+            unreadCount.value = res.totalUnread || 0
         }
     } catch (e) {
         console.error('获取未读消息数失败', e)
@@ -596,16 +596,12 @@ const publishPost = async () => {
             return
         }
 
-        // 显示加载提示
-        uni.showLoading({
-            title: '检查中...',
-            mask: true
-        })
+
 
         // 调用接口检查今日发帖数量
         const res = await checkTodayPostCount()
 
-        uni.hideLoading()
+
 
         // 检查返回的发帖数量
         const todayCount = res.data || 0
@@ -627,7 +623,7 @@ const publishPost = async () => {
             url: '/pages/publish-post/publish-post'
         })
     } catch (error) {
-        uni.hideLoading()
+
         console.error('检查发帖数量失败:', error)
 
         // 如果接口调用失败,显示错误提示
@@ -661,26 +657,21 @@ const deletePost = async (post) => {
             return
         }
 
-        uni.showLoading({
-            title: '删除中...'
-        })
+
 
         await deleteOwnPost({
             postId: post.id
         })
 
-        uni.hideLoading()
-        uni.showToast({
-            title: '删除成功',
-            icon: 'success'
-        })
+
+        uni.showToast({ title: '删除成功', icon: 'none' })
 
         // 刷新列表
         if (listRef.value) {
             listRef.value.reload()
         }
     } catch (error) {
-        uni.hideLoading()
+
         console.error('删除帖子失败:', error)
         uni.showToast({
             title: error.message || '删除失败',

@@ -70,7 +70,7 @@
 				</view> -->
 				<view class="function-item" @tap="goToFeedback">
 					<view class="function-icon">💬</view>
-					<text class="function-text">我要反馈</text>
+					<text class="function-text">学院信箱</text>
 				</view>
 			</view>
 		</view>
@@ -108,12 +108,15 @@ const getCurrentDate = () => {
 }
 
 onLoad(() => {
-	getCurrentDate()
 
 })
 
 onShow(() => {
-	loadNextCourse()
+	let token = uni.getStorageSync('userToken')
+	if (token) {
+		loadNextCourse()
+	}
+
 })
 
 // 加载下一节课信息

@@ -46,13 +46,7 @@ const requestInterceptor = (options) => {
     };
   }
 
-  // 显示加载提示(可配置)
-  // if (options.loading !== false) {
-  //   uni.showLoading({
-  //     title: options.loadingText || "加载中...",
-  //     mask: true,
-  //   });
-  // }
+
 
   // 打印请求日志(开发环境)
   if (process.env.NODE_ENV === "development") {
@@ -71,7 +65,7 @@ const requestInterceptor = (options) => {
 const responseInterceptor = (response, options) => {
   // 隐藏加载提示
   if (options.loading !== false) {
-    uni.hideLoading();
+    ;
   }
 
   const { statusCode, data } = response;
@@ -272,7 +266,7 @@ const request = (options) => {
       fail: (error) => {
         // 隐藏加载提示
         if (options.loading !== false) {
-          uni.hideLoading();
+          ;
         }
 
         // 网络错误处理

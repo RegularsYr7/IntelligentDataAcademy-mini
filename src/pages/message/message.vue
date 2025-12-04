@@ -122,7 +122,6 @@ const loadUnreadCounts = async () => {
 const loadMessages = async () => {
     if (!hasLogin()) return
 
-    uni.showLoading({ title: '加载中' })
     try {
         let res = []
         const params = { pageNum: 1, pageSize: 20 }
@@ -188,8 +187,6 @@ const loadMessages = async () => {
     } catch (e) {
         console.error('加载消息失败', e)
 
-    } finally {
-        uni.hideLoading()
     }
 }
 
@@ -284,7 +281,7 @@ const onLongPress = (msg) => {
             if (res.tapIndex === 0) {
                 try {
                     await deleteMessage(msg.id)
-                    uni.showToast({ title: '删除成功', icon: 'success' })
+                    uni.showToast({ title: '删除成功', icon: 'none' })
                     // 从本地列表中移除
                     const index = messages.value.findIndex(m => m.id === msg.id)
                     if (index > -1) {

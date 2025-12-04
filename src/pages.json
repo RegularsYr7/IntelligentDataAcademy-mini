@@ -186,6 +186,12 @@
       }
     },
     {
+      "path": "pages/activity-manage/pending-participants/index",
+      "style": {
+        "navigationBarTitleText": "待录取名单"
+      }
+    },
+    {
       "path": "pages/activity-participants/activity-participants",
       "style": {
         "navigationBarTitleText": "报名人员"

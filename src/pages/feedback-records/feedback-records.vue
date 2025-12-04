@@ -249,80 +249,8 @@ const goToFeedback = () => {
 }
 
 onLoad(() => {
-    console.log('反馈记录页加载')
-    loadRecords()
-
-    // 打印接口需求文档
-    printAPIRequirements()
 })
 
-// ==================== 接口需求文档 ====================
-const printAPIRequirements = () => {
-    console.log('\n')
-    console.log('='.repeat(80))
-    console.log('【反馈记录页面 - 后端接口需求文档】')
-    console.log('='.repeat(80))
-    console.log('\n')
-
-    console.log('📍 接口1: 获取我的反馈记录')
-    console.log('━'.repeat(80))
-    console.log('请求方式: GET')
-    console.log('接口路径: /api/feedback/my-records')
-    console.log('请求头: Authorization: Bearer <token>')
-    console.log('请求参数:')
-    console.log(JSON.stringify({
-        status: 'all', // all | pending | processing | resolved | closed
-        type: '', // bug | feature | other (可选筛选)
-        page: 1,
-        pageSize: 10
-    }, null, 2))
-    console.log('\n响应数据格式:')
-    console.log(JSON.stringify({
-        code: 200,
-        message: 'success',
-        data: {
-            list: [
-                {
-                    id: 1,
-                    type: 'bug',
-                    content: '反馈内容',
-                    images: ['https://example.com/img1.jpg'],
-                    status: 'pending',
-                    createTime: '2024-11-01 15:30',
-                    updateTime: '2024-11-01 16:00',
-                    replyCount: 2 // 回复数量
-                }
-            ],
-            total: 15,
-            statusCounts: {
-                all: 15,
-                pending: 5,
-                processing: 3,
-                resolved: 6,
-                closed: 1
-            }
-        }
-    }, null, 2))
-    console.log('\n')
-
-    console.log('📚 数据字典')
-    console.log('━'.repeat(80))
-    console.log('status状态:')
-    console.log('  - pending: 待处理')
-    console.log('  - processing: 处理中')
-    console.log('  - resolved: 已解决')
-    console.log('  - closed: 已关闭')
-    console.log('\ntype类型:')
-    console.log('  - bug: 问题反馈')
-    console.log('  - feature: 功能建议')
-    console.log('  - other: 其他')
-    console.log('\n')
-
-    console.log('='.repeat(80))
-    console.log('【接口文档打印完毕】')
-    console.log('='.repeat(80))
-    console.log('\n')
-}
 
 onShow(() => {
     // 页面显示时重新加载

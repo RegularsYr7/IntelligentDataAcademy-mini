@@ -313,8 +313,8 @@ export const markMessageRead = (data) => {
 
 /**
  * 删除消息
- * @param {string} messageId - 消息ID
+ * @param {string} messageIds - 消息ID（单个或多个用逗号分隔）
  */
-export const deleteMessage = (messageId) => {
-  return request.delete(`/edu/communityMessage/delete?messageId=${messageId}`);
+export const deleteMessage = (messageIds) => {
+  return request.delete(`/edu/communityMessage/delete?messageIds=${messageIds}`);
 };

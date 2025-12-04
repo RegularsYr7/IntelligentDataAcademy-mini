@@ -2,7 +2,7 @@
     <view class="page">
         <view class="container">
             <RefreshLoadList ref="listRef" :api="getParticipantList" :params="listParams"
-                :dataMapping="mapParticipantData" :pageSize="20" emptyIcon="👥" emptyText="暂无报名人员">
+                :dataMapping="mapParticipantData" :pageSize="20" emptyIcon="👥" emptyText="暂无报名人员" :auto-load="false">
 
                 <template #header>
                     <!-- 统计信息 -->
@@ -94,16 +94,20 @@ const getParticipantList = async (params) => {
     try {
         const { pageNum, pageSize } = params
 
-        // 刷新时（第一页）重新加载统计数据
-        if (pageNum === 1) {
-            loadAllStatistics()
-        }
-
         const res = await getParticipants(activityId.value, {
             filter: currentFilter.value,
             pageNum,
             pageSize
         })
+
+        // 更新统计数据（如果后端返回了）
+        if (res.statistics) {
+            statistics.value = {
+                total: res.statistics.totalEnrolled || 0,
+                signedIn: res.statistics.totalSignedIn || 0,
+                rate: res.statistics.attendanceRate || 0
+            }
+        }
 
         return {
             total: res.total || 0,
@@ -112,45 +116,6 @@ const getParticipantList = async (params) => {
     } catch (error) {
         console.error('获取参与人员列表失败:', error)
         throw error
-    }
-}
-
-// 更新统计数据（基于全部人员数据计算）
-const updateStatistics = (data) => {
-    const totalEnrolled = data.total || 0
-    const signedCount = (data.rows || []).filter(item =>
-        item.enrollStatus === '1' || item.enrollStatus === '2'
-    ).length
-
-    statistics.value = {
-        total: totalEnrolled,
-        signedIn: signedCount,
-        rate: totalEnrolled > 0 ? Math.round((signedCount / totalEnrolled) * 100) : 0
-    }
-}
-
-// 加载全部人员统计数据
-const loadAllStatistics = async () => {
-    try {
-        const res = await getParticipants(activityId.value, {
-            filter: 'all',
-            pageNum: 1,
-            pageSize: 1000  // 获取所有数据用于统计
-        })
-
-        const totalEnrolled = res.total || 0
-        const allRows = res.rows || []
-        const signedCount = allRows.filter(item =>
-            item.enrollStatus === '1' || item.enrollStatus === '2'
-        ).length
-
-        statistics.value = {
-            total: totalEnrolled,
-            signedIn: signedCount,
-            rate: totalEnrolled > 0 ? Math.round((signedCount / totalEnrolled) * 100) : 0
-        }
-    } catch (error) {
-        console.error('加载统计数据失败:', error)
     }
 }
 
@@ -191,7 +156,9 @@ const getStatusText = (status) => {
         '0': '已报名',
         '1': '已签到',
         '2': '已完成',
-        '3': '已取消'
+        '3': '已取消',
+        '4': '待录取',
+        '5': '已录取'
     }
     return map[status] || '未知'
 }
@@ -202,7 +169,9 @@ const getStatusClass = (status) => {
         '0': 'status-enrolled',
         '1': 'status-signed',
         '2': 'status-completed',
-        '3': 'status-cancelled'
+        '3': 'status-cancelled',
+        '4': 'status-pending',
+        '5': 'status-admitted'
     }
     return map[status] || ''
 }
@@ -228,10 +197,15 @@ const getRoleClass = (role) => {
 }
 
 onLoad((options) => {
-    activityId.value = options.id
+    if (options.id) {
+        activityId.value = options.id
 
-    // 加载全部人员的统计数据
-    loadAllStatistics()
+        // 手动触发列表加载（因为 auto-load="false"）
+        // 注意：由于 activityId 改变会触发 listParams 改变，进而触发 RefreshLoadList 的 watch
+        // 所以这里可能不需要手动调用 loadData，除非 watch 没有触发
+        // 为了保险起见，我们可以延时检查或者依赖 watch
+        // 如果 RefreshLoadList 的 watch 是 deep watch，它应该会检测到 listParams 的变化
+    }
 })
 </script>
 
@@ -417,6 +391,16 @@ onLoad((options) => {
     &.status-cancelled {
         background: rgba(244, 67, 54, 0.15);
         color: #f44336;
+    }
+
+    &.status-pending {
+        background: rgba(255, 152, 0, 0.15);
+        color: #ff9800;
+    }
+
+    &.status-admitted {
+        background: rgba(33, 150, 243, 0.15);
+        color: #2196f3;
     }
 }
 </style>

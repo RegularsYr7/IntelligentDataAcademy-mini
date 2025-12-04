@@ -119,17 +119,11 @@ export const uploadImage = (filePath, options = {}) => {
 export const uploadMultipleImages = async (filePaths, options = {}) => {
   const results = [];
 
-  uni.showLoading({
-    title: `上传中 0/${filePaths.length}`,
-    mask: true,
-  });
+
 
   try {
     for (let i = 0; i < filePaths.length; i++) {
-      uni.showLoading({
-        title: `上传中 ${i + 1}/${filePaths.length}`,
-        mask: true,
-      });
+
 
       const result = await uploadImage(filePaths[i], {
         ...options,
@@ -138,10 +132,10 @@ export const uploadMultipleImages = async (filePaths, options = {}) => {
       results.push(result);
     }
 
-    uni.hideLoading();
+    ;
     return results;
   } catch (error) {
-    uni.hideLoading();
+    ;
     throw error;
   }
 };

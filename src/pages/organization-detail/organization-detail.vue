@@ -85,7 +85,7 @@
             <view class="section-card">
                 <view class="section-header">
                     <text class="section-title">主要活动</text>
-                    <text class="more-link" v-if="organization.activities.length > 0">查看全部 ›</text>
+                    <!-- <text class="more-link" v-if="organization.activities.length > 0">查看全部 ›</text> -->
                 </view>
                 <view class="activity-timeline" v-if="organization.activities && organization.activities.length > 0">
                     <view class="timeline-item" v-for="(activity, index) in organization.activities" :key="index"

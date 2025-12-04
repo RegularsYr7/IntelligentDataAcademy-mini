@@ -185,9 +185,7 @@ const handleDelete = () => {
         success: async (res) => {
             if (res.confirm) {
                 try {
-                    uni.showLoading({ title: '删除中...' })
                     await deleteMessage(messageId.value)
-                    uni.hideLoading()
                     uni.showToast({ title: '删除成功', icon: 'success' })
                     setTimeout(() => {
                         uni.navigateBack({
@@ -198,7 +196,6 @@ const handleDelete = () => {
                         })
                     }, 1500)
                 } catch (e) {
-                    uni.hideLoading()
                     console.error('删除失败', e)
                     uni.showToast({ title: e.message || '删除失败', icon: 'none' })
                 }

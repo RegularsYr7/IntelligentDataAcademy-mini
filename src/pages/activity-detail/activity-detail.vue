@@ -1,6 +1,6 @@
 <template>
     <view class="page">
-        <view class="container">
+        <view class="container" :class="{ 'has-footer': showFixedFooter }">
             <!-- 活动图片 -->
             <view class="activity-banner">
                 <image class="banner-image" :src="activity.coverImage" mode="aspectFill"></image>
@@ -45,12 +45,25 @@
             <view class="tab-content">
                 <!-- 详情 -->
                 <view class="content-panel" v-if="currentTab === 0">
-                    <view class="detail-section">
+                    <view class="detail-section organization-section">
                         <view class="section-title">
                             <text class="title-icon">🏢</text>
                             <text class="title-text">活动组织</text>
                         </view>
-                        <text class="section-content">{{ activity.organizerNames }}</text>
+                        <view class="organization-card" @tap="goToOrganizationDetail" v-if="activity.organizationId">
+                            <view class="org-left">
+                                <view class="org-info">
+                                    <text class="org-name">{{ activity.organizationName || '未知组织' }}</text>
+                                    <text class="org-tip">点击查看组织详情</text>
+                                </view>
+                            </view>
+                            <view class="org-right">
+                                <text class="org-arrow">›</text>
+                            </view>
+                        </view>
+                        <view class="organization-empty" v-else>
+                            <text class="empty-text">{{ activity.organizerNames || '暂无组织信息' }}</text>
+                        </view>
                     </view>
 
                     <view class="detail-section">
@@ -178,14 +191,17 @@
                 </view>
             </view>
 
-            <!-- 底部操作按钮 -->
-            <view class="footer-action">
-                <!-- 活动状态: 1=预热中, 2=报名中, 3=等待中, 4=进行中, 5=已结束, 6=已完结 -->
+            <!-- 页面底部的状态提示 (跟随页面滚动) -->
+            <view class="page-bottom-tip" v-if="[1, 3, 5, 6].includes(currentStatus)">
+                <text v-if="currentStatus === 1">活动即将开始报名</text>
+                <text v-if="currentStatus === 3">报名已结束，等待活动开始</text>
+                <text v-if="currentStatus === 5">活动已结束</text>
+                <text v-if="currentStatus === 6">活动已完结</text>
+            </view>
 
-                <!-- 预热中: 显示即将开始 -->
-                <view v-if="currentStatus === 1" class="status-tip">
-                    <text>活动即将开始报名</text>
-                </view>
+            <!-- 底部固定操作按钮 -->
+            <view class="footer-action" v-if="showFixedFooter">
+                <!-- 活动状态: 1=预热中, 2=报名中, 3=等待中, 4=进行中, 5=已结束, 6=已完结 -->
 
                 <!-- 报名中: 显示报名/取消报名按钮 -->
                 <view v-if="currentStatus === 2" class="action-buttons">
@@ -198,11 +214,6 @@
                     <button v-if="isLeader" class="manage-btn" @tap="goToManage">
                         <text>管理活动</text>
                     </button>
-                </view>
-
-                <!-- 等待中: 报名结束，等待活动开始 -->
-                <view v-if="currentStatus === 3" class="status-tip">
-                    <text>报名已结束，等待活动开始</text>
                 </view>
 
                 <!-- 活动进行中: 显示签到按钮(参与者) 或 管理活动按钮(管理员) -->
@@ -218,16 +229,6 @@
                         <text class="btn-icon">⚙️</text>
                         <text>管理活动</text>
                     </button>
-                </view>
-
-                <!-- 活动已结束: 显示已结束提示 -->
-                <view v-if="currentStatus === 5" class="status-tip">
-                    <text>活动已结束</text>
-                </view>
-
-                <!-- 活动已完结: 显示已完结提示 -->
-                <view v-if="currentStatus === 6" class="status-tip">
-                    <text>活动已完结</text>
                 </view>
 
                 <!-- 管理员在其他状态(非报名中/非进行中)也可以管理 -->
@@ -265,6 +266,12 @@ const currentStatus = ref(1)
 // 是否是管理员(负责人)
 const isLeader = ref(false)
 
+// 是否显示底部固定栏
+const showFixedFooter = computed(() => {
+    // 报名中(2) 或 进行中(4) 或者是管理员(isLeader)
+    return currentStatus.value === 2 || currentStatus.value === 4 || isLeader.value
+})
+
 // 是否已报名
 const isRegistered = ref(false)
 
@@ -278,6 +285,8 @@ const activity = ref({
     currentParticipants: 0,
     maxParticipants: 0,
     organizerNames: '',
+    organizationId: null,
+    organizationName: '',
     activityDetail: '',
     participationNotes: '',
     remark: '',
@@ -435,6 +444,21 @@ const handleCheckinSubmit = async (qrData) => {
 const goToManage = () => {
     uni.navigateTo({
         url: `/pages/activity-manage/activity-manage?id=${activity.value.activityId}&status=${currentStatus.value}`
+    })
+}
+
+// 跳转到组织详情页面
+const goToOrganizationDetail = () => {
+    if (!activity.value.organizationId) {
+        uni.showToast({
+            title: '暂无组织信息',
+            icon: 'none'
+        })
+        return
+    }
+
+    uni.navigateTo({
+        url: `/pages/organization-detail/organization-detail?id=${activity.value.organizationId}`
     })
 }
 
@@ -615,7 +639,7 @@ const loadActivityDetail = async (id) => {
         const enrollStatus = res.enrollStatus
         isRegistered.value = res.isRegistered || (enrollStatus !== null && enrollStatus !== '3')
 
-        // 直接使用后端返回的字段，不进行映射
+        // 直接使用后端返回的字段,不进行映射
         activity.value = {
             ...activityData,
             // 补充一些可能不在 activityData 中的字段
@@ -630,6 +654,8 @@ const loadActivityDetail = async (id) => {
             currentParticipants: activityData.currentParticipants || 0,
             maxParticipants: activityData.maxParticipants || 0,
             organizerNames: activityData.organizerNames || activityData.organizationName || '',
+            organizationId: activityData.organizationId || null,
+            organizationName: activityData.organizationName || '',
             activityDetail: activityData.activityDetail || '',
             participationNotes: activityData.participationNotes || '',
             remark: activityData.remark || '',
@@ -735,7 +761,19 @@ onLoad((options) => {
 .container {
     min-height: 100vh;
     background: #f5f5f5;
-    padding-bottom: 120rpx;
+    padding-bottom: 40rpx;
+}
+
+.container.has-footer {
+    padding-bottom: 140rpx;
+}
+
+/* 页面底部提示 */
+.page-bottom-tip {
+    text-align: center;
+    padding: 40rpx 0;
+    color: #999;
+    font-size: 28rpx;
 }
 
 /* 活动图片 */
@@ -765,8 +803,18 @@ onLoad((options) => {
     align-items: center;
     justify-content: center;
 
+    &.status-upcoming {
+        background: rgba(255, 152, 0, 0.9);
+        color: #fff;
+    }
+
     &.status-recruiting {
         background: rgba(82, 196, 26, 0.9);
+        color: #fff;
+    }
+
+    &.status-waiting {
+        background: rgba(23, 162, 184, 0.9);
         color: #fff;
     }
 
@@ -777,6 +825,11 @@ onLoad((options) => {
 
     &.status-finished {
         background: rgba(153, 153, 153, 0.9);
+        color: #fff;
+    }
+
+    &.status-completed {
+        background: rgba(96, 125, 139, 0.9);
         color: #fff;
     }
 }
@@ -891,6 +944,89 @@ onLoad((options) => {
 
     &:last-child {
         margin-bottom: 0;
+    }
+}
+
+/* 组织卡片样式 */
+.organization-section {
+    .organization-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 24rpx;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+        border: 2rpx solid rgba(102, 126, 234, 0.15);
+        border-radius: 16rpx;
+        transition: all 0.3s ease;
+
+        &:active {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+            transform: scale(0.98);
+        }
+
+        .org-left {
+            display: flex;
+            align-items: center;
+            gap: 20rpx;
+            flex: 1;
+        }
+
+        .org-icon {
+            width: 80rpx;
+            height: 80rpx;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16rpx;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40rpx;
+            box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.3);
+        }
+
+        .org-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8rpx;
+            flex: 1;
+        }
+
+        .org-name {
+            font-size: 30rpx;
+            font-weight: bold;
+            color: #333;
+            line-height: 1.3;
+        }
+
+        .org-tip {
+            font-size: 24rpx;
+            color: #999;
+            line-height: 1;
+        }
+
+        .org-right {
+            display: flex;
+            align-items: center;
+            margin-left: 12rpx;
+        }
+
+        .org-arrow {
+            font-size: 48rpx;
+            color: #999;
+            line-height: 1;
+            font-weight: 300;
+        }
+    }
+
+    .organization-empty {
+        padding: 24rpx;
+        background: #f8f9fa;
+        border-radius: 12rpx;
+        text-align: center;
+
+        .empty-text {
+            font-size: 28rpx;
+            color: #666;
+        }
     }
 }
 

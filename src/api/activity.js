@@ -73,6 +73,26 @@ export const getParticipants = (activityId, params) => {
 };
 
 /**
+ * 获取待审核人员列表
+ * @param {string} activityId - 活动ID
+ * @param {Object} params - 查询参数
+ * @param {number} params.pageNum - 页码
+ * @param {number} params.pageSize - 每页数量
+ */
+export const getPendingParticipants = (activityId, params) => {
+  return request.get(`/edu/activity/pending/${activityId}`, params);
+};
+
+/**
+ * 审核报名（批量录取）
+ * @param {Object} data - 审核信息
+ * @param {string|Array} data.participantIds - 参与记录ID列表
+ */
+export const approveParticipants = (data) => {
+  return request.post("/edu/activity/approve", data);
+};
+
+/**
  * 结束活动
  * @param {Object} data - 结束信息
  * @param {number} data.activityId - 活动ID

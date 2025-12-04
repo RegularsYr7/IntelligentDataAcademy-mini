@@ -209,11 +209,6 @@ const saveAsImage = async () => {
 
     generating.value = true
 
-    uni.showLoading({
-        title: '生成图片中...',
-        mask: true
-    })
-
     try {
         // 获取页面容器信息
         const query = uni.createSelectorQuery()
@@ -224,7 +219,7 @@ const saveAsImage = async () => {
 
         query.exec(async (res) => {
             if (!res || res.length === 0) {
-                uni.hideLoading()
+
 
                 generating.value = false
                 return
@@ -313,8 +308,6 @@ const saveAsImage = async () => {
                         destWidth: canvasW * dpr,
                         destHeight: canvasH * dpr,
                         success: (res) => {
-                            uni.hideLoading()
-
                             // 保存到相册
                             uni.saveImageToPhotosAlbum({
                                 filePath: res.tempFilePath,
@@ -346,7 +339,7 @@ const saveAsImage = async () => {
                         },
                         fail: (err) => {
                             console.error('生成图片失败:', err)
-                            uni.hideLoading()
+
                             uni.showToast({
                                 title: '生成失败',
                                 icon: 'none'
@@ -359,7 +352,6 @@ const saveAsImage = async () => {
         })
     } catch (error) {
         console.error('保存图片失败:', error)
-        uni.hideLoading()
 
         generating.value = false
     }

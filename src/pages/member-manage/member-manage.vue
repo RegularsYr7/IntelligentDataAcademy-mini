@@ -201,7 +201,7 @@ const confirmPromote = (member) => {
                         targetStudentId: member.studentId,
                         organizationId: orgId.value
                     })
-                    uni.showToast({ title: '操作成功', icon: 'success' })
+                    uni.showToast({ title: '操作成功', icon: 'none' })
                     loadMembers(orgId.value)
                 } catch (e) {
                 }
@@ -226,7 +226,7 @@ const confirmDemote = (member) => {
                         targetStudentId: member.studentId,
                         organizationId: orgId.value
                     })
-                    uni.showToast({ title: '操作成功', icon: 'success' })
+                    uni.showToast({ title: '操作成功', icon: 'none' })
                     loadMembers(orgId.value)
                 } catch (e) {
                 }
@@ -251,7 +251,7 @@ const confirmRemove = (member) => {
                         targetStudentId: member.studentId,
                         organizationId: orgId.value
                     })
-                    uni.showToast({ title: '操作成功', icon: 'success' })
+                    uni.showToast({ title: '操作成功', icon: 'none' })
                     loadMembers(orgId.value)
                 } catch (e) {
                 }
