@@ -97,35 +97,29 @@ const classStatus = computed(() => {
 	return currentClass.value.status === 'ongoing' ? '正在上课' : '下节课是'
 })
 
-// 获取当前日期
-const getCurrentDate = () => {
-	const now = new Date()
-	const days = ['日', '一', '二', '三', '四', '五', '六']
-	const month = now.getMonth() + 1
-	const date = now.getDate()
-	const day = days[now.getDay()]
-	currentDate.value = `${month}月${date}日 星期${day}`
-}
-
 onLoad(() => {
 
 })
 
 onShow(() => {
-	let token = uni.getStorageSync('userToken')
-	if (token) {
+	// 只有在用户已登录且token有效的情况下才加载课程
+	const userInfo = uni.getStorageSync('userInfo')
+	const token = uni.getStorageSync('userToken')
+	if (userInfo && token) {
 		loadNextCourse()
 	}
-
 })
 
 // 加载下一节课信息
 const loadNextCourse = async () => {
 	try {
-		// 获取用户信息
+		// 获取用户信息和token
 		const userInfo = uni.getStorageSync('userInfo')
-		if (!userInfo || !userInfo.classId) {
-			console.log('用户未登录或未绑定班级')
+		const token = uni.getStorageSync('userToken')
+
+		// 如果没有token或用户信息,静默失败,不显示错误提示
+		if (!token || !userInfo || !userInfo.classId) {
+			console.log('用户未登录或token已过期,跳过加载课程')
 			currentClass.value = null
 			return
 		}
@@ -151,6 +145,7 @@ const loadNextCourse = async () => {
 		}
 	} catch (error) {
 		console.error('加载下一节课失败:', error)
+		// 静默失败,不显示错误提示
 		currentClass.value = null
 	}
 }

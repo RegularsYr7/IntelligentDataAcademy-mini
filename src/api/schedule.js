@@ -35,7 +35,10 @@ export const getTimeSlots = () => {
  * @param {number} params.classId - 班级ID(必填)
  */
 export const getNextCourse = (params) => {
-  return request.get("/edu/schedule/nextCourse", params);
+  return request.get("/edu/schedule/nextCourse", params, {
+    showError: false, // 静默失败,不显示错误提示
+    loading: false // 不显示加载提示
+  });
 };
 
 /**

@@ -12,7 +12,7 @@
                 <view class="logo-container">
                     <image class="logo" :src="Logo" mode="aspectFit"></image>
                 </view>
-                <text class="app-name">智慧数据学院</text>
+                <text class="app-name">智数服务舱</text>
             </view>
 
             <!-- 登录区域 -->

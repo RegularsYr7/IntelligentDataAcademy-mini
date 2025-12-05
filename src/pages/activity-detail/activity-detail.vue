@@ -3,7 +3,12 @@
         <view class="container" :class="{ 'has-footer': showFixedFooter }">
             <!-- 活动图片 -->
             <view class="activity-banner">
-                <image class="banner-image" :src="activity.coverImage" mode="aspectFill"></image>
+                <swiper class="banner-swiper" :indicator-dots="bannerImages.length > 1" :autoplay="true"
+                    :interval="3000" :duration="500" circular>
+                    <swiper-item v-for="(img, index) in bannerImages" :key="index">
+                        <image class="banner-image" :src="img" mode="aspectFill" @tap="previewImage(index)"></image>
+                    </swiper-item>
+                </swiper>
                 <view class="status-overlay">
                     <view class="status-badge" :class="'status-' + mapCurrentStatusToDisplay(currentStatus)">
                         {{ getStatusTextByCode(currentStatus) }}
@@ -281,6 +286,7 @@ const isSigned = ref(false)
 const activity = ref({
     activityId: null,
     coverImage: '',
+    imageUrls: '', // 新增字段
     activityName: '',
     activityStatus: '0',
     activityLocation: '',
@@ -308,6 +314,14 @@ const activity = ref({
     latitude: 0,
     longitude: 0,
     enrollStatus: null
+})
+
+// 轮播图列表
+const bannerImages = computed(() => {
+    if (activity.value.imageUrls) {
+        return activity.value.imageUrls.split(',').filter(url => url)
+    }
+    return activity.value.coverImage ? [activity.value.coverImage] : []
 })
 
 // 地图标记点
@@ -617,6 +631,14 @@ const getRoleClass = (type) => {
     return map[type] || ''
 }
 
+// 预览图片
+const previewImage = (current) => {
+    uni.previewImage({
+        current: bannerImages.value[current],
+        urls: bannerImages.value
+    })
+}
+
 // 加载活动详情
 const loadActivityDetail = async (id) => {
     try {
@@ -781,6 +803,11 @@ onLoad((options) => {
     position: relative;
     width: 100%;
     height: 400rpx;
+}
+
+.banner-swiper {
+    width: 100%;
+    height: 100%;
 }
 
 .banner-image {
